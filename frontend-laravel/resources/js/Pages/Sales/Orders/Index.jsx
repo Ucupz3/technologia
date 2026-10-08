@@ -6,7 +6,7 @@ export default function Page() {
     <RoleLayout>
       <Head title="Orders Saya" />
       <h1 className="text-2xl font-bold mb-2">Orders Saya</h1>
-      <p className="text-slate-500">Halaman Orders Saya — segera diisi.</p>
+      <p className="text-slate-500">Halaman Orders Aronoz</p>
     </RoleLayout>
   );
 }
