@@ -8,37 +8,50 @@ export const teamMembersRouter = Router();
 teamMembersRouter.get('/', async (_req, res, next) => {
   try {
     const members = await prisma.team_members.findMany({
-      where: { deleted_at: null },
+      where: { status: 'active' },
       select: {
         id: true,
+        team_id: true,
         user_id: true,
-        role: true,
-        phone: true,
+        joined_at: true,
         status: true,
-        created_at: true,
+        teams: { select: { id: true, name: true } },
         users: {
           select: {
             id: true,
             name: true,
             email: true,
+            phone: true,
             roles: { select: { name: true } },
+            user_jobs: {
+              include: { jobs: { select: { id: true, name: true } } },
+            },
           },
         },
       },
       orderBy: { id: 'asc' },
     });
 
-    const data = members.map((m) => ({
-      id: m.id,
-      user_id: m.user_id,
-      user_name: m.users?.name || 'Unknown',
-      user_email: m.users?.email || null,
-      user_role: m.users?.roles?.name || null,
-      role: m.role,
-      phone: m.phone,
-      status: m.status,
-      created_at: m.created_at,
-    }));
+    const data = members.map((m) => {
+      const primaryJob = m.users?.user_jobs?.find((uj) => uj.is_primary)?.jobs?.name
+        || m.users?.user_jobs?.[0]?.jobs?.name
+        || m.users?.roles?.name
+        || null;
+
+      return {
+        id: m.id,
+        team_id: m.team_id,
+        team_name: m.teams?.name || null,
+        user_id: m.user_id,
+        user_name: m.users?.name || 'Unknown',
+        user_email: m.users?.email || null,
+        user_role: m.users?.roles?.name || null,
+        role: primaryJob,
+        phone: m.users?.phone || null,
+        joined_at: m.joined_at,
+        status: m.status,
+      };
+    });
 
     res.json({ success: true, data });
   } catch (err) {
@@ -47,11 +60,10 @@ teamMembersRouter.get('/', async (_req, res, next) => {
 });
 
 // GET /api/v1/team-members/users/options
-// Daftar user yang bisa dijadikan team member (belum terdaftar sebagai team member)
 teamMembersRouter.get('/users/options', async (_req, res, next) => {
   try {
     const usedUsers = await prisma.team_members.findMany({
-      where: { deleted_at: null },
+      where: { status: 'active' },
       select: { user_id: true },
     });
     const usedIds = usedUsers.map((u) => u.user_id);
@@ -90,20 +102,24 @@ teamMembersRouter.get('/users/options', async (_req, res, next) => {
 teamMembersRouter.get('/:id', async (req, res, next) => {
   try {
     const member = await prisma.team_members.findFirst({
-      where: { id: BigInt(req.params.id), deleted_at: null },
+      where: { id: BigInt(req.params.id) },
       select: {
         id: true,
+        team_id: true,
         user_id: true,
-        role: true,
-        phone: true,
+        joined_at: true,
         status: true,
-        created_at: true,
+        teams: { select: { id: true, name: true } },
         users: {
           select: {
             id: true,
             name: true,
             email: true,
+            phone: true,
             roles: { select: { name: true } },
+            user_jobs: {
+              include: { jobs: { select: { id: true, name: true } } },
+            },
           },
         },
       },
@@ -113,18 +129,25 @@ teamMembersRouter.get('/:id', async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Team member tidak ditemukan' });
     }
 
+    const primaryJob = member.users?.user_jobs?.find((uj) => uj.is_primary)?.jobs?.name
+      || member.users?.user_jobs?.[0]?.jobs?.name
+      || member.users?.roles?.name
+      || null;
+
     res.json({
       success: true,
       data: {
         id: member.id,
+        team_id: member.team_id,
+        team_name: member.teams?.name || null,
         user_id: member.user_id,
         user_name: member.users?.name,
         user_email: member.users?.email,
         user_role: member.users?.roles?.name,
-        role: member.role,
-        phone: member.phone,
+        role: primaryJob,
+        phone: member.users?.phone,
+        joined_at: member.joined_at,
         status: member.status,
-        created_at: member.created_at,
       },
     });
   } catch (err) {
@@ -134,10 +157,11 @@ teamMembersRouter.get('/:id', async (req, res, next) => {
 
 // POST /api/v1/team-members
 const createSchema = z.object({
+  team_id: z.coerce.number().int().positive().optional().nullable(),
   user_id: z.coerce.number().int().positive(),
   role: z.string().max(100).optional().nullable(),
   phone: z.string().max(30).optional().nullable(),
-  status: z.enum(['active', 'inactive', 'busy', 'off']).default('active'),
+  status: z.enum(['active', 'inactive']).default('active'),
 });
 
 teamMembersRouter.post('/', async (req, res, next) => {
@@ -151,7 +175,7 @@ teamMembersRouter.post('/', async (req, res, next) => {
       });
     }
 
-    const { user_id, role, phone, status } = parsed.data;
+    const { team_id, user_id, phone, status } = parsed.data;
 
     // Cek user ada
     const user = await prisma.users.findFirst({
@@ -161,26 +185,42 @@ teamMembersRouter.post('/', async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
 
-    // Cek user belum terdaftar sebagai team member
+    // Resolve team_id
+    let resolvedTeamId = team_id;
+    if (!resolvedTeamId) {
+      const defaultTeam = await prisma.teams.findFirst({
+        where: { deleted_at: null, status: 'active' },
+        orderBy: { id: 'asc' },
+      });
+      resolvedTeamId = defaultTeam ? Number(defaultTeam.id) : 1;
+    }
+
+    // Cek user belum terdaftar di team tersebut
     const existing = await prisma.team_members.findFirst({
-      where: { user_id: BigInt(user_id), deleted_at: null },
+      where: { team_id: BigInt(resolvedTeamId), user_id: BigInt(user_id) },
     });
     if (existing) {
-      return res.status(409).json({ success: false, message: 'User sudah terdaftar sebagai team member' });
+      return res.status(409).json({ success: false, message: 'User sudah terdaftar sebagai anggota tim ini' });
+    }
+
+    if (phone && phone !== user.phone) {
+      await prisma.users.update({
+        where: { id: user.id },
+        data: { phone },
+      });
     }
 
     const member = await prisma.team_members.create({
       data: {
+        team_id: BigInt(resolvedTeamId),
         user_id: BigInt(user_id),
-        role: role || null,
-        phone: phone || null,
         status,
       },
-      select: {
-        id: true, user_id: true, role: true, phone: true, status: true,
+      include: {
+        teams: { select: { id: true, name: true } },
         users: {
           select: {
-            id: true, name: true, email: true,
+            id: true, name: true, email: true, phone: true,
             roles: { select: { name: true } },
           },
         },
@@ -191,12 +231,13 @@ teamMembersRouter.post('/', async (req, res, next) => {
       success: true,
       data: {
         id: member.id,
+        team_id: member.team_id,
+        team_name: member.teams?.name,
         user_id: member.user_id,
         user_name: member.users?.name,
         user_email: member.users?.email,
         user_role: member.users?.roles?.name,
-        role: member.role,
-        phone: member.phone,
+        phone: member.users?.phone,
         status: member.status,
       },
       message: 'Team member berhasil ditambahkan',
@@ -208,9 +249,9 @@ teamMembersRouter.post('/', async (req, res, next) => {
 
 // PUT /api/v1/team-members/:id
 const updateSchema = z.object({
-  role: z.string().max(100).optional().nullable(),
+  team_id: z.coerce.number().int().positive().optional(),
   phone: z.string().max(30).optional().nullable(),
-  status: z.enum(['active', 'inactive', 'busy', 'off']).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
 });
 
 teamMembersRouter.put('/:id', async (req, res, next) => {
@@ -225,23 +266,30 @@ teamMembersRouter.put('/:id', async (req, res, next) => {
     }
 
     const id = BigInt(req.params.id);
-    const existing = await prisma.team_members.findFirst({ where: { id, deleted_at: null } });
+    const existing = await prisma.team_members.findFirst({ where: { id } });
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Team member tidak ditemukan' });
     }
 
+    const data = {};
+    if (parsed.data.team_id) data.team_id = BigInt(parsed.data.team_id);
+    if (parsed.data.status) data.status = parsed.data.status;
+
+    if (parsed.data.phone !== undefined) {
+      await prisma.users.update({
+        where: { id: existing.user_id },
+        data: { phone: parsed.data.phone || null },
+      });
+    }
+
     const member = await prisma.team_members.update({
       where: { id },
-      data: {
-        ...(parsed.data.role !== undefined && { role: parsed.data.role }),
-        ...(parsed.data.phone !== undefined && { phone: parsed.data.phone }),
-        ...(parsed.data.status && { status: parsed.data.status }),
-      },
-      select: {
-        id: true, user_id: true, role: true, phone: true, status: true,
+      data,
+      include: {
+        teams: { select: { id: true, name: true } },
         users: {
           select: {
-            id: true, name: true, email: true,
+            id: true, name: true, email: true, phone: true,
             roles: { select: { name: true } },
           },
         },
@@ -252,12 +300,13 @@ teamMembersRouter.put('/:id', async (req, res, next) => {
       success: true,
       data: {
         id: member.id,
+        team_id: member.team_id,
+        team_name: member.teams?.name,
         user_id: member.user_id,
         user_name: member.users?.name,
         user_email: member.users?.email,
         user_role: member.users?.roles?.name,
-        role: member.role,
-        phone: member.phone,
+        phone: member.users?.phone,
         status: member.status,
       },
       message: 'Team member berhasil diupdate',
@@ -267,32 +316,32 @@ teamMembersRouter.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/v1/team-members/:id (soft delete)
+// DELETE /api/v1/team-members/:id
 teamMembersRouter.delete('/:id', async (req, res, next) => {
   try {
     const id = BigInt(req.params.id);
-    const member = await prisma.team_members.findFirst({ where: { id, deleted_at: null } });
+    const member = await prisma.team_members.findFirst({ where: { id } });
     if (!member) {
       return res.status(404).json({ success: false, message: 'Team member tidak ditemukan' });
     }
 
-    // Cek dipakai di order
-    const orderCount = await prisma.orders.count({
-      where: { team_id: id, deleted_at: null },
+    // Cek dipakai di order_assignments
+    const assignCount = await prisma.order_assignments.count({
+      where: { team_member_id: id },
     });
-    if (orderCount > 0) {
+    if (assignCount > 0) {
       return res.status(400).json({
         success: false,
-        message: `Team member masih ditugaskan di ${orderCount} order. Selesaikan/pindah dulu.`,
+        message: `Team member masih ditugaskan di ${assignCount} order assignment. Selesaikan/pindah dulu.`,
       });
     }
 
     await prisma.team_members.update({
       where: { id },
-      data: { deleted_at: new Date() },
+      data: { status: 'inactive' },
     });
 
-    res.json({ success: true, message: 'Team member berhasil dihapus' });
+    res.json({ success: true, message: 'Team member berhasil dinonaktifkan' });
   } catch (err) {
     next(err);
   }

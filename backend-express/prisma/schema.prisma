@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ================= ENUM =================
+// ================= ENUMS =================
 enum users_status {
   active
   inactive
@@ -25,11 +25,19 @@ enum services_status {
   inactive
 }
 
+enum teams_status {
+  active
+  inactive
+}
+
 enum team_members_status {
   active
   inactive
-  busy
-  off
+}
+
+enum jobs_status {
+  active
+  inactive
 }
 
 enum orders_status {
@@ -48,7 +56,18 @@ enum orders_payment_status {
   failed
 }
 
-enum payments_status {
+enum orders_discount_type {
+  percent
+  fixed
+}
+
+enum order_services_status {
+  active
+  cancelled
+  refunded
+}
+
+enum invoices_status {
   unpaid
   partial
   paid
@@ -106,14 +125,18 @@ model users {
   updated_at    DateTime?    @default(now()) @db.Timestamp(0)
   deleted_at    DateTime?    @db.Timestamp(0)
 
-  roles         roles         @relation(fields: [role_id], references: [id], onDelete: Restrict, map: "fk_users_role")
-  audit_logs    audit_logs[]
-  customers     customers[]
-  notifications notifications[]
-  orders        orders[]
-  team_members  team_members[]
+  roles                roles                  @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_users_role")
+  audit_logs           audit_logs[]
+  customers            customers[]
+  notifications        notifications[]
+  orders_sales         orders[]               @relation("orders_sales")
+  orders_cancelled_by  orders[]               @relation("orders_cancelled_by")
+  team_members         team_members[]
+  user_jobs            user_jobs[]
+  order_status_history order_status_history[]
 
   @@index([role_id], map: "idx_users_role_id")
+  @@index([status], map: "idx_users_status")
   @@map("users")
 }
 
@@ -121,11 +144,44 @@ model password_resets {
   id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
   email      String    @db.VarChar(255)
   token      String    @unique(map: "uk_password_resets_token") @db.VarChar(255)
-  expires_at DateTime  @db.Timestamp(0)
+  expires_at DateTime  @default(now()) @db.Timestamp(0)
   created_at DateTime? @default(now()) @db.Timestamp(0)
 
   @@index([email], map: "idx_password_resets_email")
   @@map("password_resets")
+}
+
+model jobs {
+  id          BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  name        String      @unique(map: "uk_jobs_name") @db.VarChar(100)
+  description String?     @db.VarChar(255)
+  status      jobs_status @default(active)
+  created_at  DateTime?   @default(now()) @db.Timestamp(0)
+  updated_at  DateTime?   @default(now()) @db.Timestamp(0)
+  deleted_at  DateTime?   @db.Timestamp(0)
+
+  user_jobs         user_jobs[]
+  order_assignments order_assignments[]
+
+  @@index([status], map: "idx_jobs_status")
+  @@map("jobs")
+}
+
+model user_jobs {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id    BigInt    @db.UnsignedBigInt
+  job_id     BigInt    @db.UnsignedBigInt
+  is_primary Boolean   @default(false)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_uj_user")
+  jobs  jobs  @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_uj_job")
+
+  @@unique([user_id, job_id], map: "uk_user_job")
+  @@index([user_id], map: "idx_uj_user_id")
+  @@index([job_id], map: "idx_uj_job_id")
+  @@index([user_id, is_primary], map: "idx_uj_primary")
+  @@map("user_jobs")
 }
 
 model service_categories {
@@ -143,21 +199,22 @@ model service_categories {
 }
 
 model services {
-  id          BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
-  category_id BigInt          @db.UnsignedBigInt
-  name        String          @db.VarChar(255)
-  description String?         @db.Text
-  price       Decimal         @default(0.00) @db.Decimal(15, 2)
-  duration    Int             @default(0)
-  status      services_status @default(active)
-  created_at  DateTime?       @default(now()) @db.Timestamp(0)
-  updated_at  DateTime?       @default(now()) @db.Timestamp(0)
-  deleted_at  DateTime?       @db.Timestamp(0)
+  id            BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  category_id   BigInt          @db.UnsignedBigInt
+  name          String          @db.VarChar(255)
+  description   String?         @db.Text
+  default_price Decimal         @default(0.00) @db.Decimal(15, 2)
+  duration      Int             @default(0)
+  status        services_status @default(active)
+  created_at    DateTime?       @default(now()) @db.Timestamp(0)
+  updated_at    DateTime?       @default(now()) @db.Timestamp(0)
+  deleted_at    DateTime?       @db.Timestamp(0)
 
-  service_categories service_categories @relation(fields: [category_id], references: [id], onDelete: Restrict, map: "fk_services_category")
-  orders             orders[]
+  service_categories service_categories @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_services_category")
+  order_services     order_services[]
 
   @@index([category_id], map: "idx_services_category_id")
+  @@index([status], map: "idx_services_status")
   @@map("services")
 }
 
@@ -173,78 +230,204 @@ model customers {
   updated_at DateTime? @default(now()) @db.Timestamp(0)
   deleted_at DateTime? @db.Timestamp(0)
 
-  users    users?    @relation(fields: [sales_id], references: [id], onDelete: SetNull, map: "fk_customers_sales")
-  orders   orders[]
-  payments payments[]
+  sales_user    users?          @relation(fields: [sales_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_customers_sales")
+  customer_pics customer_pics[]
+  orders        orders[]
+  invoices      invoices[]
 
   @@index([sales_id], map: "idx_customers_sales_id")
   @@map("customers")
 }
 
+model customer_pics {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  customer_id BigInt    @db.UnsignedBigInt
+  name        String    @db.VarChar(255)
+  position    String?   @db.VarChar(100)
+  email       String?   @db.VarChar(255)
+  phone       String?   @db.VarChar(30)
+  is_primary  Boolean   @default(false)
+  is_active   Boolean   @default(true)
+  valid_from  DateTime? @db.Date
+  valid_to    DateTime? @db.Date
+  notes       String?   @db.Text
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at  DateTime? @default(now()) @db.Timestamp(0)
+  deleted_at  DateTime? @db.Timestamp(0)
+
+  customers customers @relation(fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_cp_customer")
+  orders    orders[]
+
+  @@index([customer_id], map: "idx_cp_customer_id")
+  @@index([customer_id, is_active, is_primary], map: "idx_cp_active_primary")
+  @@index([email], map: "idx_cp_email")
+  @@map("customer_pics")
+}
+
+model teams {
+  id          BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  name        String       @unique(map: "uk_teams_name") @db.VarChar(100)
+  description String?      @db.Text
+  status      teams_status @default(active)
+  created_at  DateTime?    @default(now()) @db.Timestamp(0)
+  updated_at  DateTime?    @default(now()) @db.Timestamp(0)
+  deleted_at  DateTime?    @db.Timestamp(0)
+
+  orders       orders[]
+  team_members team_members[]
+
+  @@index([status], map: "idx_teams_status")
+  @@map("teams")
+}
+
 model team_members {
-  id         BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
-  user_id    BigInt              @db.UnsignedBigInt
-  role       String?             @db.VarChar(100)
-  phone      String?             @db.VarChar(30)
-  status     team_members_status @default(active)
-  created_at DateTime?           @default(now()) @db.Timestamp(0)
-  updated_at DateTime?           @default(now()) @db.Timestamp(0)
-  deleted_at DateTime?           @db.Timestamp(0)
+  id        BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  team_id   BigInt              @db.UnsignedBigInt
+  user_id   BigInt              @db.UnsignedBigInt
+  joined_at DateTime?           @default(now()) @db.Timestamp(0)
+  status    team_members_status @default(active)
 
-  users          users            @relation(fields: [user_id], references: [id], onDelete: Restrict, map: "fk_team_members_user")
-  orders         orders[]
-  progress_order progress_order[]
+  teams             teams               @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_tm_team")
+  users             users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_tm_user")
+  order_assignments order_assignments[]
 
-  @@index([user_id], map: "idx_team_members_user_id")
+  @@unique([team_id, user_id], map: "uk_team_user")
+  @@index([team_id], map: "idx_tm_team_id")
+  @@index([user_id], map: "idx_tm_user_id")
+  @@index([status], map: "idx_tm_status")
   @@map("team_members")
 }
 
 model orders {
+  id                        BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  order_number              String                @unique(map: "uk_orders_order_number") @db.VarChar(100)
+  parent_order_id           BigInt?               @db.UnsignedBigInt
+  customer_id               BigInt                @db.UnsignedBigInt
+  pic_id                    BigInt?               @db.UnsignedBigInt
+  sales_id                  BigInt?               @db.UnsignedBigInt
+  team_id                   BigInt?               @db.UnsignedBigInt
+  customer_name_snapshot    String?               @db.VarChar(255)
+  customer_address_snapshot String?               @db.Text
+  pic_name_snapshot         String?               @db.VarChar(255)
+  pic_email_snapshot        String?               @db.VarChar(255)
+  status                    orders_status         @default(pending)
+  payment_status            orders_payment_status @default(unpaid)
+  subtotal                  Decimal               @default(0.00) @db.Decimal(15, 2)
+  discount_type             orders_discount_type  @default(fixed)
+  discount                  Decimal               @default(0.00) @db.Decimal(15, 2)
+  tax_rate                  Decimal               @default(0.00) @db.Decimal(5, 2)
+  tax                       Decimal               @default(0.00) @db.Decimal(15, 2)
+  grand_total               Decimal               @default(0.00) @db.Decimal(15, 2)
+  start_date_project        DateTime?             @db.DateTime(0)
+  end_date_project          DateTime?             @db.DateTime(0)
+  notes                     String?               @db.Text
+  cancelled_reason          String?               @db.Text
+  cancelled_at              DateTime?             @db.Timestamp(0)
+  cancelled_by              BigInt?               @db.UnsignedBigInt
+  created_at                DateTime?             @default(now()) @db.Timestamp(0)
+  updated_at                DateTime?             @default(now()) @db.Timestamp(0)
+  deleted_at                DateTime?             @db.Timestamp(0)
+
+  parent_order         orders?                @relation("OrderParent", fields: [parent_order_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_orders_parent")
+  child_orders         orders[]               @relation("OrderParent")
+  customers            customers              @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_orders_customer")
+  customer_pics        customer_pics?         @relation(fields: [pic_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_orders_pic")
+  sales_user           users?                 @relation("orders_sales", fields: [sales_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_orders_sales")
+  cancelled_by_user    users?                 @relation("orders_cancelled_by", fields: [cancelled_by], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_orders_cancelled_by")
+  teams                teams?                 @relation(fields: [team_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_orders_team")
+  order_services       order_services[]
+  order_assignments    order_assignments[]
+  order_status_history order_status_history[]
+  invoices             invoices[]
+  maintenances         maintenances[]
+  email_logs           email_logs[]
+
+  @@index([customer_id], map: "idx_orders_customer_id")
+  @@index([pic_id], map: "idx_orders_pic_id")
+  @@index([sales_id], map: "idx_orders_sales_id")
+  @@index([team_id], map: "idx_orders_team_id")
+  @@index([parent_order_id], map: "idx_orders_parent_id")
+  @@index([status, payment_status], map: "idx_orders_status_payment")
+  @@index([start_date_project, end_date_project], map: "idx_orders_dates")
+  @@index([cancelled_by], map: "idx_orders_cancelled_by")
+  @@map("orders")
+}
+
+model order_services {
   id                     BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
-  order_number           String                @unique(map: "uk_orders_order_number") @db.VarChar(100)
-  customer_id            BigInt                @db.UnsignedBigInt
-  sales_id               BigInt?               @db.UnsignedBigInt
-  service_id             BigInt                @db.UnsignedBigInt
-  team_id                BigInt?               @db.UnsignedBigInt
-  service_name_snapshot  String?               @db.VarChar(255)
-  service_price_snapshot Decimal               @default(0.00) @db.Decimal(15, 2)
+  order_id               BigInt                @db.UnsignedBigInt
+  service_id             BigInt?               @db.UnsignedBigInt
+  service_name_snapshot  String                @db.VarChar(255)
+  category_name_snapshot String?               @db.VarChar(255)
+  is_custom              Boolean               @default(false)
+  price_deal             Decimal               @default(0.00) @db.Decimal(15, 2)
   quantity               Int                   @default(1)
-  status                 orders_status         @default(pending)
-  payment_status         orders_payment_status @default(unpaid)
   subtotal               Decimal               @default(0.00) @db.Decimal(15, 2)
-  discount               Decimal               @default(0.00) @db.Decimal(15, 2)
-  tax                    Decimal               @default(0.00) @db.Decimal(15, 2)
-  grand_total            Decimal               @default(0.00) @db.Decimal(15, 2)
-  start_date_project     DateTime?             @db.DateTime(0)
-  end_date_project       DateTime?             @db.DateTime(0)
+  status                 order_services_status @default(active)
+  cancelled_reason       String?               @db.Text
+  cancelled_at           DateTime?             @db.Timestamp(0)
   notes                  String?               @db.Text
   created_at             DateTime?             @default(now()) @db.Timestamp(0)
   updated_at             DateTime?             @default(now()) @db.Timestamp(0)
   deleted_at             DateTime?             @db.Timestamp(0)
 
-  customers      customers        @relation(fields: [customer_id], references: [id], onDelete: Restrict, map: "fk_orders_customer")
-  users          users?           @relation(fields: [sales_id], references: [id], onDelete: SetNull, map: "fk_orders_sales")
-  services       services         @relation(fields: [service_id], references: [id], onDelete: Restrict, map: "fk_orders_service")
-  team_members   team_members?    @relation(fields: [team_id], references: [id], onDelete: SetNull, map: "fk_orders_team")
-  payments       payments[]
-  email_logs     email_logs[]
-  progress_order progress_order[]
-  maintenances   maintenances[]
+  orders   orders    @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_os_order")
+  services services? @relation(fields: [service_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_os_service")
 
-  @@index([customer_id], map: "idx_orders_customer_id")
-  @@index([sales_id], map: "idx_orders_sales_id")
-  @@index([service_id], map: "idx_orders_service_id")
-  @@index([team_id], map: "idx_orders_team_id")
-  @@map("orders")
+  @@index([order_id], map: "idx_os_order_id")
+  @@index([service_id], map: "idx_os_service_id")
+  @@index([status], map: "idx_os_status")
+  @@index([is_custom], map: "idx_os_is_custom")
+  @@map("order_services")
 }
 
-model payments {
+model order_assignments {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  order_id       BigInt    @db.UnsignedBigInt
+  team_member_id BigInt    @db.UnsignedBigInt
+  job_id         BigInt    @db.UnsignedBigInt
+  is_lead        Boolean   @default(false)
+  assigned_at    DateTime? @default(now()) @db.Timestamp(0)
+
+  orders         orders           @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_oa_order")
+  team_members   team_members     @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_oa_team_member")
+  jobs           jobs             @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_oa_job")
+  progress_order progress_order[]
+
+  @@unique([order_id, team_member_id], map: "uk_order_team_member")
+  @@index([order_id], map: "idx_oa_order_id")
+  @@index([team_member_id], map: "idx_oa_team_member_id")
+  @@index([job_id], map: "idx_oa_job_id")
+  @@index([team_member_id, is_lead], map: "idx_oa_lead")
+  @@map("order_assignments")
+}
+
+model order_status_history {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  order_id    BigInt    @db.UnsignedBigInt
+  from_status String?   @db.VarChar(50)
+  to_status   String    @db.VarChar(50)
+  changed_by  BigInt?   @db.UnsignedBigInt
+  notes       String?   @db.Text
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+
+  orders orders @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_osh_order")
+  users  users? @relation(fields: [changed_by], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_osh_user")
+
+  @@index([order_id], map: "idx_osh_order_id")
+  @@index([created_at], map: "idx_osh_created")
+  @@index([changed_by], map: "idx_osh_changed_by")
+  @@index([order_id, created_at], map: "idx_osh_order_created")
+  @@map("order_status_history")
+}
+
+model invoices {
   id             BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
-  invoice_number String          @unique(map: "uk_payments_invoice_number") @db.VarChar(100)
+  invoice_number String          @unique(map: "uk_invoices_invoice_number") @db.VarChar(100)
   order_id       BigInt          @db.UnsignedBigInt
   customer_id    BigInt          @db.UnsignedBigInt
   total_paid     Decimal         @default(0.00) @db.Decimal(15, 2)
-  status         payments_status @default(unpaid)
+  status         invoices_status @default(unpaid)
   due_date       DateTime?       @db.Date
   issued_at      DateTime?       @db.Timestamp(0)
   paid_at        DateTime?       @db.Timestamp(0)
@@ -252,24 +435,23 @@ model payments {
   updated_at     DateTime?       @default(now()) @db.Timestamp(0)
   deleted_at     DateTime?       @db.Timestamp(0)
 
-  orders     orders     @relation(fields: [order_id], references: [id], onDelete: Restrict, map: "fk_payments_order")
-  customers  customers  @relation(fields: [customer_id], references: [id], onDelete: Restrict, map: "fk_payments_customer")
+  orders     orders       @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_invoices_order")
+  customers  customers    @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_invoices_customer")
   email_logs email_logs[]
 
-  @@index([order_id], map: "idx_payments_order_id")
-  @@index([customer_id], map: "idx_payments_customer_id")
-  @@map("payments")
+  @@index([order_id], map: "idx_invoices_order_id")
+  @@index([customer_id], map: "idx_invoices_customer_id")
+  @@index([status, due_date], map: "idx_invoices_status_due")
+  @@map("invoices")
 }
 
 model progress_order {
   id                  BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
-  order_id            BigInt                @db.UnsignedBigInt
-  team_member_id      BigInt                @db.UnsignedBigInt
+  assignment_id       BigInt                @db.UnsignedBigInt
   title               String                @db.VarChar(255)
   description         String?               @db.Text
   status              progress_order_status @default(pending)
   progress_percentage Int                   @default(0)
-  attachment_file     String?               @db.VarChar(255)
   notes               String?               @db.Text
   started_at          DateTime?             @db.Timestamp(0)
   completed_at        DateTime?             @db.Timestamp(0)
@@ -277,12 +459,28 @@ model progress_order {
   updated_at          DateTime?             @default(now()) @db.Timestamp(0)
   deleted_at          DateTime?             @db.Timestamp(0)
 
-  orders       orders       @relation(fields: [order_id], references: [id], onDelete: Cascade, map: "fk_progress_order_order")
-  team_members team_members @relation(fields: [team_member_id], references: [id], onDelete: Restrict, map: "fk_progress_order_team_member")
+  order_assignments    order_assignments      @relation(fields: [assignment_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_progress_assignment")
+  progress_attachments progress_attachments[]
 
-  @@index([order_id], map: "idx_progress_order_order_id")
-  @@index([team_member_id], map: "idx_progress_order_team_member_id")
+  @@index([assignment_id], map: "idx_progress_assignment_id")
+  @@index([status], map: "idx_progress_status")
   @@map("progress_order")
+}
+
+model progress_attachments {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  progress_id BigInt    @db.UnsignedBigInt
+  file_path   String    @db.VarChar(500)
+  file_name   String    @db.VarChar(255)
+  file_type   String?   @db.VarChar(50)
+  file_size   BigInt?   @db.UnsignedBigInt
+  uploaded_at DateTime? @default(now()) @db.Timestamp(0)
+
+  progress_order progress_order @relation(fields: [progress_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_pa_progress")
+
+  @@index([progress_id], map: "idx_pa_progress_id")
+  @@index([uploaded_at], map: "idx_pa_uploaded")
+  @@map("progress_attachments")
 }
 
 model maintenances {
@@ -298,9 +496,10 @@ model maintenances {
   updated_at     DateTime?           @default(now()) @db.Timestamp(0)
   deleted_at     DateTime?           @db.Timestamp(0)
 
-  orders orders @relation(fields: [order_id], references: [id], onDelete: Cascade, map: "fk_maintenances_order")
+  orders orders @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_maintenances_order")
 
   @@index([order_id], map: "idx_maintenances_order_id")
+  @@index([status], map: "idx_maintenances_status")
   @@map("maintenances")
 }
 
@@ -315,10 +514,11 @@ model notifications {
   read_at    DateTime? @db.Timestamp(0)
   created_at DateTime? @default(now()) @db.Timestamp(0)
 
-  users users @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "fk_notifications_user")
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_notifications_user")
 
   @@index([user_id], map: "idx_notifications_user_id")
   @@index([is_read], map: "idx_notifications_is_read")
+  @@index([user_id, is_read], map: "idx_notifications_user_read")
   @@map("notifications")
 }
 
@@ -337,11 +537,12 @@ model email_logs {
   created_at          DateTime?         @default(now()) @db.Timestamp(0)
   updated_at          DateTime?         @default(now()) @db.Timestamp(0)
 
-  orders   orders?   @relation(fields: [related_order_id], references: [id], onDelete: SetNull, map: "fk_email_logs_order")
-  payments payments? @relation(fields: [related_invoice_id], references: [id], onDelete: SetNull, map: "fk_email_logs_payment")
+  orders   orders?   @relation(fields: [related_order_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_email_logs_order")
+  invoices invoices? @relation(fields: [related_invoice_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_email_logs_invoice")
 
   @@index([related_order_id], map: "idx_email_logs_related_order_id")
   @@index([related_invoice_id], map: "idx_email_logs_related_invoice_id")
+  @@index([status], map: "idx_email_logs_status")
   @@map("email_logs")
 }
 
@@ -357,9 +558,10 @@ model audit_logs {
   user_agent  String?   @db.VarChar(255)
   created_at  DateTime? @default(now()) @db.Timestamp(0)
 
-  users users? @relation(fields: [user_id], references: [id], onDelete: SetNull, map: "fk_audit_logs_user")
+  users users? @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_audit_logs_user")
 
   @@index([user_id], map: "idx_audit_logs_user_id")
   @@index([entity_type, entity_id], map: "idx_audit_logs_entity")
+  @@index([created_at], map: "idx_audit_logs_created")
   @@map("audit_logs")
 }

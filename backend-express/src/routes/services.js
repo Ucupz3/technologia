@@ -14,7 +14,7 @@ servicesRouter.get('/', async (_req, res, next) => {
         category_id: true,
         name: true,
         description: true,
-        price: true,
+        default_price: true,
         duration: true,
         status: true,
         created_at: true,
@@ -29,7 +29,8 @@ servicesRouter.get('/', async (_req, res, next) => {
       category_name: s.service_categories?.name || null,
       name: s.name,
       description: s.description,
-      price: s.price,
+      default_price: Number(s.default_price),
+      price: Number(s.default_price), // backward compatibility
       duration: s.duration,
       status: s.status,
       created_at: s.created_at,
@@ -65,7 +66,7 @@ servicesRouter.get('/:id', async (req, res, next) => {
         category_id: true,
         name: true,
         description: true,
-        price: true,
+        default_price: true,
         duration: true,
         status: true,
         created_at: true,
@@ -77,7 +78,14 @@ servicesRouter.get('/:id', async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Service tidak ditemukan' });
     }
 
-    res.json({ success: true, data: service });
+    res.json({
+      success: true,
+      data: {
+        ...service,
+        default_price: Number(service.default_price),
+        price: Number(service.default_price),
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -88,7 +96,8 @@ const createSchema = z.object({
   category_id: z.coerce.number().int().positive(),
   name: z.string().min(2).max(255),
   description: z.string().optional().nullable(),
-  price: z.coerce.number().min(0).default(0),
+  default_price: z.coerce.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   duration: z.coerce.number().int().min(0).default(0),
   status: z.enum(['active', 'inactive']).default('active'),
 });
@@ -104,7 +113,7 @@ servicesRouter.post('/', async (req, res, next) => {
       });
     }
 
-    const { category_id, name, description, price, duration, status } = parsed.data;
+    const { category_id, name, description, default_price, price, duration, status } = parsed.data;
 
     // Cek kategori ada
     const category = await prisma.service_categories.findFirst({
@@ -114,17 +123,19 @@ servicesRouter.post('/', async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Kategori tidak ditemukan' });
     }
 
+    const resolvedPrice = default_price !== undefined ? Number(default_price) : (price !== undefined ? Number(price) : 0);
+
     const service = await prisma.services.create({
       data: {
         category_id: BigInt(category_id),
         name,
         description: description || null,
-        price: Number(price),
+        default_price: resolvedPrice,
         duration: Number(duration),
         status,
       },
       select: {
-        id: true, name: true, description: true, price: true,
+        id: true, name: true, description: true, default_price: true,
         duration: true, status: true,
         service_categories: { select: { id: true, name: true } },
       },
@@ -132,7 +143,11 @@ servicesRouter.post('/', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      data: service,
+      data: {
+        ...service,
+        default_price: Number(service.default_price),
+        price: Number(service.default_price),
+      },
       message: 'Service berhasil dibuat',
     });
   } catch (err) {
@@ -145,6 +160,7 @@ const updateSchema = z.object({
   category_id: z.coerce.number().int().positive().optional(),
   name: z.string().min(2).max(255).optional(),
   description: z.string().optional().nullable(),
+  default_price: z.coerce.number().min(0).optional(),
   price: z.coerce.number().min(0).optional(),
   duration: z.coerce.number().int().min(0).optional(),
   status: z.enum(['active', 'inactive']).optional(),
@@ -171,20 +187,34 @@ servicesRouter.put('/:id', async (req, res, next) => {
 
     const data = { ...parsed.data };
     if (data.category_id) data.category_id = BigInt(data.category_id);
-    if (data.price !== undefined) data.price = Number(data.price);
+    if (data.default_price !== undefined) {
+      data.default_price = Number(data.default_price);
+    } else if (data.price !== undefined) {
+      data.default_price = Number(data.price);
+    }
+    delete data.price;
+
     if (data.duration !== undefined) data.duration = Number(data.duration);
 
     const service = await prisma.services.update({
       where: { id },
       data,
       select: {
-        id: true, name: true, description: true, price: true,
+        id: true, name: true, description: true, default_price: true,
         duration: true, status: true,
         service_categories: { select: { id: true, name: true } },
       },
     });
 
-    res.json({ success: true, data: service, message: 'Service berhasil diupdate' });
+    res.json({
+      success: true,
+      data: {
+        ...service,
+        default_price: Number(service.default_price),
+        price: Number(service.default_price),
+      },
+      message: 'Service berhasil diupdate',
+    });
   } catch (err) {
     next(err);
   }
@@ -201,14 +231,14 @@ servicesRouter.delete('/:id', async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Service tidak ditemukan' });
     }
 
-    // Cek dipakai order
-    const orderCount = await prisma.orders.count({
+    // Cek dipakai order_services
+    const orderCount = await prisma.order_services.count({
       where: { service_id: id, deleted_at: null },
     });
     if (orderCount > 0) {
       return res.status(400).json({
         success: false,
-        message: `Service masih dipakai oleh ${orderCount} order. Tidak bisa dihapus.`,
+        message: `Service masih dipakai oleh ${orderCount} order service. Tidak bisa dihapus.`,
       });
     }
 

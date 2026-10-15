@@ -11,7 +11,7 @@ async function main() {
 
     const services = await prisma.services.findMany({
         where: { deleted_at: null },
-        select: { id: true, name: true, price: true, duration: true },
+        select: { id: true, name: true, default_price: true, duration: true },
     });
     console.log('Services:', services.length, services);
 

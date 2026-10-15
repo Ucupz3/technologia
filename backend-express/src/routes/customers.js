@@ -29,7 +29,7 @@ customersRouter.get('/', async (req, res, next) => {
         notes: true,
         sales_id: true,
         created_at: true,
-        users: { select: { id: true, name: true, email: true } },
+        sales_user: { select: { id: true, name: true, email: true } },
         _count: { select: { orders: true } },
       },
       orderBy: { created_at: 'desc' },
@@ -43,8 +43,8 @@ customersRouter.get('/', async (req, res, next) => {
       address: c.address,
       notes: c.notes,
       sales_id: c.sales_id,
-      sales_name: c.users?.name || null,
-      sales_email: c.users?.email || null,
+      sales_name: c.sales_user?.name || null,
+      sales_email: c.sales_user?.email || null,
       order_count: c._count.orders,
       created_at: c.created_at,
     }));
@@ -60,7 +60,7 @@ customersRouter.get('/sales/options', async (_req, res, next) => {
       where: {
         deleted_at: null,
         status: 'active',
-        roles: { name: 'Sales' },
+        roles: { name: { in: ['CS', 'Sales'] } },
       },
       select: { id: true, name: true, email: true },
       orderBy: { name: 'asc' },
@@ -77,7 +77,7 @@ customersRouter.get('/:id', async (req, res, next) => {
       select: {
         id: true, name: true, email: true, phone: true,
         address: true, notes: true, sales_id: true, created_at: true,
-        users: { select: { id: true, name: true, email: true } },
+        sales_user: { select: { id: true, name: true, email: true } },
         orders: {
           where: { deleted_at: null },
           select: {
@@ -101,8 +101,8 @@ customersRouter.get('/:id', async (req, res, next) => {
         address: customer.address,
         notes: customer.notes,
         sales_id: customer.sales_id,
-        sales_name: customer.users?.name || null,
-        sales_email: customer.users?.email || null,
+        sales_name: customer.sales_user?.name || null,
+        sales_email: customer.sales_user?.email || null,
         created_at: customer.created_at,
         orders: customer.orders,
       },

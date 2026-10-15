@@ -23,8 +23,8 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
       },
     });
 
-    // Revenue bulan ini dari payments yang sudah paid
-    const revenueAgg = await prisma.payments.aggregate({
+    // Revenue bulan ini dari invoices yang sudah paid
+    const revenueAgg = await prisma.invoices.aggregate({
       where: {
         deleted_at: null,
         status: 'paid',
@@ -34,8 +34,8 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
     });
     const total_revenue = Number(revenueAgg._sum.total_paid || 0);
 
-    // Outstanding: payments yang belum paid
-    const outstandingAgg = await prisma.payments.aggregate({
+    // Outstanding: invoices yang belum paid
+    const outstandingAgg = await prisma.invoices.aggregate({
       where: {
         deleted_at: null,
         status: { in: ['unpaid', 'partial', 'overdue'] },
@@ -45,7 +45,7 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
     const total_outstanding = Number(outstandingAgg._sum.total_paid || 0);
 
     // ===== REVENUE CHART 30 HARI =====
-    const payments = await prisma.payments.findMany({
+    const invoices = await prisma.invoices.findMany({
       where: {
         deleted_at: null,
         status: 'paid',
@@ -61,11 +61,11 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
       const key = d.toISOString().slice(0, 10);
       dailyMap[key] = 0;
     }
-    payments.forEach((p) => {
-      if (!p.paid_at) return;
-      const key = new Date(p.paid_at).toISOString().slice(0, 10);
+    invoices.forEach((inv) => {
+      if (!inv.paid_at) return;
+      const key = new Date(inv.paid_at).toISOString().slice(0, 10);
       if (dailyMap[key] !== undefined) {
-        dailyMap[key] += Number(p.total_paid || 0);
+        dailyMap[key] += Number(inv.total_paid || 0);
       }
     });
     const revenue_chart = Object.entries(dailyMap).map(([date, amount]) => ({
@@ -111,12 +111,12 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
     }));
 
     // ===== TOP 5 SERVICES =====
-    const serviceGroups = await prisma.orders.groupBy({
+    const serviceGroups = await prisma.order_services.groupBy({
       by: ['service_id'],
-      where: { deleted_at: null },
+      where: { deleted_at: null, service_id: { not: null } },
       _count: { _all: true },
-      _sum: { grand_total: true },
-      orderBy: { _sum: { grand_total: 'desc' } },
+      _sum: { subtotal: true },
+      orderBy: { _sum: { subtotal: 'desc' } },
       take: 5,
     });
 
@@ -133,7 +133,7 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
       id: g.service_id,
       name: serviceMap[String(g.service_id)] || 'Unknown',
       order_count: g._count._all,
-      total_revenue: Number(g._sum.grand_total || 0),
+      total_revenue: Number(g._sum.subtotal || 0),
     }));
 
     // ===== RECENT AUDIT LOGS =====
