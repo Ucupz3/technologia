@@ -3,29 +3,27 @@ import { Link, usePage } from '@inertiajs/react';
 import {
   Home, Users, Shield, FileText, Package, Briefcase,
   UserCircle, Calendar, CreditCard, Receipt, LogOut, Menu,
-  Sun, Moon, Contact, Wallet,
+  Sun, Moon, Contact, Wallet, Database,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 
 const menuByRole = {
-    super_admin: [
-      { label: 'Dashboard', href: '/dashboard', icon: Home },
-      { label: 'Users', href: '/super-admin/users', icon: Users },
-      { label: 'Roles', href: '/super-admin/roles', icon: Shield },
-      { label: 'Kategori Service', href: '/super-admin/master-data/categories', icon: Package },
-      { label: 'Services', href: '/super-admin/master-data/services', icon: Briefcase },
-      { label: 'Team Members', href: '/super-admin/master-data/team-members', icon: UserCircle },
-      { label: 'Customers', href: '/super-admin/customers', icon: Contact },
-      { label: 'Orders', href: '/super-admin/orders', icon: FileText },
-      { label: 'Payments', href: '/super-admin/payments', icon: Wallet },
-      { label: 'Audit Logs', href: '/super-admin/audit-logs', icon: FileText },
-    ],
+  super_admin: [
+    { label: 'Dashboard', href: '/dashboard', icon: Home },
+    { label: 'Users', href: '/super-admin/users', icon: Users },
+    { label: 'Roles', href: '/super-admin/roles', icon: Shield },
+    { label: 'Master Data', href: '/super-admin/master-data', icon: Database },
+    { label: 'Customers', href: '/super-admin/customers', icon: Contact },
+    { label: 'Orders', href: '/super-admin/orders', icon: FileText },
+    { label: 'Payments', href: '/super-admin/payments', icon: Wallet },
+    { label: 'Audit Logs', href: '/super-admin/audit-logs', icon: FileText },
+  ],
   admin: [
     { label: 'Dashboard', href: '/dashboard', icon: Home },
-    { label: 'Services', href: '/admin/services', icon: Package },
+    { label: 'Services', href: '/admin/services', icon: Database },
     { label: 'Customers', href: '/admin/customers', icon: Contact },
     { label: 'Orders', href: '/admin/orders', icon: FileText },
-    { label: 'Schedules', href: '/admin/schedules', icon: Calendar },
+    { label: 'Schedules', href: '/admin/schedules', icon: Wallet },
     { label: 'Payments', href: '/admin/payments', icon: Wallet },
   ],
   sales: [

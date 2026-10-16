@@ -4,7 +4,7 @@ import { Head } from '@inertiajs/react';
 import {
   RefreshCw, Search, Plus, Eye, Pencil, Trash2,
   Users as UsersIcon, X, Mail, Phone, Shield, Calendar,
-  Save, AlertCircle, CheckCircle2, KeyRound,
+  Save, AlertCircle, CheckCircle2, KeyRound, Briefcase,
 } from 'lucide-react';
 
 const STATUS_OPTIONS = [
@@ -17,15 +17,19 @@ const STATUS_OPTIONS = [
 export default function UsersIndex() {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [jobsList, setJobsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [editUser, setEditUser] = useState(null);
-  const [createOpen, setCreateOpen] = useState(false);
+  // modal state
+  // { user, editable: false } → lihat
+  // { user, editable: true }  → edit
+  // { user: null, editable: true } → create
+  const [modal, setModal] = useState(null);
+
   const [deleteUser, setDeleteUser] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -36,7 +40,7 @@ export default function UsersIndex() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success) setUsers(d.data || []);
-        else setError(d.message || 'Gagal ambil data');
+        else setError(d.message || 'Gagal ambil data user');
         setLoading(false);
       })
       .catch((e) => {
@@ -48,15 +52,21 @@ export default function UsersIndex() {
   const loadRoles = () => {
     fetch('/api/v1/users/roles/options')
       .then((r) => r.json())
-      .then((d) => {
-        if (d.success) setRoles(d.data || []);
-      })
+      .then((d) => { if (d.success) setRoles(d.data || []); })
+      .catch(() => {});
+  };
+
+  const loadJobs = () => {
+    fetch('/api/v1/users/jobs/options')
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setJobsList(d.data || []); })
       .catch(() => {});
   };
 
   useEffect(() => {
     load();
     loadRoles();
+    loadJobs();
   }, []);
 
   const showToast = (type, message) => {
@@ -105,14 +115,14 @@ export default function UsersIndex() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={load}
+            onClick={() => { load(); loadRoles(); loadJobs(); }}
             className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
           <button
-            onClick={() => setCreateOpen(true)}
+            onClick={() => setModal({ user: null, editable: true })}
             className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 flex items-center gap-2 text-sm font-semibold transition"
           >
             <Plus size={16} />
@@ -166,7 +176,7 @@ export default function UsersIndex() {
         )}
       </div>
 
-      {/* Content */}
+      {/* Table */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
         {loading && (
           <div className="p-12 text-center text-brand-text-muted">
@@ -200,6 +210,7 @@ export default function UsersIndex() {
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">User</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Contact</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Role</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Pekerjaan (Jobs)</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Status</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Aksi</th>
                 </tr>
@@ -229,30 +240,37 @@ export default function UsersIndex() {
                         <span>{u.phone || '—'}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3"><RoleBadge role={u.roles?.name} /></td>
-                    <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                      <RoleBadge role={u.roles?.name} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1 max-w-[240px]">
+                        {u.user_jobs && u.user_jobs.length > 0 ? (
+                          u.user_jobs.map((uj) => (
+                            <span
+                              key={uj.id || uj.job_id}
+                              className="inline-block text-[11px] px-2 py-0.5 rounded bg-brand-muted text-brand-text border border-brand-border"
+                            >
+                              {uj.jobs?.name}
+                              {uj.is_primary ? ' ★' : ''}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-brand-text-muted">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={u.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end">
                         <button
-                          onClick={() => setSelectedUser(u)}
+                          onClick={() => setModal({ user: u, editable: false })}
                           title="Lihat detail"
                           className="p-2 rounded-lg text-brand-text-muted hover:text-brand-accent hover:bg-brand-accent/10 transition"
                         >
                           <Eye size={16} />
-                        </button>
-                        <button
-                          onClick={() => setEditUser(u)}
-                          title="Edit"
-                          className="p-2 rounded-lg text-brand-text-muted hover:text-brand-accent2 hover:bg-brand-accent2/10 transition"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteUser(u)}
-                          title="Hapus"
-                          className="p-2 rounded-lg text-brand-text-muted hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition"
-                        >
-                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -270,36 +288,18 @@ export default function UsersIndex() {
         )}
       </div>
 
-      {selectedUser && (
-        <UserDetailModal
-          user={selectedUser}
-          onClose={() => setSelectedUser(null)}
-          onEdit={() => { setEditUser(selectedUser); setSelectedUser(null); }}
-        />
-      )}
-
-      {editUser && (
-        <UserFormModal
-          mode="edit"
-          user={editUser}
+      {/* === 1 MODAL UNTUK LIHAT, EDIT, CREATE === */}
+      {modal && (
+        <UserModal
+          user={modal.user}
+          editable={modal.editable}
           roles={roles}
-          onClose={() => setEditUser(null)}
+          jobsList={jobsList}
+          onClose={() => setModal(null)}
+          onToggleEdit={() => setModal((m) => ({ ...m, editable: true }))}
+          onDelete={modal.user ? () => { setDeleteUser(modal.user); setModal(null); } : undefined}
           onSuccess={(msg) => {
-            setEditUser(null);
-            load();
-            showToast('success', msg);
-          }}
-          onError={(msg) => showToast('error', msg)}
-        />
-      )}
-
-      {createOpen && (
-        <UserFormModal
-          mode="create"
-          roles={roles}
-          onClose={() => setCreateOpen(false)}
-          onSuccess={(msg) => {
-            setCreateOpen(false);
+            setModal(null);
             load();
             showToast('success', msg);
           }}
@@ -323,32 +323,61 @@ export default function UsersIndex() {
   );
 }
 
-// ============ FORM MODAL ============
-function UserFormModal({ mode, user, roles, onClose, onSuccess, onError }) {
-  const isEdit = mode === 'edit';
+// ================================================================
+// USER MODAL — 1 komponen untuk Lihat / Edit / Create
+// editable = false → read-only (mode lihat)
+// editable = true  → input aktif (mode edit / create)
+// user = null      → mode create
+// ================================================================
+function UserModal({
+  user,
+  editable,
+  roles,
+  jobsList,
+  onClose,
+  onToggleEdit,
+  onDelete,
+  onSuccess,
+  onError,
+}) {
+  const isCreate = !user;
+  const readOnly = !editable; // mode lihat
 
   const [form, setForm] = useState({
     name: user?.name || '',
     email: user?.email || '',
     password: '',
-    role_id: user?.roles?.id || '',
+    role_id: user?.roles?.id || user?.role_id || '',
     phone: user?.phone || '',
     status: user?.status || 'active',
+    job_ids: user?.user_jobs?.map((uj) => Number(uj.job_id)) || [],
   });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const handleJobToggle = (jobId) => {
+    if (readOnly) return;
+    const id = Number(jobId);
+    setForm((prev) => ({
+      ...prev,
+      job_ids: prev.job_ids.includes(id)
+        ? prev.job_ids.filter((j) => j !== id)
+        : [...prev.job_ids, id],
+    }));
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (readOnly) return;
     setSubmitting(true);
     setErrors({});
 
     const payload = { ...form };
-    if (isEdit && !payload.password) delete payload.password;
+    if (!isCreate && !payload.password) delete payload.password;
     if (!payload.phone) payload.phone = null;
 
-    const url = isEdit ? `/api/v1/users/${user.id}` : '/api/v1/users';
-    const method = isEdit ? 'PUT' : 'POST';
+    const url = isCreate ? '/api/v1/users' : `/api/v1/users/${user.id}`;
+    const method = isCreate ? 'POST' : 'PUT';
 
     try {
       const res = await fetch(url, {
@@ -359,32 +388,49 @@ function UserFormModal({ mode, user, roles, onClose, onSuccess, onError }) {
         },
         body: JSON.stringify(payload),
       });
+
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         if (data.errors) setErrors(data.errors);
-        onError(data.message || 'Gagal menyimpan');
+        onError(data.message || 'Gagal menyimpan user');
       } else {
-        onSuccess(isEdit ? 'User berhasil diupdate' : 'User berhasil dibuat');
+        onSuccess(isCreate ? 'User berhasil dibuat' : 'User berhasil diupdate');
       }
-    } catch (err) {
+    } catch {
       onError('Gagal menghubungi server');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const title = isCreate ? 'Tambah User Baru' : readOnly ? 'Detail User' : 'Edit User';
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] flex flex-col">
+
+        {/* HEADER */}
         <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between">
-          <h2 className="text-xl font-bold text-brand-text">
-            {isEdit ? 'Edit User' : 'Tambah User Baru'}
-          </h2>
+          <div className="flex items-center gap-3">
+            {user && (
+              <div className="w-9 h-9 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-semibold text-xs shrink-0">
+                {getInitials(user.name)}
+              </div>
+            )}
+            <div>
+              <h2 className="text-lg font-bold text-brand-text">{title}</h2>
+              {user && (
+                <p className="text-xs text-brand-text-muted">ID: {user.id}</p>
+              )}
+            </div>
+          </div>
           <button onClick={onClose} className="text-brand-text-muted hover:text-brand-accent text-2xl leading-none transition">×</button>
         </div>
 
+        {/* BODY — form yang sama, cuma readOnly atau tidak */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+
           <FormField
             label="Nama Lengkap"
             value={form.name}
@@ -392,7 +438,9 @@ function UserFormModal({ mode, user, roles, onClose, onSuccess, onError }) {
             error={errors.name}
             placeholder="Contoh: Budi Santoso"
             required
+            readOnly={readOnly}
           />
+
           <FormField
             label="Email"
             type="email"
@@ -401,34 +449,110 @@ function UserFormModal({ mode, user, roles, onClose, onSuccess, onError }) {
             error={errors.email}
             placeholder="budi@erp.com"
             required
-          />
-          <FormField
-            label={isEdit ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password'}
-            type="password"
-            value={form.password}
-            onChange={(v) => setForm({ ...form, password: v })}
-            error={errors.password}
-            placeholder="Minimal 6 karakter"
-            required={!isEdit}
-            icon={KeyRound}
+            readOnly={readOnly}
           />
 
+          {/* Password: hanya muncul saat create/edit */}
+          {!readOnly && (
+            <FormField
+              label={isCreate ? 'Password' : 'Password Baru (kosongkan jika tidak diubah)'}
+              type="password"
+              value={form.password}
+              onChange={(v) => setForm({ ...form, password: v })}
+              error={errors.password}
+              placeholder="Minimal 6 karakter"
+              required={isCreate}
+              icon={KeyRound}
+            />
+          )}
+
+          {/* Role */}
           <div>
             <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-              Role <span className="text-red-500 dark:text-red-400">*</span>
+              Role {!readOnly && <span className="text-red-500 dark:text-red-400">*</span>}
             </label>
-            <select
-              value={form.role_id}
-              onChange={(e) => setForm({ ...form, role_id: e.target.value })}
-              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
-              required
-            >
-              <option value="">Pilih role...</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-            {errors.role_id && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.role_id[0]}</p>}
+            {readOnly ? (
+              <div className="w-full bg-brand-primary/60 border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text">
+                {user?.roles?.name || '—'}
+              </div>
+            ) : (
+              <>
+                <select
+                  value={form.role_id}
+                  onChange={(e) => setForm({ ...form, role_id: e.target.value })}
+                  className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+                  required
+                >
+                  <option value="">Pilih 1 Role (Wajib)...</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+                {errors.role_id && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.role_id[0]}</p>}
+              </>
+            )}
+          </div>
+
+          {/* Jobs multi */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest">
+                Job / Pekerjaan <span className="text-brand-text-muted/60 text-[11px] font-normal lowercase">(opsional, bisa &gt; 1)</span>
+              </label>
+              {!readOnly && form.job_ids.length > 0 && (
+                <span className="text-xs text-brand-accent font-medium">
+                  {form.job_ids.length} dipilih
+                </span>
+              )}
+            </div>
+
+            {readOnly ? (
+              // Mode lihat: tampilkan badge saja
+              <div className="flex flex-wrap gap-1 bg-brand-primary/60 border border-brand-border rounded-lg p-3 min-h-[44px]">
+                {user?.user_jobs && user.user_jobs.length > 0 ? (
+                  user.user_jobs.map((uj) => (
+                    <span
+                      key={uj.id || uj.job_id}
+                      className="inline-block text-xs px-2 py-0.5 rounded bg-brand-muted text-brand-text border border-brand-border"
+                    >
+                      {uj.jobs?.name}{uj.is_primary ? ' (Utama)' : ''}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-brand-text-muted">Belum ada job</span>
+                )}
+              </div>
+            ) : (
+              // Mode edit/create: checkbox list
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-brand-primary/40 border border-brand-border rounded-lg p-3 max-h-44 overflow-y-auto">
+                {jobsList.length === 0 ? (
+                  <p className="text-xs text-brand-text-muted col-span-2 py-2 text-center">Tidak ada data job</p>
+                ) : (
+                  jobsList.map((j) => {
+                    const checked = form.job_ids.includes(Number(j.id));
+                    return (
+                      <label
+                        key={j.id}
+                        className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer select-none transition ${
+                          checked
+                            ? 'bg-brand-accent/15 border-brand-accent text-brand-text font-medium'
+                            : 'border-brand-border/60 hover:bg-brand-muted/30 text-brand-text-muted'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleJobToggle(j.id)}
+                          className="rounded border-brand-border text-brand-accent focus:ring-0"
+                        />
+                        <span className="truncate">{j.name}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            )}
+            {errors.job_ids && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.job_ids[0]}</p>}
           </div>
 
           <FormField
@@ -437,65 +561,135 @@ function UserFormModal({ mode, user, roles, onClose, onSuccess, onError }) {
             onChange={(v) => setForm({ ...form, phone: v })}
             error={errors.phone}
             placeholder="08123456789 (opsional)"
+            readOnly={readOnly}
           />
 
+          {/* Status */}
           <div>
             <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
               Status
             </label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+            {readOnly ? (
+              <div className="w-full bg-brand-primary/60 border border-brand-border rounded-lg px-3 py-2">
+                <StatusBadge status={user?.status} />
+              </div>
+            ) : (
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            )}
           </div>
+
+          {/* Tanggal daftar — hanya di mode lihat */}
+          {readOnly && user?.created_at && (
+            <div className="flex items-start gap-3 pt-2 border-t border-brand-border">
+              <div className="w-8 h-8 bg-brand-muted/60 rounded-lg flex items-center justify-center shrink-0">
+                <Calendar size={14} className="text-brand-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-brand-text-muted uppercase tracking-widest">Terdaftar</div>
+                <div className="text-sm text-brand-text">{formatDate(user.created_at)}</div>
+              </div>
+            </div>
+          )}
         </form>
 
-        <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
-          >
-            {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-            {submitting ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Buat User')}
-          </button>
+        {/* FOOTER */}
+        <div className="px-6 py-4 border-t border-brand-border flex justify-between gap-2">
+          {/* Kiri: Hapus — hanya mode lihat (user existing) */}
+          <div>
+            {readOnly && user && onDelete && (
+              <button
+                onClick={onDelete}
+                className="bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 px-3 py-2 rounded-lg hover:bg-red-500/20 transition text-sm font-semibold flex items-center gap-2"
+              >
+                <Trash2 size={14} /> Hapus
+              </button>
+            )}
+          </div>
+
+          {/* Kanan: aksi utama */}
+          <div className="flex gap-2">
+            {/* Mode LIHAT */}
+            {readOnly && (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={onToggleEdit}
+                  className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2"
+                >
+                  <Pencil size={14} /> Edit User
+                </button>
+              </>
+            )}
+
+            {/* Mode EDIT / CREATE */}
+            {!readOnly && (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
+                >
+                  {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                  {submitting ? 'Menyimpan...' : (isCreate ? 'Buat User' : 'Simpan Perubahan')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function FormField({ label, type = 'text', value, onChange, error, placeholder, required, icon: Icon }) {
+// ============ FORM FIELD ============
+function FormField({ label, type = 'text', value, onChange, error, placeholder, required, icon: Icon, readOnly }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-        {label} {required && <span className="text-red-500 dark:text-red-400">*</span>}
+        {label} {required && !readOnly && <span className="text-red-500 dark:text-red-400">*</span>}
       </label>
       <div className="relative">
-        {Icon && <Icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />}
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className={`w-full bg-brand-primary border rounded-lg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none transition ${
-            Icon ? 'pl-9' : ''
-          } ${error ? 'border-red-500/50' : 'border-brand-border focus:border-brand-accent/60'}`}
-        />
+        {Icon && !readOnly && <Icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />}
+        {readOnly ? (
+          <div className="w-full bg-brand-primary/60 border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text">
+            {value || '—'}
+          </div>
+        ) : (
+          <input
+            type={type}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className={`w-full bg-brand-primary border rounded-lg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none transition ${
+              Icon ? 'pl-9' : ''
+            } ${error ? 'border-red-500/50' : 'border-brand-border focus:border-brand-accent/60'}`}
+          />
+        )}
       </div>
-      {error && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{error[0]}</p>}
+      {error && !readOnly && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{error[0]}</p>}
     </div>
   );
 }
@@ -525,7 +719,7 @@ function ConfirmDeleteModal({ user, onClose, onSuccess, onError }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
       <div className="bg-brand-secondary rounded-xl shadow-2xl border border-red-500/30 w-full max-w-md p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-red-500/15 rounded-full flex items-center justify-center">
@@ -563,69 +757,12 @@ function ConfirmDeleteModal({ user, onClose, onSuccess, onError }) {
   );
 }
 
-// ============ DETAIL MODAL ============
-function UserDetailModal({ user, onClose, onEdit }) {
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-md overflow-hidden">
-        <div className="relative">
-          <div className="h-24 bg-gradient-to-br from-brand-accent/20 to-brand-accent2/20" />
-          <button onClick={onClose} className="absolute top-3 right-3 text-brand-text-muted hover:text-brand-accent text-2xl leading-none transition">×</button>
-          <div className="px-6 -mt-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-bold text-2xl border-4 border-brand-secondary">
-              {getInitials(user.name)}
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-4">
-          <h2 className="text-xl font-bold text-brand-text">{user.name}</h2>
-          <div className="flex items-center gap-2 mt-2">
-            <RoleBadge role={user.roles?.name} />
-            <StatusBadge status={user.status} />
-          </div>
-
-          <div className="mt-5 space-y-3">
-            <DetailRow icon={Mail} label="Email" value={user.email} />
-            <DetailRow icon={Phone} label="Phone" value={user.phone || '—'} />
-            <DetailRow icon={Shield} label="Role" value={user.roles?.name || '—'} />
-            <DetailRow icon={Calendar} label="Terdaftar" value={formatDate(user.created_at)} />
-          </div>
-        </div>
-
-        <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
-          <button onClick={onClose} className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
-            Tutup
-          </button>
-          <button onClick={onEdit} className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2">
-            <Pencil size={14} /> Edit User
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DetailRow({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="w-8 h-8 bg-brand-muted/60 rounded-lg flex items-center justify-center shrink-0">
-        <Icon size={14} className="text-brand-accent" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-xs text-brand-text-muted uppercase tracking-widest">{label}</div>
-        <div className="text-sm text-brand-text truncate">{value}</div>
-      </div>
-    </div>
-  );
-}
-
 // ============ BADGES ============
 function RoleBadge({ role }) {
   const colors = {
     'Super Admin': 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/40',
     Admin:         'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40',
-    Sales:         'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
+    CS:            'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
   };
   return (
     <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium border ${colors[role] || 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/40'}`}>
