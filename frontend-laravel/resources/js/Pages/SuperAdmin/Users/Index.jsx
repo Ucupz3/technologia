@@ -97,73 +97,104 @@ export default function UsersIndex() {
         </div>
       )}
 
-      <div className="flex items-start justify-between mb-12">
-        <div>
-          <h1 className="text-2xl font-bold text-brand-text">Manajemen Users</h1>
-          <p className="text-sm text-brand-text-muted mt-1">Total {users.length} user terdaftar</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => { load(); loadOptions(); }} className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-3 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition">
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
-          </button>
-          <button onClick={() => setCreateOpen(true)} className="bg-brand-accent text-brand-primary px-4 py-3 rounded-lg hover:bg-brand-accent2 flex items-center gap-2 text-sm font-semibold transition">
-            <Plus size={16} /> Tambah User
-          </button>
-        </div>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-brand-text">Manajemen Users</h1>
+        <p className="text-sm text-brand-text-muted mt-1">Total {users.length} user terdaftar</p>
       </div>
 
-      <div className="py-4 mb-2 space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="relative md:col-span-2">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
-            <input type="text" placeholder="Cari nama, email, atau phone..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-9 py-3 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
-            {search && (
-              <button type="button" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text">
-                <X size={14} />
+      {/* ============ FILTER BAR (SEJAJAR) ============ */}
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          
+          {/* DIV A: Search + Role + Status */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0 max-w-md">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+              <input
+                type="text"
+                placeholder="Cari nama, email, atau phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="relative sm:w-44 sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => { setIsRoleOpen(!isRoleOpen); setIsStatusOpen(false); }}
+                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              >
+                <span className="truncate">{roleFilter || 'Semua Role'}</span>
+                <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isRoleOpen ? 'rotate-180 text-brand-accent' : ''}`} />
               </button>
-            )}
+              {isRoleOpen && (
+                <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                  <button type="button" onClick={() => { setRoleFilter(''); setIsRoleOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${!roleFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}>
+                    <span>Semua Role</span>{!roleFilter && <Check size={14} className="text-brand-accent" />}
+                  </button>
+                  {roleOptions.map((r) => (
+                    <button key={r} type="button" onClick={() => { setRoleFilter(r); setIsRoleOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${roleFilter === r ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}>
+                      <span className="truncate">{r}</span>{roleFilter === r && <Check size={14} className="text-brand-accent" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="relative sm:w-40 sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => { setIsStatusOpen(!isStatusOpen); setIsRoleOpen(false); }}
+                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              >
+                <span className="truncate">{STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'Semua Status'}</span>
+                <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isStatusOpen ? 'rotate-180 text-brand-accent' : ''}`} />
+              </button>
+              {isStatusOpen && (
+                <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                  <button type="button" onClick={() => { setStatusFilter(''); setIsStatusOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${!statusFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}>
+                    <span>Semua Status</span>{!statusFilter && <Check size={14} className="text-brand-accent" />}
+                  </button>
+                  {STATUS_OPTIONS.map((s) => (
+                    <button key={s.value} type="button" onClick={() => { setStatusFilter(s.value); setIsStatusOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${statusFilter === s.value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}>
+                      <span className="truncate">{s.label}</span>{statusFilter === s.value && <Check size={14} className="text-brand-accent" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="relative">
-            <button type="button" onClick={() => { setIsRoleOpen(!isRoleOpen); setIsStatusOpen(false); }} className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3 py-3 text-sm text-brand-text transition-all">
-              <span className="truncate">{roleFilter || 'Semua Role'}</span>
-              <ChevronDown size={16} className={`text-brand-text-muted transition-transform ${isRoleOpen ? 'rotate-180' : ''}`} />
+          {/* DIV B: Refresh + Tambah User */}
+          <div className="flex items-center gap-2 lg:shrink-0 lg:ml-auto">
+            <button onClick={() => { load(); loadOptions(); }} className="bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /><span>Refresh</span>
             </button>
-            {isRoleOpen && (
-              <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
-                <button type="button" onClick={() => { setRoleFilter(''); setIsRoleOpen(false); }} className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between ${!roleFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'hover:bg-brand-border/40'}`}>
-                  <span>Semua Role</span>{!roleFilter && <Check size={14} />}
-                </button>
-                {roleOptions.map((r) => (
-                  <button key={r} type="button" onClick={() => { setRoleFilter(r); setIsRoleOpen(false); }} className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between ${roleFilter === r ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'hover:bg-brand-border/40'}`}>
-                    <span className="truncate">{r}</span>{roleFilter === r && <Check size={14} />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="relative">
-            <button type="button" onClick={() => { setIsStatusOpen(!isStatusOpen); setIsRoleOpen(false); }} className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3 py-3 text-sm text-brand-text transition-all">
-              <span className="truncate">{STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'Semua Status'}</span>
-              <ChevronDown size={16} className={`text-brand-text-muted transition-transform ${isStatusOpen ? 'rotate-180' : ''}`} />
+            <button onClick={() => setCreateOpen(true)} className="bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-sm transition shadow-sm whitespace-nowrap">
+              <Plus size={16} /> Tambah User
             </button>
-            {isStatusOpen && (
-              <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
-                <button type="button" onClick={() => { setStatusFilter(''); setIsStatusOpen(false); }} className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between ${!statusFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'hover:bg-brand-border/40'}`}>
-                  <span>Semua Status</span>{!statusFilter && <Check size={14} />}
-                </button>
-                {STATUS_OPTIONS.map((s) => (
-                  <button key={s.value} type="button" onClick={() => { setStatusFilter(s.value); setIsStatusOpen(false); }} className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between ${statusFilter === s.value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'hover:bg-brand-border/40'}`}>
-                    <span className="truncate">{s.label}</span>{statusFilter === s.value && <Check size={14} />}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Info filter aktif */}
+        {(search || roleFilter || statusFilter) && (
+          <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2 rounded-xl backdrop-blur-sm">
+            <span>Menampilkan <strong className="text-brand-text font-semibold">{filtered.length}</strong> dari {users.length} user</span>
+            <button onClick={() => { setSearch(''); setRoleFilter(''); setStatusFilter(''); setIsRoleOpen(false); setIsStatusOpen(false); }} className="text-brand-accent hover:text-brand-accent2 flex items-center gap-1.5 font-medium transition">
+              <X size={13} /> Reset filter
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Table */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
         {loading && <div className="p-12 text-center text-brand-text-muted"><RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />Loading users...</div>}
         {error && <div className="p-8 text-center"><p className="text-red-500 mb-3">Error: {error}</p><button onClick={load} className="text-brand-accent underline">Coba lagi</button></div>}
@@ -323,7 +354,6 @@ function FormField({ label, type = 'text', value, onChange, error, required, ico
   );
 }
 
-// ✅ PERBAIKAN ROLE BADGE: Mendeteksi 'CS', 'Sales', dan 'Customer Service' agar semuanya hijau
 function RoleBadge({ role }) {
   const isCsOrSales = role === 'CS' || role === 'Sales' || role === 'Customer Service';
   

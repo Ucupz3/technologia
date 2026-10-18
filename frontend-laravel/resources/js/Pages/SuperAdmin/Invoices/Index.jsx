@@ -6,6 +6,7 @@ import {
   Wallet, CheckCircle2, AlertCircle, Pencil,
 } from 'lucide-react';
 
+// Pastikan path import ini sesuai dengan folder komponen Anda
 import PaymentFormModal from '@/Components/Payments/FormModal';
 import PaymentDetailModal from '@/Components/Payments/DetailModal';
 import UpdatePaymentModal from '@/Components/Payments/UpdatePaymentModal';
@@ -13,8 +14,8 @@ import ConfirmDeleteModal from '@/Components/Payments/DeleteModal';
 import { PaymentStatusBadge } from '@/Components/Payments/Badges';
 import { formatRupiah, formatDate } from '@/Components/Payments/helpers';
 
-export default function PaymentsIndex() {
-  const [payments, setPayments] = useState([]);
+export default function InvoicesIndex() {
+  const [invoices, setInvoices] = useState([]);
   const [options, setOptions] = useState({ orders: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,9 +23,9 @@ export default function PaymentsIndex() {
   const [statusFilter, setStatusFilter] = useState('');
 
   const [detailId, setDetailId] = useState(null);
-  const [updatePayment, setUpdatePayment] = useState(null);
+  const [updateInvoice, setUpdateInvoice] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [deletePayment, setDeletePayment] = useState(null);
+  const [deleteInvoice, setDeleteInvoice] = useState(null);
   const [toast, setToast] = useState(null);
 
   const showToast = (type, message) => {
@@ -36,12 +37,12 @@ export default function PaymentsIndex() {
     setLoading(true);
     setError('');
     Promise.all([
-      fetch('/api/v1/payments').then((r) => r.json()),
-      fetch('/api/v1/payments/options/orders').then((r) => r.json()),
+      fetch('/api/v1/invoices').then((r) => r.json()),
+      fetch('/api/v1/invoices/options/orders').then((r) => r.json()),
     ])
-      .then(([p, o]) => {
-        if (p.success) setPayments(p.data || []);
-        else setError(p.message || 'Gagal ambil data');
+      .then(([i, o]) => {
+        if (i.success) setInvoices(i.data || []);
+        else setError(i.message || 'Gagal ambil data');
         setOptions({ orders: o.success ? o.data : [] });
         setLoading(false);
       })
@@ -53,25 +54,25 @@ export default function PaymentsIndex() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = payments.filter((p) => {
+  const filtered = invoices.filter((inv) => {
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
-      p.invoice_number?.toLowerCase().includes(q) ||
-      p.customer_name?.toLowerCase().includes(q) ||
-      p.order_number?.toLowerCase().includes(q);
-    const matchStatus = !statusFilter || p.status === statusFilter;
+      inv.invoice_number?.toLowerCase().includes(q) ||
+      inv.customer_name?.toLowerCase().includes(q) ||
+      inv.order_number?.toLowerCase().includes(q);
+    const matchStatus = !statusFilter || inv.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
   // Stats
-  const totalInvoiced = payments.reduce((sum, p) => sum + Number(p.grand_total), 0);
-  const totalPaid = payments.reduce((sum, p) => sum + Number(p.total_paid), 0);
+  const totalInvoiced = invoices.reduce((sum, inv) => sum + Number(inv.grand_total), 0);
+  const totalPaid = invoices.reduce((sum, inv) => sum + Number(inv.total_paid), 0);
   const totalOutstanding = totalInvoiced - totalPaid;
 
   return (
     <RoleLayout>
-      <Head title="Payments" />
+      <Head title="Invoices" />
 
       {toast && (
         <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${
@@ -87,9 +88,9 @@ export default function PaymentsIndex() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text">Payments</h1>
+          <h1 className="text-2xl font-bold text-brand-text">Invoices</h1>
           <p className="text-sm text-brand-text-muted mt-1">
-            Total {payments.length} invoice
+            Total {invoices.length} invoice
           </p>
         </div>
         <div className="flex gap-2">
@@ -143,7 +144,7 @@ export default function PaymentsIndex() {
         </div>
         {(search || statusFilter) && (
           <div className="mt-3 flex items-center gap-2 text-xs text-brand-text-muted">
-            <span>Menampilkan <strong className="text-brand-text">{filtered.length}</strong> dari {payments.length} invoice</span>
+            <span>Menampilkan <strong className="text-brand-text">{filtered.length}</strong> dari {invoices.length} invoice</span>
             <button
               onClick={() => { setSearch(''); setStatusFilter(''); }}
               className="text-brand-accent hover:text-brand-accent2 flex items-center gap-1 transition"
@@ -174,7 +175,7 @@ export default function PaymentsIndex() {
           <div className="p-12 text-center">
             <Wallet size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
             <p className="text-brand-text-muted">
-              {payments.length === 0 ? 'Belum ada invoice' : 'Tidak ada yang cocok'}
+              {invoices.length === 0 ? 'Belum ada invoice' : 'Tidak ada yang cocok'}
             </p>
           </div>
         )}
@@ -195,41 +196,41 @@ export default function PaymentsIndex() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/50">
-                {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-brand-muted/40 transition">
+                {filtered.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-brand-muted/40 transition">
                     <td className="px-4 py-3">
-                      <div className="font-mono text-sm text-brand-text">{p.invoice_number}</div>
-                      <div className="text-xs text-brand-text-muted">{p.order_number}</div>
+                      <div className="font-mono text-sm text-brand-text">{inv.invoice_number}</div>
+                      <div className="text-xs text-brand-text-muted">{inv.order_number}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-brand-text">{p.customer_name || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-brand-text font-medium">{formatRupiah(p.grand_total)}</td>
+                    <td className="px-4 py-3 text-sm text-brand-text">{inv.customer_name || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-brand-text font-medium">{formatRupiah(inv.grand_total)}</td>
                     <td className="px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {formatRupiah(p.total_paid)}
+                      {formatRupiah(inv.total_paid)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-brand-text-muted">{formatRupiah(p.remaining)}</td>
-                    <td className="px-4 py-3 text-sm text-brand-text-muted text-xs">{formatDate(p.due_date)}</td>
-                    <td className="px-4 py-3"><PaymentStatusBadge status={p.status} /></td>
+                    <td className="px-4 py-3 text-sm text-brand-text-muted">{formatRupiah(inv.remaining)}</td>
+                    <td className="px-4 py-3 text-sm text-brand-text-muted text-xs">{formatDate(inv.due_date)}</td>
+                    <td className="px-4 py-3"><PaymentStatusBadge status={inv.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <button
-                          onClick={() => setDetailId(p.id)}
+                          onClick={() => setDetailId(inv.id)}
                           title="Detail"
                           className="p-2 rounded-lg text-brand-text-muted hover:text-brand-accent hover:bg-brand-accent/10 transition"
                         >
                           <Eye size={16} />
                         </button>
                         <button
-                          onClick={() => setUpdatePayment(p)}
+                          onClick={() => setUpdateInvoice(inv)}
                           title="Update Pembayaran"
-                          disabled={p.status === 'cancelled' || p.status === 'paid'}
+                          disabled={inv.status === 'cancelled' || inv.status === 'paid'}
                           className="p-2 rounded-lg text-brand-text-muted hover:text-brand-accent2 hover:bg-brand-accent2/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Pencil size={16} />
                         </button>
                         <button
-                          onClick={() => setDeletePayment(p)}
+                          onClick={() => setDeleteInvoice(inv)}
                           title="Hapus"
-                          disabled={p.total_paid > 0}
+                          disabled={inv.total_paid > 0}
                           className="p-2 rounded-lg text-brand-text-muted hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Trash2 size={16} />
@@ -255,15 +256,15 @@ export default function PaymentsIndex() {
         <PaymentDetailModal
           paymentId={detailId}
           onClose={() => setDetailId(null)}
-          onUpdatePayment={(p) => { setDetailId(null); setUpdatePayment(p); }}
+          onUpdatePayment={(inv) => { setDetailId(null); setUpdateInvoice(inv); }}
         />
       )}
 
-      {updatePayment && (
+      {updateInvoice && (
         <UpdatePaymentModal
-          payment={updatePayment}
-          onClose={() => setUpdatePayment(null)}
-          onSuccess={(msg) => { setUpdatePayment(null); load(); showToast('success', msg); }}
+          payment={updateInvoice}
+          onClose={() => setUpdateInvoice(null)}
+          onSuccess={(msg) => { setUpdateInvoice(null); load(); showToast('success', msg); }}
           onError={(msg) => showToast('error', msg)}
         />
       )}
@@ -277,11 +278,11 @@ export default function PaymentsIndex() {
         />
       )}
 
-      {deletePayment && (
+      {deleteInvoice && (
         <ConfirmDeleteModal
-          payment={deletePayment}
-          onClose={() => setDeletePayment(null)}
-          onSuccess={(msg) => { setDeletePayment(null); load(); showToast('success', msg); }}
+          payment={deleteInvoice}
+          onClose={() => setDeleteInvoice(null)}
+          onSuccess={(msg) => { setDeleteInvoice(null); load(); showToast('success', msg); }}
           onError={(msg) => showToast('error', msg)}
         />
       )}

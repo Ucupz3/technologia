@@ -10,7 +10,13 @@ ordersRouter.get('/options/customers', async (_req, res, next) => {
   try {
     const data = await prisma.customers.findMany({
       where: { deleted_at: null },
-      select: { id: true, name: true },
+      select: {
+        id: true, name: true, address: true,
+        customer_pics: {
+          where: { deleted_at: null, is_active: true },
+          select: { id: true, name: true, email: true }
+        }
+      },
       orderBy: { name: 'asc' },
     });
     res.json({ success: true, data });
@@ -39,41 +45,25 @@ ordersRouter.get('/options/sales', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ✅ GET options teams (termasuk data member & job-nya)
 ordersRouter.get('/options/teams', async (_req, res, next) => {
   try {
     const data = await prisma.teams.findMany({
       where: { deleted_at: null, status: 'active' },
       select: {
-        id: true,
-        name: true,
+        id: true, name: true,
         team_members: {
           where: { status: 'active' },
           select: {
             id: true,
             users: {
               select: {
-                id: true, 
-                name: true,
-                user_jobs: {
-                  include: { jobs: { select: { id: true, name: true } } }
-                }
+                id: true, name: true,
+                user_jobs: { include: { jobs: { select: { id: true, name: true } } } }
               }
             }
           }
         }
       },
-      orderBy: { name: 'asc' },
-    });
-    res.json({ success: true, data });
-  } catch (err) { next(err); }
-});
-
-ordersRouter.get('/options/jobs', async (_req, res, next) => {
-  try {
-    const data = await prisma.jobs.findMany({
-      where: { deleted_at: null, status: 'active' },
-      select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
     res.json({ success: true, data });
@@ -102,12 +92,13 @@ ordersRouter.get('/:id', async (req, res, next) => {
       where: { id: BigInt(req.params.id), deleted_at: null },
       include: {
         customers: true,
+        customer_pics: true,
+        sales_user: true,
         teams: true,
+        order_services: true, // ✅ WAJIB DITAMBAHKAN AGAR LAYANAN TERBACA
+        invoices: true,       // ✅ WAJIB DITAMBAHKAN
         order_assignments: {
-          include: {
-            team_members: { include: { users: true } },
-            jobs: true,
-          },
+          include: { team_members: { include: { users: true } }, jobs: true },
         },
       },
     });
@@ -116,15 +107,21 @@ ordersRouter.get('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ============ CREATE ORDER ============
+// ============ CREATE ORDER + AUTO INVOICE ============
 const createSchema = z.object({
   customer_id: z.coerce.number().int().positive(),
+  pic_id: z.coerce.number().int().positive().optional().nullable(),
   sales_id: z.coerce.number().int().positive().optional().nullable(),
   team_id: z.coerce.number().int().positive().optional().nullable(),
   service_id: z.coerce.number().int().positive(),
+  price_deal: z.coerce.number().min(0).optional().nullable(), // ✅ Custom Harga
   quantity: z.coerce.number().int().min(1).default(1),
+  discount_type: z.enum(['fixed', 'percent']).default('fixed'),
+  discount: z.coerce.number().min(0).default(0),
+  tax_rate: z.coerce.number().min(0).default(0),
+  start_date_project: z.string().optional().nullable(),
+  end_date_project: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
-  // ✅ Tambahan: Menerima array assignments dari frontend
   assignments: z.array(z.object({
     team_member_id: z.coerce.number().int().positive(),
     job_id: z.coerce.number().int().positive(),
@@ -137,16 +134,33 @@ ordersRouter.post('/', async (req, res, next) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return res.status(422).json({ success: false, message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors });
 
-    const { customer_id, sales_id, team_id, service_id, quantity, notes, assignments } = parsed.data;
+    const { 
+      customer_id, pic_id, sales_id, team_id, service_id, price_deal, 
+      quantity, discount_type, discount, tax_rate, 
+      start_date_project, end_date_project, notes, assignments 
+    } = parsed.data;
 
     const customer = await prisma.customers.findFirst({ where: { id: BigInt(customer_id), deleted_at: null } });
     if (!customer) return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
 
-    const service = await prisma.services.findFirst({ where: { id: BigInt(service_id), deleted_at: null } });
+    const service = await prisma.services.findFirst({ 
+      where: { id: BigInt(service_id), deleted_at: null },
+      include: { service_categories: true }
+    });
     if (!service) return res.status(404).json({ success: false, message: 'Service tidak ditemukan' });
 
-    const price = Number(service.default_price);
+    const pic = pic_id ? await prisma.customer_pics.findFirst({ where: { id: BigInt(pic_id) } }) : null;
+
+    // Kalkulasi Harga
+    let price = Number(service.default_price);
+    if (price_deal !== undefined && price_deal !== null) {
+      price = Number(price_deal);
+    }
+
     const subtotal = price * quantity;
+    const discountAmount = discount_type === 'percent' ? (subtotal * discount) / 100 : discount;
+    const taxAmount = ((subtotal - discountAmount) * tax_rate) / 100;
+    const grandTotal = subtotal - discountAmount + taxAmount;
 
     const order = await prisma.$transaction(async (tx) => {
       const orderNum = await generateOrderNumber(tx);
@@ -156,31 +170,44 @@ ordersRouter.post('/', async (req, res, next) => {
         data: {
           order_number: orderNum,
           customer_id: BigInt(customer_id),
+          pic_id: pic ? pic.id : null,
           sales_id: sales_id ? BigInt(sales_id) : null,
           team_id: team_id ? BigInt(team_id) : null,
           customer_name_snapshot: customer.name,
+          customer_address_snapshot: customer.address,
+          pic_name_snapshot: pic?.name || null,
+          pic_email_snapshot: pic?.email || null,
           status: 'pending',
           payment_status: 'unpaid',
           subtotal,
-          grand_total: subtotal,
+          discount_type,
+          discount: discountAmount,
+          tax_rate,
+          tax: taxAmount,
+          grand_total: grandTotal,
+          start_date_project: start_date_project ? new Date(start_date_project) : null,
+          end_date_project: end_date_project ? new Date(end_date_project) : null,
           notes: notes || null,
         },
       });
 
-      // 2. Buat Order Service
+      // 2. ✅ BUAT ORDER SERVICE (Menyimpan rincian layanan)
       await tx.order_services.create({
         data: {
           order_id: newOrder.id,
           service_id: service.id,
           service_name_snapshot: service.name,
-          price_deal: price,
+          category_name_snapshot: service.service_categories?.name || null,
+          is_custom: false,
+          price_deal: price, 
           quantity,
           subtotal,
           status: 'active',
+          notes: null,
         },
       });
 
-      // 3. ✅ SIMPAN ORDER ASSIGNMENTS (DARI FRONTEND)
+      // 3. Simpan Order Assignments (Tim)
       if (assignments && assignments.length > 0) {
         for (const a of assignments) {
           await tx.order_assignments.create({
@@ -195,43 +222,39 @@ ordersRouter.post('/', async (req, res, next) => {
         }
       }
 
-      // 4. Catat History
+      // 4. ✅ OTOMATIS BUAT INVOICE
+      const today = new Date();
+      const ym = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
+      const prefix = `INV-${ym}-`;
+      const countInv = await tx.invoices.count({ where: { invoice_number: { startsWith: prefix } } });
+      const invoiceNum = `${prefix}${String(countInv + 1).padStart(3, '0')}`;
+
+      await tx.invoices.create({
+        data: {
+          invoice_number: invoiceNum,
+          order_id: newOrder.id,
+          customer_id: newOrder.customer_id,
+          total_paid: 0,
+          status: 'unpaid',
+          issued_at: new Date(),
+        }
+      });
+
+      // 5. Catat History
       await tx.order_status_history.create({
         data: {
           order_id: newOrder.id,
           from_status: null,
           to_status: 'pending',
           changed_by: sales_id ? BigInt(sales_id) : null,
-          notes: 'Order dibuat',
+          notes: 'Order dibuat & Invoice otomatis diterbitkan',
         },
       });
 
       return newOrder;
     });
 
-    res.status(201).json({ success: true, data: order, message: 'Order berhasil dibuat & Tim ditugaskan' });
-  } catch (err) { next(err); }
-});
-
-// ============ UPDATE ORDER ============
-const updateSchema = z.object({
-  customer_id: z.coerce.number().int().positive().optional(),
-  team_id: z.coerce.number().int().positive().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
-
-ordersRouter.put('/:id', async (req, res, next) => {
-  try {
-    const parsed = updateSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(422).json({ success: false, message: 'Validasi gagal' });
-
-    const id = BigInt(req.params.id);
-    const data = { ...parsed.data };
-    if (data.customer_id) data.customer_id = BigInt(data.customer_id);
-    if (data.team_id !== undefined) data.team_id = data.team_id ? BigInt(data.team_id) : null;
-
-    const order = await prisma.orders.update({ where: { id }, data });
-    res.json({ success: true, data: order, message: 'Order berhasil diupdate' });
+    res.status(201).json({ success: true, data: order, message: 'Order berhasil dibuat & Invoice otomatis terbuat' });
   } catch (err) { next(err); }
 });
 

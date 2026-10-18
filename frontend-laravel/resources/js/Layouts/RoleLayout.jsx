@@ -15,7 +15,7 @@ const menuByRole = {
     { label: 'Master Data', href: '/super-admin/master-data', icon: Database },
     { label: 'Customers',   href: '/super-admin/customers',  icon: Contact },
     { label: 'Orders',      href: '/super-admin/orders',     icon: FileText },
-    { label: 'Payments',    href: '/super-admin/payments',   icon: Wallet },
+    { label: 'Invoices',    href: '/super-admin/invoices',   icon: Receipt },
     { label: 'Audit Logs',  href: '/super-admin/audit-logs', icon: FileText },
   ],
   admin: [
@@ -24,7 +24,7 @@ const menuByRole = {
     { label: 'Customers', href: '/admin/customers',   icon: Contact },
     { label: 'Orders',    href: '/admin/orders',      icon: FileText },
     { label: 'Schedules', href: '/admin/schedules',   icon: Calendar },
-    { label: 'Payments',  href: '/admin/payments',    icon: Wallet },
+    { label: 'Invoices',  href: '/admin/invoices',    icon: Receipt },
   ],
   sales: [
     { label: 'Dashboard', href: '/dashboard',         icon: Home },

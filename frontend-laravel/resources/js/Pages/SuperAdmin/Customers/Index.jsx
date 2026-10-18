@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import {
-  RefreshCw, Search, Plus, Eye, X,
+  RefreshCw, Search, Plus, X,
   Contact, AlertCircle, CheckCircle2, Mail, Phone,
+  ChevronDown, Check
 } from 'lucide-react';
 
 function getBasePath() {
@@ -17,6 +18,7 @@ export default function CustomersIndex() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [salesFilter, setSalesFilter] = useState('');
+  const [isSalesOpen, setIsSalesOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -78,65 +80,106 @@ export default function CustomersIndex() {
         </div>
       )}
 
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-brand-text">Customers</h1>
-          <p className="text-sm text-brand-text-muted mt-1">
-            Total {customers.length} customer
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={load}
-            className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
-          </button>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 flex items-center gap-2 text-sm font-semibold transition"
-          >
-            <Plus size={16} /> Tambah Customer
-          </button>
-        </div>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-brand-text">Customers</h1>
+        <p className="text-sm text-brand-text-muted mt-1">
+          Total {customers.length} customer
+        </p>
       </div>
 
-      <div className="bg-brand-secondary rounded-lg border border-brand-border p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="relative md:col-span-2">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />
-            <input
-              type="text"
-              placeholder="Cari nama, email, atau phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:border-brand-accent/60 transition"
-            />
+      {/* ============ FILTER BAR (SEJAJAR) ============ */}
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          
+          {/* DIV A: Search + Sales Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0 max-w-md">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+              <input
+                type="text"
+                placeholder="Cari nama, email, atau phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Custom Dropdown Sales PIC */}
+            <div className="relative sm:w-56 sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSalesOpen(!isSalesOpen)}
+                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              >
+                <span className="truncate">
+                  {salesFilter 
+                    ? salesList.find((s) => String(s.id) === String(salesFilter))?.name 
+                    : 'Semua Sales PIC'}
+                </span>
+                <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isSalesOpen ? 'rotate-180 text-brand-accent' : ''}`} />
+              </button>
+
+              {isSalesOpen && (
+                <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => { setSalesFilter(''); setIsSalesOpen(false); }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${!salesFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                  >
+                    <span>Semua Sales PIC</span>
+                    {!salesFilter && <Check size={14} className="text-brand-accent" />}
+                  </button>
+                  {salesList.map((s) => {
+                    const isSelected = String(salesFilter) === String(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => { setSalesFilter(s.id); setIsSalesOpen(false); }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${isSelected ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                      >
+                        <span className="truncate">{s.name}</span>
+                        {isSelected && <Check size={14} className="text-brand-accent" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-          <select
-            value={salesFilter}
-            onChange={(e) => setSalesFilter(e.target.value)}
-            className="bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
-          >
-            <option value="">Semua Sales PIC</option>
-            {salesList.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+
+          {/* DIV B: Refresh + Tambah Customer */}
+          <div className="flex items-center gap-2 lg:shrink-0 lg:ml-auto">
+            <button onClick={load} className="bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /><span>Refresh</span>
+            </button>
+            <button onClick={() => setCreateOpen(true)} className="bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-sm transition shadow-sm whitespace-nowrap">
+              <Plus size={16} /> Tambah Customer
+            </button>
+          </div>
         </div>
+
+        {/* Info filter aktif */}
         {(search || salesFilter) && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-brand-text-muted">
-            <span>Menampilkan <strong className="text-brand-text">{filtered.length}</strong> dari {customers.length} customer</span>
+          <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2 rounded-xl backdrop-blur-sm">
+            <span>Menampilkan <strong className="text-brand-text font-semibold">{filtered.length}</strong> dari {customers.length} customer</span>
             <button
-              onClick={() => { setSearch(''); setSalesFilter(''); }}
-              className="text-brand-accent hover:text-brand-accent2 flex items-center gap-1 transition"
+              onClick={() => { setSearch(''); setSalesFilter(''); setIsSalesOpen(false); }}
+              className="text-brand-accent hover:text-brand-accent2 flex items-center gap-1.5 font-medium transition"
             >
-              <X size={12} /> Reset filter
+              <X size={13} /> Reset filter
             </button>
           </div>
         )}
       </div>
 
+      {/* Table */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
         {loading && (
           <div className="p-12 text-center text-brand-text-muted">
@@ -217,13 +260,13 @@ export default function CustomersIndex() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end">
+                        {/* ✅ Aksi diubah jadi tulisan "Detail" dengan border */}
                         <Link
                           href={`${basePath}/customers/${c.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          title="Lihat Detail"
-                          className="p-2 rounded-lg text-brand-text-muted hover:text-brand-accent hover:bg-brand-accent/10 transition"
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
                         >
-                          <Eye size={16} />
+                          Detail
                         </Link>
                       </div>
                     </td>
