@@ -9,28 +9,28 @@ import { useTheme } from '@/hooks/useTheme';
 
 const menuByRole = {
   super_admin: [
-    { label: 'Dashboard', href: '/dashboard', icon: Home },
-    { label: 'Users', href: '/super-admin/users', icon: Users },
-    { label: 'Roles', href: '/super-admin/roles', icon: Shield },
+    { label: 'Dashboard',   href: '/dashboard',              icon: Home },
+    { label: 'Users',       href: '/super-admin/users',      icon: Users },
+    { label: 'Roles',       href: '/super-admin/roles',      icon: Shield },
     { label: 'Master Data', href: '/super-admin/master-data', icon: Database },
-    { label: 'Customers', href: '/super-admin/customers', icon: Contact },
-    { label: 'Orders', href: '/super-admin/orders', icon: FileText },
-    { label: 'Payments', href: '/super-admin/payments', icon: Wallet },
-    { label: 'Audit Logs', href: '/super-admin/audit-logs', icon: FileText },
+    { label: 'Customers',   href: '/super-admin/customers',  icon: Contact },
+    { label: 'Orders',      href: '/super-admin/orders',     icon: FileText },
+    { label: 'Payments',    href: '/super-admin/payments',   icon: Wallet },
+    { label: 'Audit Logs',  href: '/super-admin/audit-logs', icon: FileText },
   ],
   admin: [
-    { label: 'Dashboard', href: '/dashboard', icon: Home },
-    { label: 'Services', href: '/admin/services', icon: Database },
-    { label: 'Customers', href: '/admin/customers', icon: Contact },
-    { label: 'Orders', href: '/admin/orders', icon: FileText },
-    { label: 'Schedules', href: '/admin/schedules', icon: Wallet },
-    { label: 'Payments', href: '/admin/payments', icon: Wallet },
+    { label: 'Dashboard', href: '/dashboard',         icon: Home },
+    { label: 'Services',  href: '/admin/services',    icon: Database },
+    { label: 'Customers', href: '/admin/customers',   icon: Contact },
+    { label: 'Orders',    href: '/admin/orders',      icon: FileText },
+    { label: 'Schedules', href: '/admin/schedules',   icon: Calendar },
+    { label: 'Payments',  href: '/admin/payments',    icon: Wallet },
   ],
   sales: [
-    { label: 'Dashboard', href: '/dashboard', icon: Home },
-    { label: 'Customers', href: '/sales/customers', icon: Contact },
-    { label: 'Orders', href: '/sales/orders', icon: FileText },
-    { label: 'Invoices', href: '/sales/invoices', icon: Receipt },
+    { label: 'Dashboard', href: '/dashboard',         icon: Home },
+    { label: 'Customers', href: '/sales/customers',   icon: Contact },
+    { label: 'Orders',    href: '/sales/orders',      icon: FileText },
+    { label: 'Invoices',  href: '/sales/invoices',    icon: Receipt },
   ],
 };
 
@@ -38,12 +38,13 @@ const roleLabel = {
   super_admin: 'Super Admin',
   admin: 'Admin',
   sales: 'Sales',
+  customer_service: 'Customer Service',
 };
 
 const roleBadgeColor = {
   super_admin: 'bg-orange-500/15 text-orange-400 border-orange-500/40',
   admin:       'bg-blue-500/15 text-blue-400 border-blue-500/40',
-  sales:       'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+  customer_service:       'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
 };
 
 const SIDEBAR_STORAGE_KEY = 'erp_sidebar_open';

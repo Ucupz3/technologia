@@ -78,6 +78,18 @@ customersRouter.get('/:id', async (req, res, next) => {
         id: true, name: true, email: true, phone: true,
         address: true, notes: true, sales_id: true, created_at: true,
         sales_user: { select: { id: true, name: true, email: true } },
+
+        // ✅ TAMBAHAN: ambil PIC dari tabel customer_pics
+        customer_pics: {
+          where: { deleted_at: null, is_active: true },
+          select: {
+            id: true, name: true, position: true,
+            email: true, phone: true,
+            is_primary: true, is_active: true,
+          },
+          orderBy: [{ is_primary: 'desc' }, { name: 'asc' }],
+        },
+
         orders: {
           where: { deleted_at: null },
           select: {
@@ -104,6 +116,10 @@ customersRouter.get('/:id', async (req, res, next) => {
         sales_name: customer.sales_user?.name || null,
         sales_email: customer.sales_user?.email || null,
         created_at: customer.created_at,
+
+        // ✅ TAMBAHAN: kirim ke frontend sebagai `pics`
+        pics: customer.customer_pics || [],
+
         orders: customer.orders,
       },
     });
@@ -230,5 +246,66 @@ customersRouter.delete('/:id', async (req, res, next) => {
 
     await prisma.customers.update({ where: { id }, data: { deleted_at: new Date() } });
     res.json({ success: true, message: 'Customer berhasil dihapus' });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// ✅ TAMBAHAN BARU: POST /api/v1/customers/:id/pics
+// ============================================================
+const picSchema = z.object({
+  name: z.string().min(2).max(255),
+  position: z.string().max(100).optional().nullable(),
+  email: z.string().email().max(255).optional().nullable(),
+  phone: z.string().max(30).optional().nullable(),
+  is_primary: z.boolean().optional().default(false),
+});
+
+customersRouter.post('/:id/pics', async (req, res, next) => {
+  try {
+    const customerId = BigInt(req.params.id);
+
+    const customer = await prisma.customers.findFirst({
+      where: { id: customerId, deleted_at: null },
+    });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
+    }
+
+    const parsed = picSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(422).json({
+        success: false,
+        message: 'Validasi gagal',
+        errors: parsed.error.flatten().fieldErrors,
+      });
+    }
+
+    const { name, position, email, phone, is_primary } = parsed.data;
+
+    // Kalau PIC baru primary, turunkan PIC primary lama
+    if (is_primary) {
+      await prisma.customer_pics.updateMany({
+        where: { customer_id: customerId, is_primary: true, deleted_at: null },
+        data: { is_primary: false },
+      });
+    }
+
+    const pic = await prisma.customer_pics.create({
+      data: {
+        customer_id: customerId,
+        name,
+        position: position || null,
+        email: email || null,
+        phone: phone || null,
+        is_primary: is_primary || false,
+        is_active: true,
+      },
+      select: {
+        id: true, name: true, position: true,
+        email: true, phone: true, is_primary: true, is_active: true,
+      },
+    });
+
+    res.status(201).json({ success: true, data: pic, message: 'PIC berhasil ditambahkan' });
   } catch (err) { next(err); }
 });

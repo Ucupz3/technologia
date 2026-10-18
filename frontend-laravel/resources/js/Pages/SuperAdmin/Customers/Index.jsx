@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
-  RefreshCw, Search, Plus, Eye, Pencil, Trash2, X,
-  Contact, Save, AlertCircle, CheckCircle2, Mail, Phone, MapPin,
+  RefreshCw, Search, Plus, Eye, X,
+  Contact, AlertCircle, CheckCircle2, Mail, Phone,
 } from 'lucide-react';
+
+function getBasePath() {
+  return window.location.pathname.replace(/\/customers.*$/, '');
+}
 
 export default function CustomersIndex() {
   const [customers, setCustomers] = useState([]);
@@ -13,12 +17,10 @@ export default function CustomersIndex() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [salesFilter, setSalesFilter] = useState('');
-
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [editCustomer, setEditCustomer] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [deleteCustomer, setDeleteCustomer] = useState(null);
   const [toast, setToast] = useState(null);
+
+  const basePath = getBasePath();
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -44,9 +46,7 @@ export default function CustomersIndex() {
       });
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const filtered = customers.filter((c) => {
     const q = search.toLowerCase();
@@ -58,6 +58,10 @@ export default function CustomersIndex() {
     const matchSales = !salesFilter || String(c.sales_id) === salesFilter;
     return matchSearch && matchSales;
   });
+
+  const goToDetail = (customer) => {
+    router.visit(`${basePath}/customers/${customer.id}`);
+  };
 
   return (
     <RoleLayout>
@@ -74,7 +78,6 @@ export default function CustomersIndex() {
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-brand-text">Customers</h1>
@@ -98,7 +101,6 @@ export default function CustomersIndex() {
         </div>
       </div>
 
-      {/* Filter */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border p-4 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="relative md:col-span-2">
@@ -135,7 +137,6 @@ export default function CustomersIndex() {
         )}
       </div>
 
-      {/* Content */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
         {loading && (
           <div className="p-12 text-center text-brand-text-muted">
@@ -175,7 +176,11 @@ export default function CustomersIndex() {
               </thead>
               <tbody className="divide-y divide-brand-border/50">
                 {filtered.map((c, i) => (
-                  <tr key={c.id} className="hover:bg-brand-muted/40 transition">
+                  <tr
+                    key={c.id}
+                    className="hover:bg-brand-muted/40 transition cursor-pointer"
+                    onClick={() => goToDetail(c)}
+                  >
                     <td className="px-4 py-3 text-sm text-brand-text-muted">{i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -211,28 +216,15 @@ export default function CustomersIndex() {
                       {c.order_count} order
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => setSelectedCustomer(c)}
-                          title="Detail"
+                      <div className="flex items-center justify-end">
+                        <Link
+                          href={`${basePath}/customers/${c.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Lihat Detail"
                           className="p-2 rounded-lg text-brand-text-muted hover:text-brand-accent hover:bg-brand-accent/10 transition"
                         >
                           <Eye size={16} />
-                        </button>
-                        <button
-                          onClick={() => setEditCustomer(c)}
-                          title="Edit"
-                          className="p-2 rounded-lg text-brand-text-muted hover:text-brand-accent2 hover:bg-brand-accent2/10 transition"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteCustomer(c)}
-                          title="Hapus"
-                          className="p-2 rounded-lg text-brand-text-muted hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -249,25 +241,6 @@ export default function CustomersIndex() {
         )}
       </div>
 
-      {selectedCustomer && (
-        <CustomerDetailModal
-          customer={selectedCustomer}
-          onClose={() => setSelectedCustomer(null)}
-          onEdit={() => { setEditCustomer(selectedCustomer); setSelectedCustomer(null); }}
-        />
-      )}
-
-      {editCustomer && (
-        <CustomerFormModal
-          mode="edit"
-          customer={editCustomer}
-          salesList={salesList}
-          onClose={() => setEditCustomer(null)}
-          onSuccess={(msg) => { setEditCustomer(null); load(); showToast('success', msg); }}
-          onError={(msg) => showToast('error', msg)}
-        />
-      )}
-
       {createOpen && (
         <CustomerFormModal
           mode="create"
@@ -277,20 +250,10 @@ export default function CustomersIndex() {
           onError={(msg) => showToast('error', msg)}
         />
       )}
-
-      {deleteCustomer && (
-        <ConfirmDeleteModal
-          customer={deleteCustomer}
-          onClose={() => setDeleteCustomer(null)}
-          onSuccess={(msg) => { setDeleteCustomer(null); load(); showToast('success', msg); }}
-          onError={(msg) => showToast('error', msg)}
-        />
-      )}
     </RoleLayout>
   );
 }
 
-// ============ FORM MODAL ============
 function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onError }) {
   const isEdit = mode === 'edit';
   const [form, setForm] = useState({
@@ -323,7 +286,6 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-
       if (!res.ok || !data.success) {
         if (data.errors) setErrors(data.errors);
         onError(data.message || 'Gagal menyimpan');
@@ -348,30 +310,15 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
-          <FormField
-            label="Nama Customer"
-            value={form.name}
+          <FormField label="Nama Customer" value={form.name}
             onChange={(v) => setForm({ ...form, name: v })}
-            error={errors.name}
-            placeholder="Contoh: PT Maju Bersama"
-            required
-          />
-          <FormField
-            label="Email"
-            type="email"
-            value={form.email}
+            error={errors.name} placeholder="PT Maju Bersama" required />
+          <FormField label="Email" type="email" value={form.email}
             onChange={(v) => setForm({ ...form, email: v })}
-            error={errors.email}
-            placeholder="contact@majubersama.com"
-            required
-          />
-          <FormField
-            label="Phone"
-            value={form.phone}
+            error={errors.email} placeholder="contact@majubersama.com" required />
+          <FormField label="Phone" value={form.phone}
             onChange={(v) => setForm({ ...form, phone: v })}
-            error={errors.phone}
-            placeholder="08123456789"
-          />
+            error={errors.phone} placeholder="08123456789" />
 
           <div>
             <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
@@ -390,47 +337,35 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-              Alamat
-            </label>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Alamat</label>
             <textarea
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               rows={2}
-              placeholder="Jl. Merdeka No. 45, Jakarta"
-              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:border-brand-accent/60 transition resize-none"
+              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-              Notes
-            </label>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Notes</label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              placeholder="Catatan tambahan (opsional)"
-              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:border-brand-accent/60 transition resize-none"
+              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
             />
           </div>
         </form>
 
         <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition"
-          >
+          <button type="button" onClick={onClose}
+            className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
             Batal
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
-          >
-            {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-            {submitting ? 'Menyimpan...' : (isEdit ? 'Simpan' : 'Buat')}
+          <button onClick={handleSubmit} disabled={submitting}
+            className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+            {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
+            {submitting ? 'Menyimpan...' : 'Buat'}
           </button>
         </div>
       </div>
@@ -458,140 +393,6 @@ function FormField({ label, type = 'text', value, onChange, error, placeholder, 
   );
 }
 
-// ============ DELETE CONFIRM ============
-function ConfirmDeleteModal({ customer, onClose, onSuccess, onError }) {
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleDelete = async () => {
-    setSubmitting(true);
-    try {
-      const res = await fetch(`/api/v1/customers/${customer.id}`, {
-        method: 'DELETE',
-        headers: { 'Accept': 'application/json' },
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        onError(data.message || 'Gagal menghapus');
-      } else {
-        onSuccess('Customer berhasil dihapus');
-      }
-    } catch {
-      onError('Gagal menghubungi server');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-brand-secondary rounded-xl shadow-2xl border border-red-500/30 w-full max-w-md p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-red-500/15 rounded-full flex items-center justify-center">
-            <AlertCircle size={20} className="text-red-500 dark:text-red-400" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-brand-text">Hapus Customer?</h3>
-            <p className="text-xs text-brand-text-muted">Aksi ini tidak bisa dibatalkan</p>
-          </div>
-        </div>
-
-        <p className="text-sm text-brand-text mb-6">
-          Yakin ingin menghapus customer <strong className="text-brand-text">{customer.name}</strong>?
-          {customer.order_count > 0 && (
-            <span className="block mt-2 text-amber-600 dark:text-amber-400 text-xs">
-              ⚠️ Customer masih punya {customer.order_count} order — pindahkan/selesaikan dulu.
-            </span>
-          )}
-        </p>
-
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition disabled:opacity-50"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={submitting}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
-          >
-            {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
-            {submitting ? 'Menghapus...' : 'Hapus'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============ DETAIL MODAL ============
-function CustomerDetailModal({ customer, onClose, onEdit }) {
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-md overflow-hidden">
-        <div className="relative">
-          <div className="h-24 bg-gradient-to-br from-brand-accent/20 to-brand-accent2/20" />
-          <button onClick={onClose} className="absolute top-3 right-3 text-brand-text-muted hover:text-brand-accent text-2xl leading-none transition">×</button>
-          <div className="px-6 -mt-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-bold text-2xl border-4 border-brand-secondary">
-              {getInitials(customer.name)}
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-4">
-          <h2 className="text-xl font-bold text-brand-text">{customer.name}</h2>
-          {customer.sales_name && (
-            <span className="text-xs text-brand-text-muted mt-1 inline-block">
-              Sales PIC: <span className="text-brand-accent font-medium">{customer.sales_name}</span>
-            </span>
-          )}
-
-          <div className="mt-5 space-y-3">
-            <DetailRow icon={Mail} label="Email" value={customer.email} />
-            <DetailRow icon={Phone} label="Phone" value={customer.phone || '—'} />
-            <DetailRow icon={MapPin} label="Alamat" value={customer.address || '—'} />
-            <DetailRow icon={Contact} label="Total Order" value={`${customer.order_count} order`} />
-          </div>
-
-          {customer.notes && (
-            <div className="mt-5">
-              <div className="text-xs text-brand-text-muted uppercase tracking-widest mb-1">Notes</div>
-              <p className="text-sm text-brand-text">{customer.notes}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
-          <button onClick={onClose} className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
-            Tutup
-          </button>
-          <button onClick={onEdit} className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2">
-            <Pencil size={14} /> Edit
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DetailRow({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="w-8 h-8 bg-brand-muted/60 rounded-lg flex items-center justify-center shrink-0">
-        <Icon size={14} className="text-brand-accent" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-xs text-brand-text-muted uppercase tracking-widest">{label}</div>
-        <div className="text-sm text-brand-text">{value}</div>
-      </div>
-    </div>
-  );
-}
-
-// ============ HELPERS ============
 function getInitials(name) {
   if (!name) return '?';
   return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();

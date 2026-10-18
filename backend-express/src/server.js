@@ -15,6 +15,7 @@ import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { rolesRouter } from './routes/roles.js';
 import { categoriesRouter } from './routes/categories.js';
+import { teamsRouter } from './routes/teams.js';
 import { teamMembersRouter } from './routes/team-members.js';
 import { customersRouter } from './routes/customers.js';
 import { invoicesRouter, paymentsRouter } from './routes/invoices.js';
@@ -61,7 +62,6 @@ app.use(
 // Semua /api/* wajib token internal
 app.use('/api', internalAuth);
 
-
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/services', servicesRouter);
@@ -69,6 +69,7 @@ app.use('/api/v1/orders', ordersRouter);
 app.use('/api/v1/roles', rolesRouter);
 app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/service-categories', categoriesRouter);
+app.use('/api/v1/teams', teamsRouter);
 app.use('/api/v1/team-members', teamMembersRouter);
 app.use('/api/v1/customers', customersRouter);
 app.use('/api/v1/invoices', invoicesRouter);
