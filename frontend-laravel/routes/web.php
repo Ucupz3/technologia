@@ -33,6 +33,8 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 
     Route::get('/audit-logs', fn() => Inertia::render('SuperAdmin/AuditLogs/Index'))->name('audit-logs.index');
 
+    Route::get('/schedules', fn() => Inertia::render('SuperAdmin/Schedules/Index'))->name('schedules.index');
+
     // Customers
     Route::get('/customers', fn() => Inertia::render('SuperAdmin/Customers/Index'))->name('customers.index');
     Route::get('/customers/{id}', fn($id) => Inertia::render('SuperAdmin/Customers/Show', ['customerId' => (int) $id]))->name('customers.show');
@@ -42,6 +44,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::get('/orders/{id}', fn($id) => Inertia::render('SuperAdmin/Orders/Show', ['orderId' => (int) $id]))->name('orders.show'); 
 
     Route::get('/invoices', fn() => Inertia::render('SuperAdmin/Invoices/Index'))->name('invoices.index');
+    Route::get('/invoices/{id}', fn($id) => Inertia::render('SuperAdmin/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 
     // MASTER DATA
     Route::get('/master-data', fn() => Inertia::render('SuperAdmin/MasterData/Index'))->name('master-data.index');
@@ -70,7 +73,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/orders', fn() => Inertia::render('Admin/Orders/Index'))->name('orders.index');
     Route::get('/orders/create', fn() => Inertia::render('Admin/Orders/Create'))->name('orders.create');
     Route::get('/schedules', fn() => Inertia::render('Admin/Schedules/Index'))->name('schedules.index');
+
     Route::get('/invoices', fn() => Inertia::render('Admin/Invoices/Index'))->name('invoices.index');
+    Route::get('/invoices/{id}', fn($id) => Inertia::render('Admin/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 });
 
 // ========================================
@@ -84,6 +89,7 @@ Route::middleware(['auth', 'role:sales'])->prefix('sales')->name('sales.')->grou
     Route::get('/orders', fn() => Inertia::render('Sales/Orders/Index'))->name('orders.index');
     Route::get('/orders/create', fn() => Inertia::render('Sales/Orders/Create'))->name('orders.create');
     Route::get('/invoices', fn() => Inertia::render('Sales/Invoices/Index'))->name('invoices.index');
+    Route::get('/invoices/{id}', fn($id) => Inertia::render('Sales/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 });
 
 require __DIR__.'/auth.php';

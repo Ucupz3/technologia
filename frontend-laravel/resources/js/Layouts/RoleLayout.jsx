@@ -1,36 +1,37 @@
 import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
-  Home, Users, Shield, FileText, Package, Briefcase,
+  Home, Users, Shield, FileText, Package,
   UserCircle, Calendar, CreditCard, Receipt, LogOut, Menu,
-  Sun, Moon, Contact, Wallet, Database,
+  Sun, Moon, Contact, Database, Newspaper, ClipboardClock,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-
+  
 const menuByRole = {
   super_admin: [
     { label: 'Dashboard',   href: '/dashboard',              icon: Home },
     { label: 'Users',       href: '/super-admin/users',      icon: Users },
     { label: 'Roles',       href: '/super-admin/roles',      icon: Shield },
-    { label: 'Master Data', href: '/super-admin/master-data', icon: Database },
+    { label: 'Management', href: '/super-admin/master-data', icon: Database },
     { label: 'Customers',   href: '/super-admin/customers',  icon: Contact },
-    { label: 'Orders',      href: '/super-admin/orders',     icon: FileText },
-    { label: 'Invoices',    href: '/super-admin/invoices',   icon: Receipt },
-    { label: 'Audit Logs',  href: '/super-admin/audit-logs', icon: FileText },
+    { label: 'Orders',      href: '/super-admin/orders',     icon: Package },
+    { label: 'Invoices',    href: '/super-admin/invoices',   icon: Newspaper },
+    { label: 'Schedules',   href: '/super-admin/schedules',  icon: Calendar },
+    { label: 'Audit Logs',  href: '/super-admin/audit-logs', icon: ClipboardClock },
   ],
   admin: [
     { label: 'Dashboard', href: '/dashboard',         icon: Home },
     { label: 'Services',  href: '/admin/services',    icon: Database },
     { label: 'Customers', href: '/admin/customers',   icon: Contact },
-    { label: 'Orders',    href: '/admin/orders',      icon: FileText },
+    { label: 'Orders',    href: '/admin/orders',      icon: Package },
     { label: 'Schedules', href: '/admin/schedules',   icon: Calendar },
-    { label: 'Invoices',  href: '/admin/invoices',    icon: Receipt },
+    { label: 'Invoices',  href: '/admin/invoices',    icon: Newspaper },
   ],
   sales: [
     { label: 'Dashboard', href: '/dashboard',         icon: Home },
     { label: 'Customers', href: '/sales/customers',   icon: Contact },
-    { label: 'Orders',    href: '/sales/orders',      icon: FileText },
-    { label: 'Invoices',  href: '/sales/invoices',    icon: Receipt },
+    { label: 'Orders',    href: '/sales/orders',      icon: Package },
+    { label: 'Invoices',  href: '/sales/invoices',    icon: Newspaper },
   ],
 };
 

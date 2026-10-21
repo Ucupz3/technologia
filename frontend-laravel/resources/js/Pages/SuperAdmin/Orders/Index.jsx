@@ -21,6 +21,13 @@ const STATUS_OPTIONS = [
 ];
 
 function OrderStatusBadge({ status }) {
+  const labels = {
+    draft: 'Draft',
+    pending: 'Pending',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  };
   const colors = {
     draft: 'bg-gray-500/15 text-gray-600 border-gray-500/40',
     pending: 'bg-amber-500/15 text-amber-600 border-amber-500/40',
@@ -28,7 +35,7 @@ function OrderStatusBadge({ status }) {
     completed: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/40',
     cancelled: 'bg-red-500/15 text-red-600 border-red-500/40',
   };
-  return <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium border ${colors[status] || colors.draft}`}>{status}</span>;
+  return <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium border ${colors[status] || colors.draft}`}>{labels[status] || status}</span>;
 }
 
 export default function OrdersIndex() {
@@ -185,7 +192,6 @@ export default function OrdersIndex() {
                     <td className="px-4 py-3"><OrderStatusBadge status={o.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end">
-                        {/* ✅ Link ke halaman Show */}
                         <Link
                           href={`${basePath}/orders/${o.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"

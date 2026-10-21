@@ -258,6 +258,40 @@ ordersRouter.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Tambahkan endpoint ini di file orders.js (di atas DELETE)
+ordersRouter.patch('/:id/status', async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['draft', 'pending', 'in_progress', 'completed', 'cancelled'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(422).json({ success: false, message: 'Status tidak valid' });
+    }
+
+    const id = BigInt(req.params.id);
+    
+    // Update status di tabel orders
+    const updatedOrder = await prisma.orders.update({
+      where: { id },
+      data: { status },
+    });
+
+    // Catat ke history
+    await prisma.order_status_history.create({
+      data: {
+        order_id: id,
+        from_status: null, // Bisa disesuaikan jika ingin menyimpan status sebelumnya
+        to_status: status,
+        notes: `Status pengerjaan diubah menjadi ${status}`,
+      }
+    });
+
+    res.json({ success: true, data: updatedOrder, message: 'Status pengerjaan berhasil diupdate' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ============ DELETE ORDER ============
 ordersRouter.delete('/:id', async (req, res, next) => {
   try {

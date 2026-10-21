@@ -44,7 +44,7 @@ export default function MasterDataIndex() {
       )}
 
       <div className="mb-14">
-        <h1 className="text-2xl font-bold text-brand-text">Master Data Management</h1>
+        <h1 className="text-2xl font-bold text-brand-text">Management</h1>
         <p className="text-sm text-brand-text-muted mt-1">
           Kelola data dasar layanan dan tim untuk mendukung operasional.
         </p>

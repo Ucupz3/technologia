@@ -317,21 +317,22 @@ model order_status_history {
 }
 
 model invoices {
-  id             BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
-  invoice_number String          @unique(map: "uk_invoices_invoice_number") @db.VarChar(100)
-  order_id       BigInt          @db.UnsignedBigInt
-  customer_id    BigInt          @db.UnsignedBigInt
-  total_paid     Decimal         @default(0.00) @db.Decimal(15, 2)
-  status         invoices_status @default(unpaid)
-  due_date       DateTime?       @db.Date
-  issued_at      DateTime?       @db.Timestamp(0)
-  paid_at        DateTime?       @db.Timestamp(0)
-  created_at     DateTime?       @default(now()) @db.Timestamp(0)
-  updated_at     DateTime?       @default(now()) @db.Timestamp(0)
-  deleted_at     DateTime?       @db.Timestamp(0)
-  email_logs     email_logs[]
-  customers      customers       @relation(fields: [customer_id], references: [id], map: "fk_invoices_customer")
-  orders         orders          @relation(fields: [order_id], references: [id], map: "fk_invoices_order")
+  id                  BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  invoice_number      String                @unique(map: "uk_invoices_invoice_number") @db.VarChar(100)
+  order_id            BigInt                @db.UnsignedBigInt
+  customer_id         BigInt                @db.UnsignedBigInt
+  total_paid          Decimal               @default(0.00) @db.Decimal(15, 2)
+  status              invoices_status       @default(unpaid)
+  due_date            DateTime?             @db.Date
+  issued_at           DateTime?             @db.Timestamp(0)
+  paid_at             DateTime?             @db.Timestamp(0)
+  created_at          DateTime?             @default(now()) @db.Timestamp(0)
+  updated_at          DateTime?             @default(now()) @db.Timestamp(0)
+  deleted_at          DateTime?             @db.Timestamp(0)
+  email_logs          email_logs[]
+  invoice_attachments invoice_attachments[]
+  customers           customers             @relation(fields: [customer_id], references: [id], map: "fk_invoices_customer")
+  orders              orders                @relation(fields: [order_id], references: [id], map: "fk_invoices_order")
 
   @@index([order_id], map: "idx_invoices_order_id")
   @@index([customer_id], map: "idx_invoices_customer_id")
@@ -452,6 +453,20 @@ model audit_logs {
   @@index([entity_type, entity_id], map: "idx_audit_logs_entity")
   @@index([created_at], map: "idx_audit_logs_created")
   @@map("audit_logs")
+}
+
+model invoice_attachments {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  invoice_id  BigInt    @db.UnsignedBigInt
+  file_path   String    @db.VarChar(500)
+  file_name   String    @db.VarChar(255)
+  file_type   String?   @db.VarChar(50)
+  file_size   BigInt?   @db.UnsignedBigInt
+  uploaded_at DateTime? @default(now()) @db.Timestamp(0)
+  invoices    invoices  @relation(fields: [invoice_id], references: [id], onDelete: Cascade, map: "fk_ia_invoice")
+
+  @@index([invoice_id], map: "idx_ia_invoice_id")
+  @@index([uploaded_at], map: "idx_ia_uploaded")
 }
 
 enum users_status {

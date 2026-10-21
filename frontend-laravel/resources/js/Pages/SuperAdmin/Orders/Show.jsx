@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link } from '@inertiajs/react';
 import {
-  ArrowLeft, RefreshCw, FileText, CheckCircle2, AlertCircle,
-  User, Users, MapPin, Phone, Mail, Calendar, Star
+  ArrowLeft, RefreshCw, CheckCircle2, AlertCircle,
+  MapPin, Star, ChevronDown, Check
 } from 'lucide-react';
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
@@ -13,7 +13,22 @@ function getBasePath() {
   return window.location.pathname.replace(/\/orders.*$/, '');
 }
 
+const STATUS_OPTIONS = [
+  { value: 'draft',       label: 'Draft' },
+  { value: 'pending',     label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed',   label: 'Completed' },
+  { value: 'cancelled',   label: 'Cancelled' },
+];
+
 function OrderStatusBadge({ status }) {
+  const labels = {
+    draft: 'Draft',
+    pending: 'Pending',
+    in_progress: 'In Progress', // ✅ Label Badge
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  };
   const colors = {
     draft: 'bg-gray-500/15 text-gray-600 border-gray-500/40',
     pending: 'bg-amber-500/15 text-amber-600 border-amber-500/40',
@@ -21,15 +36,25 @@ function OrderStatusBadge({ status }) {
     completed: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/40',
     cancelled: 'bg-red-500/15 text-red-600 border-red-500/40',
   };
-  return <span className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium border ${colors[status] || colors.draft}`}>{status}</span>;
+  return <span className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium border ${colors[status] || colors.draft}`}>{labels[status] || status}</span>;
 }
 
 export default function OrderShow({ orderId }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // State untuk Dropdown Status
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const basePath = getBasePath();
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const load = () => {
     setLoading(true);
@@ -50,6 +75,32 @@ export default function OrderShow({ orderId }) {
   useEffect(() => {
     load();
   }, [orderId]);
+
+  const handleStatusChange = async (newStatus) => {
+    setIsStatusOpen(false);
+    if (newStatus === order.status) return;
+
+    setUpdatingStatus(true);
+    try {
+      const res = await fetch(`/api/v1/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        showToast('error', data.message || 'Gagal mengubah status');
+      } else {
+        load(); // Reload data order
+        showToast('success', 'Status pengerjaan berhasil diupdate');
+      }
+    } catch {
+      showToast('error', 'Gagal menghubungi server');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -82,6 +133,13 @@ export default function OrderShow({ orderId }) {
     <RoleLayout>
       <Head title={`Detail Order — ${order.order_number}`} />
 
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600' : 'bg-red-500/15 border-red-500/40 text-red-600'}`}>
+          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
+
       {/* Header Halaman */}
       <div className="mb-6">
         <Link href={`${basePath}/orders`} className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3">
@@ -92,14 +150,51 @@ export default function OrderShow({ orderId }) {
           <div>
             <h1 className="text-2xl font-bold text-brand-text flex items-center gap-3">
               {order.order_number}
-              <OrderStatusBadge status={order.status} />
             </h1>
             <p className="text-sm text-brand-text-muted mt-1">
               Dibuat pada {formatDate(order.created_at)}
             </p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={load} className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition">
+          
+          <div className="flex gap-2 items-center">
+            {/* ✅ CUSTOM DROPDOWN STATUS */}
+            <div className="relative">
+              <button
+                type="button"
+                disabled={updatingStatus}
+                onClick={() => setIsStatusOpen(!isStatusOpen)}
+                className="flex items-center justify-between gap-3 bg-brand-primary border border-brand-border rounded-xl px-4 py-2 text-sm font-semibold text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition min-w-[160px]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-brand-text-muted font-normal">Status:</span>
+                  <OrderStatusBadge status={order.status} />
+                </div>
+                <ChevronDown size={16} className={`text-brand-text-muted transition-transform ${isStatusOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isStatusOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setIsStatusOpen(false)} />
+                  <div className="absolute z-30 top-full right-0 mt-2 w-48 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl">
+                    {STATUS_OPTIONS.map((s) => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => handleStatusChange(s.value)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
+                          order.status === s.value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'
+                        }`}
+                      >
+                        <span>{s.label}</span>
+                        {order.status === s.value && <Check size={14} />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button onClick={load} className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm">
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
             </button>
           </div>
