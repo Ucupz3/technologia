@@ -39,13 +39,12 @@ const roleLabel = {
   super_admin: 'Super Admin',
   admin: 'Admin',
   sales: 'Sales',
-  customer_service: 'Customer Service',
 };
 
 const roleBadgeColor = {
   super_admin: 'bg-orange-500/15 text-orange-400 border-orange-500/40',
   admin:       'bg-blue-500/15 text-blue-400 border-blue-500/40',
-  customer_service:       'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+  sales:       'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
 };
 
 const SIDEBAR_STORAGE_KEY = 'erp_sidebar_open';

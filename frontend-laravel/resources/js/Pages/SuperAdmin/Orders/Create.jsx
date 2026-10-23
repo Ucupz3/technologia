@@ -126,7 +126,7 @@ export default function OrderCreate() {
     setForm({
       ...form,
       service_id: val,
-      price_deal: selectedService ? selectedService.price : ''
+      price_deal: selectedService ? selectedService.default_price : ''
     });
   };
 
