@@ -60,7 +60,7 @@ customersRouter.get('/sales/options', async (_req, res, next) => {
       where: {
         deleted_at: null,
         status: 'active',
-        roles: { name: { in: ['CS', 'Sales'] } },
+        roles: { name: { in: ['CS'] } },
       },
       select: { id: true, name: true, email: true },
       orderBy: { name: 'asc' },

@@ -37,7 +37,7 @@ ordersRouter.get('/options/services', async (_req, res, next) => {
 ordersRouter.get('/options/sales', async (_req, res, next) => {
   try {
     const data = await prisma.users.findMany({
-      where: { deleted_at: null, status: 'active', roles: { name: { in: ['CS', 'Sales'] } } },
+      where: { deleted_at: null, status: 'active', roles: { name: { in: ['CS'] } } },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });

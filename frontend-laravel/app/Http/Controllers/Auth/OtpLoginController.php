@@ -54,8 +54,8 @@ class OtpLoginController extends Controller
         $roleName = match ($expressUser['role_slug'] ?? null) {
             'super_admin' => 'Super Admin',
             'admin'       => 'Admin',
-            'sales'       => 'Sales',
-            default       => 'Sales',
+            'sales'       => 'CS',
+            default       => 'CS',
         };
 
         $role = Role::where('name', $roleName)->first();
