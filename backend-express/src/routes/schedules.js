@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 
 export const schedulesRouter = Router();
-// GET /api/v1/schedules (Ambil semua order yang punya tanggal proyek)
+
+// GET /api/v1/schedules (Ambil semua order yang punya tanggal proyek untuk kalender)
 schedulesRouter.get('/', async (_req, res, next) => {
   try {
     const orders = await prisma.orders.findMany({
@@ -28,8 +29,9 @@ schedulesRouter.get('/', async (_req, res, next) => {
     res.json({ success: true, data: orders });
   } catch (err) { next(err); }
 });
-// GET /api/v1/schedules (List Jadwal)
-schedulesRouter.get('/', async (_req, res, next) => {
+
+// GET /api/v1/schedules/maintenances (List maintenance schedules)
+schedulesRouter.get('/maintenances', async (_req, res, next) => {
   try {
     const schedules = await prisma.maintenances.findMany({
       where: { deleted_at: null },
@@ -39,7 +41,6 @@ schedulesRouter.get('/', async (_req, res, next) => {
       orderBy: { start_datetime: 'desc' },
     });
 
-    // Ambil list order untuk form dropdown
     const orders = await prisma.orders.findMany({
       where: { deleted_at: null, status: { notIn: ['cancelled'] } },
       select: { id: true, order_number: true, customer_name_snapshot: true },
