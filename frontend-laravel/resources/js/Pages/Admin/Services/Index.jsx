@@ -1,12 +1,498 @@
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
+import { Link } from '@inertiajs/react';
+import {
+  RefreshCw, Search, Plus, Eye, X,
+  Briefcase, CheckCircle2, AlertCircle, Save, Clock,
+  ChevronDown, Check,
+} from 'lucide-react';
 
-export default function Page() {
+const STATUS_OPTIONS = [
+  { value: 'active',   label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+];
+
+export default function ServicesIndex() {
+  const [toast, setToast] = useState(null);
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
+  const [services, setServices] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    setError('');
+    Promise.all([
+      fetch('/api/v1/services').then((r) => r.json()),
+      fetch('/api/v1/services/categories/options').then((r) => r.json()),
+    ])
+      .then(([s, c]) => {
+        if (s.success) setServices(s.data || []);
+        else setError(s.message || 'Gagal mengambil data service');
+        if (c.success) setCategories(c.data || []);
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError(e.message);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filtered = services.filter((s) => {
+    const q = search.toLowerCase();
+    const matchSearch =
+      !q ||
+      s.name?.toLowerCase().includes(q) ||
+      s.description?.toLowerCase().includes(q) ||
+      s.category_name?.toLowerCase().includes(q) ||
+      s.service_categories?.name?.toLowerCase().includes(q);
+    const matchCategory = !categoryFilter || String(s.category_id) === String(categoryFilter);
+    const matchStatus = !statusFilter || s.status === statusFilter;
+    return matchSearch && matchCategory && matchStatus;
+  });
+
   return (
     <RoleLayout>
-      <Head title="Manajemen Services" />
-      <h1 className="text-2xl font-bold mb-2">Manajemen Services</h1>
-      <p className="text-slate-500">Halaman Manajemen Services — segera diisi.</p>
+      <Head title="Master Data Services" />
+
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border transition ${
+          toast.type === 'success'
+            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+            : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-brand-text">Master Data Services</h1>
+        <p className="text-sm text-brand-text-muted mt-1">
+          Kelola katalog layanan, harga dasar, estimasi durasi, dan status operasional.
+        </p>
+      </div>
+
+    <div>
+      {/* ============ FILTER BAR ============ */}
+      <div className="mb-4 space-y-3">
+        {/* Baris Utama: Div A (Kiri) + Div B (Kanan) */}
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          
+          {/* ============ DIV A: SEARCH + KATEGORI + STATUS ============ */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
+            {/* Input Pencarian */}
+            <div className="relative flex-1 min-w-0 max-w-md">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+              <input
+                type="text"
+                placeholder="Cari nama atau deskripsi..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-9 py-3 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Custom Dropdown Kategori */}
+            <div className="relative sm:w-44 sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsStatusOpen(false); }}
+                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3 py-3 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              >
+                <span className="truncate">
+                  {categoryFilter 
+                    ? categories.find((c) => String(c.id) === String(categoryFilter))?.name 
+                    : 'Semua Kategori'}
+                </span>
+                <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isCategoryOpen ? 'rotate-180 text-brand-accent' : ''}`} />
+              </button>
+
+              {isCategoryOpen && (
+                <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl backdrop-blur-md max-h-56 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => { setCategoryFilter(''); setIsCategoryOpen(false); }}
+                    className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between transition-colors ${!categoryFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                  >
+                    <span>Semua Kategori</span>
+                    {!categoryFilter && <Check size={14} className="text-brand-accent" />}
+                  </button>
+                  {categories.map((c) => {
+                    const isSelected = String(categoryFilter) === String(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => { setCategoryFilter(c.id); setIsCategoryOpen(false); }}
+                        className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between transition-colors ${isSelected ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                      >
+                        <span className="truncate">{c.name}</span>
+                        {isSelected && <Check size={14} className="text-brand-accent" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Custom Dropdown Status */}
+            <div className="relative sm:w-40 sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => { setIsStatusOpen(!isStatusOpen); setIsCategoryOpen(false); }}
+                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3 py-3 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+              >
+                <span className="truncate">
+                  {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'Semua Status'}
+                </span>
+                <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isStatusOpen ? 'rotate-180 text-brand-accent' : ''}`} />
+              </button>
+
+              {isStatusOpen && (
+                <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl backdrop-blur-md max-h-56 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => { setStatusFilter(''); setIsStatusOpen(false); }}
+                    className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between transition-colors ${!statusFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                  >
+                    <span>Semua Status</span>
+                    {!statusFilter && <Check size={14} className="text-brand-accent" />}
+                  </button>
+                  {STATUS_OPTIONS.map((s) => {
+                    const isSelected = statusFilter === s.value;
+                    return (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => { setStatusFilter(s.value); setIsStatusOpen(false); }}
+                        className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center justify-between transition-colors ${isSelected ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                      >
+                        <span className="truncate">{s.label}</span>
+                        {isSelected && <Check size={14} className="text-brand-accent" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ============ DIV B: REFRESH + TAMBAH (KANAN) ============ */}
+          <div className="flex items-center gap-2 lg:shrink-0 lg:ml-auto">
+            <button
+              onClick={load}
+              title="Refresh"
+              className="bg-brand-primary border border-brand-border text-brand-text px-3 py-3 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="bg-brand-accent text-brand-primary font-semibold px-4 py-3 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-sm transition shadow-sm whitespace-nowrap"
+            >
+              <Plus size={16} /> Tambah Service
+            </button>
+          </div>
+        </div>
+
+        {/* Info filter aktif */}
+        {(search || categoryFilter || statusFilter) && (
+          <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-3 rounded-xl backdrop-blur-sm">
+            <span>
+              Menampilkan <strong className="text-brand-text font-semibold">{filtered.length}</strong> dari {services.length} service
+            </span>
+            <button
+              onClick={() => { 
+                setSearch(''); 
+                setCategoryFilter(''); 
+                setStatusFilter(''); 
+                setIsCategoryOpen(false);
+                setIsStatusOpen(false);
+              }}
+              className="text-brand-accent hover:text-brand-accent2 flex items-center gap-1.5 font-medium transition"
+            >
+              <X size={13} /> Reset filter
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ============ TABLE ============ */}
+      <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
+        {loading && (
+          <div className="p-12 text-center text-brand-text-muted">
+            <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
+            Loading service...
+          </div>
+        )}
+
+        {error && (
+          <div className="p-8 text-center">
+            <p className="text-red-600 dark:text-red-400 mb-3">Error: {error}</p>
+            <button onClick={load} className="text-brand-accent underline hover:no-underline">Coba lagi</button>
+          </div>
+        )}
+
+        {!loading && !error && filtered.length === 0 && (
+          <div className="p-12 text-center">
+            <Briefcase size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
+            <p className="text-brand-text-muted">
+              {services.length === 0 ? 'Belum ada service' : 'Tidak ada service yang cocok'}
+            </p>
+          </div>
+        )}
+
+        {!loading && !error && filtered.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-brand-muted/40 border-b border-brand-border text-xs font-semibold text-brand-text-muted uppercase tracking-widest">
+                <tr>
+                  <th className="px-4 py-3 w-16">NO</th>
+                  <th className="px-4 py-3">NAMA SERVICE</th>
+                  <th className="px-4 py-3">KATEGORI</th>
+                  <th className="px-4 py-3">STATUS</th>
+                  <th className="px-4 py-3 text-right">AKSI</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand-border/50 text-sm">
+                {filtered.map((srv, idx) => (
+                  <tr key={srv.id} className="hover:bg-brand-muted/40 transition">
+                    <td className="px-4 py-3 text-brand-text-muted">{idx + 1}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-brand-text">{srv.name}</div>
+                      {srv.description && (
+                        <div className="text-xs text-brand-text-muted truncate max-w-xs">{srv.description}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-block text-xs px-2.5 py-1 rounded bg-brand-muted text-brand-text border border-brand-border">
+                        {srv.service_categories?.name || srv.category_name || '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={srv.status} />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/admin/services/${srv.id}`}
+                          title="Detail"
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition flex items-center gap-1"
+                        >
+                          <Eye size={14} /> Detail
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!loading && !error && filtered.length > 0 && (
+          <div className="px-4 py-3 border-t border-brand-border text-xs text-brand-text-muted">
+            Menampilkan {filtered.length} service
+          </div>
+        )}
+      </div>
+
+      {/* MODAL CREATE */}
+      {createOpen && (
+        <ServiceFormModal
+          mode="create"
+          service={null}
+          categories={categories}
+          onClose={() => setCreateOpen(false)}
+          onSuccess={(msg) => { setCreateOpen(false); load(); showToast?.('success', msg); }}
+          onError={(msg) => showToast?.('error', msg)}
+        />
+      )}
+    </div>
     </RoleLayout>
   );
+}
+
+// ============ FORM MODAL ============
+function ServiceFormModal({ mode, service, categories, onClose, onSuccess, onError }) {
+  const isEdit = mode === 'edit';
+  const [form, setForm] = useState({
+    category_id: service?.category_id || '',
+    name: service?.name || '',
+    description: service?.description || '',
+    default_price: service?.default_price || service?.price || '0',
+    duration: service?.duration || 0,
+    status: service?.status || 'active',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setErrors({});
+
+    const payload = {
+      ...form,
+      default_price: form.default_price === '' ? 0 : Number(form.default_price),
+      duration: form.duration === '' ? 0 : Number(form.duration),
+      category_id: form.category_id ? Number(form.category_id) : null,
+    };
+
+    const url = isEdit ? `/api/v1/services/${service.id}` : '/api/v1/services';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        if (data.errors) setErrors(data.errors);
+        onError(data.message || 'Gagal menyimpan service');
+      } else {
+        onSuccess(isEdit ? 'Service berhasil diupdate' : 'Service berhasil dibuat');
+      }
+    } catch {
+      onError('Gagal menghubungi server');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between">
+          <h2 className="text-xl font-bold text-brand-text">
+            {isEdit ? 'Edit Service' : 'Tambah Service Baru'}
+          </h2>
+          <button onClick={onClose} className="text-brand-text-muted hover:text-brand-accent text-2xl leading-none transition">×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              Kategori <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={form.category_id}
+              onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+            >
+              <option value="">Pilih Kategori...</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            {errors.category_id && <p className="text-xs text-red-500 mt-1">{errors.category_id[0]}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              Nama Service <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Contoh: Pembuatan Website Company Profile"
+              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+            />
+            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name[0]}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              Deskripsi
+            </label>
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Jelaskan cakupan layanan..."
+              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              Status
+            </label>
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        </form>
+
+        <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
+            Batal
+          </button>
+          <button onClick={handleSubmit} disabled={submitting} className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+            {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+            {submitting ? 'Menyimpan...' : 'Buat Service'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const isAct = status === 'active';
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-medium border ${
+      isAct
+        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
+        : 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/40'
+    }`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${isAct ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-500 dark:bg-gray-400'}`} />
+      {isAct ? 'Active' : 'Inactive'}
+    </span>
+  );
+}
+
+function formatRupiah(val) {
+  return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 }

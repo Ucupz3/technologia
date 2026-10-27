@@ -65,6 +65,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 // ========================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/services', fn() => Inertia::render('Admin/Services/Index'))->name('services.index');
+    Route::get('/services/{id}', fn($id) => Inertia::render('Admin/Services/Show', ['serviceId' => (int) $id]))->name('services.show');
 
     // Customers
     Route::get('/customers', fn() => Inertia::render('Admin/Customers/Index'))->name('customers.index');

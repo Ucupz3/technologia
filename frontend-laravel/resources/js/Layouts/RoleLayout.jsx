@@ -21,7 +21,7 @@ const menuByRole = {
   ],
   admin: [
     { label: 'Dashboard', href: '/dashboard',         icon: Home },
-    { label: 'Services',  href: '/admin/services',    icon: Database },
+    { label: 'Master data', href: '/admin/services',    icon: Database },
     { label: 'Customers', href: '/admin/customers',   icon: Contact },
     { label: 'Orders',    href: '/admin/orders',      icon: Package },
     { label: 'Schedules', href: '/admin/schedules',   icon: Calendar },
