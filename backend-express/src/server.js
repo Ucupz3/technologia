@@ -22,11 +22,14 @@ import { rolesRouter } from './routes/roles.js';
 import { categoriesRouter } from './routes/categories.js';
 import { teamsRouter } from './routes/teams.js';
 import { teamMembersRouter } from './routes/team-members.js';
+import { jobsRouter } from './routes/jobs.js';
 import { customersRouter } from './routes/customers.js';
 import { invoicesRouter, paymentsRouter } from './routes/invoices.js';
 import { assignmentsRouter, orderAssignmentsRouter } from './routes/assignments.js';
 import { schedulesRouter } from './routes/schedules.js';
 import { progressRouter, orderProgressRouter } from './routes/progress.js';
+import { developerDashboardRouter } from './routes/developer-dashboard.js';
+import { developerTasksRouter } from './routes/developer-tasks.js';
 import swaggerUi from 'swagger-ui-express';
 import { openapiSpecification } from './docs/swagger.js';
 
@@ -75,6 +78,7 @@ app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/service-categories', categoriesRouter);
 app.use('/api/v1/teams', teamsRouter);
 app.use('/api/v1/team-members', teamMembersRouter);
+app.use('/api/v1/jobs', jobsRouter);
 app.use('/api/v1/customers', customersRouter);
 app.use('/api/v1/invoices', invoicesRouter);
 app.use('/api/v1/payments', invoicesRouter);
@@ -83,6 +87,8 @@ app.use('/api/v1/orders/:orderId/assignments', orderAssignmentsRouter);
 app.use('/api/v1/progress', progressRouter);
 app.use('/api/v1/schedules', schedulesRouter);
 app.use('/api/v1/orders/:orderId/progress', orderProgressRouter);
+app.use('/api/v1/developer/dashboard', developerDashboardRouter);
+app.use('/api/v1/developer/tasks', developerTasksRouter);
 
 // ============ 404 ============
 app.use((_req, res) => {

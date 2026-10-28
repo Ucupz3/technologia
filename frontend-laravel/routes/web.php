@@ -58,6 +58,9 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::get('/master-data/teams', fn() => redirect('/super-admin/master-data?tab=teams'))->name('master-data.teams');
     Route::get('/master-data/teams/{id}', fn($id) => Inertia::render('SuperAdmin/MasterData/Teams/Show', ['teamId' => (int) $id]))->name('master-data.teams.show');
 
+    Route::get('/master-data/jobs', fn() => redirect('/super-admin/master-data?tab=jobs'))->name('master-data.jobs');
+    Route::get('/master-data/jobs/{id}', fn($id) => Inertia::render('SuperAdmin/MasterData/Jobs/Show', ['jobId' => (int) $id]))->name('master-data.jobs.show');
+
 });
 
 // ========================================
@@ -90,6 +93,19 @@ Route::middleware(['auth', 'role:sales'])->prefix('sales')->name('sales.')->grou
     Route::get('/orders/create', fn() => Inertia::render('Sales/Orders/Create'))->name('orders.create');
     Route::get('/invoices', fn() => Inertia::render('Sales/Invoices/Index'))->name('invoices.index');
     Route::get('/invoices/{id}', fn($id) => Inertia::render('Sales/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
+});
+
+// routes/web.php
+Route::middleware(['auth'])->group(function () {
+    // Route Dashboard Developer (Diubah ke Index)
+    Route::get('/developer/dashboard', function () {
+        return Inertia::render('Developer/Index');
+    })->name('developer.dashboard');
+    
+    // Route lainnya untuk developer
+    Route::get('/developer/tasks', fn() => Inertia::render('Developer/Tasks/Index'))->name('developer.tasks');
+    Route::get('/developer/schedules', fn() => Inertia::render('Developer/Schedules/Index'))->name('developer.schedules');
+    Route::get('/developer/logs', fn() => Inertia::render('Developer/Logs'))->name('developer.logs');
 });
 
 require __DIR__.'/auth.php';

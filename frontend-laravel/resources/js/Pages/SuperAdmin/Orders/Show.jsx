@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react'; // ✅ Tambahkan router
 import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertCircle,
   MapPin, Star, ChevronDown, Check
@@ -8,10 +8,6 @@ import {
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
-
-function getBasePath() {
-  return window.location.pathname.replace(/\/orders.*$/, '');
-}
 
 const STATUS_OPTIONS = [
   { value: 'draft',       label: 'Draft' },
@@ -25,7 +21,7 @@ function OrderStatusBadge({ status }) {
   const labels = {
     draft: 'Draft',
     pending: 'Pending',
-    in_progress: 'In Progress', // ✅ Label Badge
+    in_progress: 'In Progress',
     completed: 'Completed',
     cancelled: 'Cancelled',
   };
@@ -48,8 +44,6 @@ export default function OrderShow({ orderId }) {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [toast, setToast] = useState(null);
-
-  const basePath = getBasePath();
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -92,7 +86,7 @@ export default function OrderShow({ orderId }) {
       if (!res.ok || !data.success) {
         showToast('error', data.message || 'Gagal mengubah status');
       } else {
-        load(); // Reload data order
+        load();
         showToast('success', 'Status pengerjaan berhasil diupdate');
       }
     } catch {
@@ -100,6 +94,11 @@ export default function OrderShow({ orderId }) {
     } finally {
       setUpdatingStatus(false);
     }
+  };
+
+  // ✅ FUNGSI UNTUK KEMBALI KE HALAMAN SEBELUMNYA
+  const handleBack = () => {
+    window.history.back();
   };
 
   if (loading) {
@@ -120,7 +119,10 @@ export default function OrderShow({ orderId }) {
         <Head title="Detail Order" />
         <div className="p-8 text-center">
           <p className="text-red-600 dark:text-red-400 mb-3">Error: {error || 'Data tidak ditemukan'}</p>
-          <Link href={`${basePath}/orders`} className="text-brand-accent underline">← Kembali ke daftar</Link>
+          {/* ✅ Ganti Link dengan Button Back */}
+          <button onClick={handleBack} className="text-brand-accent underline">
+            ← Kembali ke halaman sebelumnya
+          </button>
         </div>
       </RoleLayout>
     );
@@ -140,11 +142,14 @@ export default function OrderShow({ orderId }) {
         </div>
       )}
 
-      {/* Header Halaman */}
       <div className="mb-6">
-        <Link href={`${basePath}/orders`} className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3">
-          <ArrowLeft size={16} /> Kembali ke Orders
-        </Link>
+        {/* ✅ GANTI LINK DENGAN BUTTON BACK */}
+        <button 
+          onClick={handleBack} 
+          className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
+        >
+          <ArrowLeft size={16} /> Kembali
+        </button>
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -157,7 +162,6 @@ export default function OrderShow({ orderId }) {
           </div>
           
           <div className="flex gap-2 items-center">
-            {/* ✅ CUSTOM DROPDOWN STATUS */}
             <div className="relative">
               <button
                 type="button"
@@ -331,7 +335,6 @@ export default function OrderShow({ orderId }) {
   );
 }
 
-// ============ CARD COMPONENT ============
 function Card({ title, children }) {
   return (
     <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
