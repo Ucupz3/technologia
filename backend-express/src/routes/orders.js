@@ -71,15 +71,86 @@ ordersRouter.get('/options/teams', async (_req, res, next) => {
 });
 
 // ============ GET LIST ============
-ordersRouter.get('/', async (_req, res, next) => {
+ordersRouter.get('/', async (req, res, next) => {
   try {
-    const orders = await prisma.orders.findMany({
-      where: { deleted_at: null },
-      orderBy: { created_at: 'desc' },
-      include: {
-        customers: { select: { id: true, name: true } },
-        teams: { select: { id: true, name: true } },
+    const dashboardQuery = ['search', 'status', 'payment', 'date', 'page', 'limit']
+      .some((key) => req.query[key] !== undefined);
+    const where = { deleted_at: null };
+    const { search, status, payment, date } = req.query;
+
+    if (status) {
+      if (!['draft', 'pending', 'in_progress', 'completed', 'cancelled'].includes(status)) {
+        return res.status(422).json({ success: false, message: 'Filter status tidak valid' });
+      }
+      where.status = status;
+    }
+    if (payment) {
+      if (!['unpaid', 'partial', 'paid', 'refunded', 'failed'].includes(payment)) {
+        return res.status(422).json({ success: false, message: 'Filter pembayaran tidak valid' });
+      }
+      where.payment_status = payment;
+    }
+    if (search) {
+      where.OR = [
+        { order_number: { contains: search } },
+        { customer_name_snapshot: { contains: search } },
+        { customers: { name: { contains: search } } },
+        { order_services: { some: { deleted_at: null, service_name_snapshot: { contains: search } } } },
+      ];
+    }
+    if (date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00`))) {
+        return res.status(422).json({ success: false, message: 'Filter tanggal tidak valid' });
+      }
+      const start = new Date(`${date}T00:00:00`);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      where.start_date_project = { gte: start, lt: end };
+    }
+
+    const orderBy = { created_at: 'desc' };
+    const include = {
+      customers: { select: { id: true, name: true } },
+      teams: { select: { id: true, name: true } },
+      order_services: {
+        where: { deleted_at: null },
+        select: { service_name_snapshot: true },
+        take: 1,
       },
+    };
+
+    if (dashboardQuery) {
+      const page = Number(req.query.page || 1);
+      const limit = Number(req.query.limit || 10);
+      if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return res.status(422).json({ success: false, message: 'Halaman atau batas data tidak valid' });
+      }
+      const [orders, total] = await Promise.all([
+        prisma.orders.findMany({ where, orderBy, include, skip: (page - 1) * limit, take: limit }),
+        prisma.orders.count({ where }),
+      ]);
+      return res.json({
+        success: true,
+        data: {
+          items: orders.map((order) => ({
+            id: order.id.toString(),
+            order_number: order.order_number,
+            customer_name: order.customers?.name || order.customer_name_snapshot,
+            service_name: order.order_services[0]?.service_name_snapshot || 'Layanan tidak tersedia',
+            grand_total: Number(order.grand_total),
+            status: order.status,
+            team_id: order.team_id?.toString() || null,
+          })),
+          total,
+          pages: Math.max(1, Math.ceil(total / limit)),
+        },
+      });
+    }
+
+    const orders = await prisma.orders.findMany({
+      where,
+      orderBy,
+      include,
     });
     res.json({ success: true, data: orders });
   } catch (err) { next(err); }
@@ -206,6 +277,18 @@ ordersRouter.post('/', async (req, res, next) => {
           notes: null,
         },
       });
+
+      if (start_date_project) {
+        await tx.maintenances.create({
+          data: {
+            order_id: newOrder.id,
+            title: service.name,
+            status: 'scheduled',
+            start_datetime: new Date(start_date_project),
+            notes: notes || null,
+          },
+        });
+      }
 
       // 3. Simpan Order Assignments (Tim)
       if (assignments && assignments.length > 0) {

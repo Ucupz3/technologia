@@ -707,6 +707,17 @@ export const openapiSpecification = {
     },
 
     // ================= DASHBOARD =================
+    '/api/v1/dashboard/admin': {
+      get: {
+        summary: 'Ringkasan Dashboard Admin',
+        tags: ['Dashboard'],
+        responses: {
+          200: {
+            description: 'Statistik order, jadwal, deadline, pembayaran, order mingguan, dan invoice tertunda',
+          },
+        },
+      },
+    },
     '/api/v1/dashboard': {
       get: {
         summary: 'Ringkasan Metrik Dashboard ERP',

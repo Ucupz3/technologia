@@ -20,12 +20,12 @@ const menuByRole = {
     { label: 'Audit Logs',  href: '/super-admin/audit-logs', icon: ClipboardClock },
   ],
   admin: [
-    { label: 'Dashboard', href: '/dashboard',         icon: Home },
-    { label: 'Services',  href: '/admin/services',    icon: Database },
-    { label: 'Customers', href: '/admin/customers',   icon: Contact },
-    { label: 'Orders',    href: '/admin/orders',      icon: Package },
-    { label: 'Schedules', href: '/admin/schedules',   icon: Calendar },
-    { label: 'Invoices',  href: '/admin/invoices',    icon: Newspaper },
+  { label: 'Dashboard', href: '/dashboard',       icon: Home },
+  { label: 'Management',  href: '/admin/master-data',  icon: Database },
+  { label: 'Customers', href: '/admin/customers', icon: Contact },
+  { label: 'Orders',    href: '/admin/orders',    icon: Package },
+  { label: 'Invoices',  href: '/admin/invoices',  icon: Newspaper },
+  { label: 'Schedules', href: '/admin/schedules', icon: Calendar },
   ],
   sales: [
     { label: 'Dashboard', href: '/dashboard',         icon: Home },
