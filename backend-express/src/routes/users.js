@@ -25,10 +25,10 @@ function mapRoleToSlug(roleName) {
   const map = {
     'Super Admin': 'super_admin',
     'Admin': 'admin',
-    'CS': 'sales',
-    'Sales': 'sales',
+    'CS': 'cs',
+    'Customer Service': 'cs',
   };
-  return map[roleName] || 'sales';
+  return map[roleName] || 'cs';
 }
 
 // GET /api/v1/users (Daftar semua user + 1 role + list user_jobs)

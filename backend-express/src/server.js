@@ -4,8 +4,7 @@ BigInt.prototype.toJSON = function () {
 };
 
 // ============ LOAD ENV PALING AWAL ============
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 // ============ BARU IMPORT LAINNYA ============
 import express from 'express';
@@ -97,3 +96,4 @@ app.listen(PORT, () => {
   console.log(`✅ Express API jalan di http://localhost:${PORT}`);
   console.log(`   Health: http://localhost:${PORT}/health`);
 });
+

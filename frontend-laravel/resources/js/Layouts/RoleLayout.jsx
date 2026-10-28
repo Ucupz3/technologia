@@ -27,25 +27,24 @@ const menuByRole = {
     { label: 'Schedules', href: '/admin/schedules',   icon: Calendar },
     { label: 'Invoices',  href: '/admin/invoices',    icon: Newspaper },
   ],
-  sales: [
-    { label: 'Dashboard', href: '/dashboard',         icon: Home },
-    { label: 'Customers', href: '/sales/customers',   icon: Contact },
-    { label: 'Orders',    href: '/sales/orders',      icon: Package },
-    { label: 'Invoices',  href: '/sales/invoices',    icon: Newspaper },
+  cs: [
+    { label: 'Dashboard', href: '/dashboard',      icon: Home },
+    { label: 'Customers', href: '/cs/customers',    icon: Contact },
+    { label: 'Orders',    href: '/cs/orders',       icon: Package },
+    { label: 'Invoices',  href: '/cs/invoices',     icon: Newspaper },
   ],
 };
 
 const roleLabel = {
   super_admin: 'Super Admin',
   admin: 'Admin',
-  sales: 'Sales',
-  customer_service: 'Customer Service',
+  cs: 'Customer Service',
 };
 
 const roleBadgeColor = {
   super_admin: 'bg-orange-500/15 text-orange-400 border-orange-500/40',
   admin:       'bg-blue-500/15 text-blue-400 border-blue-500/40',
-  customer_service:       'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+  cs:          'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
 };
 
 const SIDEBAR_STORAGE_KEY = 'erp_sidebar_open';

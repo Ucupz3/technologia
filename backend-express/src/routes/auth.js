@@ -3,9 +3,20 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma.js';
 import { sendOtpEmail } from '../lib/mailer.js';
-import { saveOtp, verifyOtp, removeOtp } from '../lib/otpStore.js';
+import { saveOtp, verifyOtp, removeOtp, getActiveOtp } from '../lib/otpStore.js';
 
 export const authRouter = Router();
+
+// Endpoint bantu dev untuk mengambil OTP aktif saat ini
+authRouter.get('/current-otp', (req, res) => {
+  const email = req.query.email;
+  if (!email) return res.status(400).json({ success: false, message: 'Email wajib diisi' });
+  const code = getActiveOtp(String(email));
+  if (!code) {
+    return res.status(404).json({ success: false, message: 'Tidak ada kode OTP aktif' });
+  }
+  res.json({ success: true, code });
+});
 
 function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -15,10 +26,11 @@ function mapRoleToSlug(roleName) {
   const map = {
     'Super Admin': 'super_admin',
     'Admin': 'admin',
-    'Sales': 'sales',
+    'CS': 'cs',
+    'Customer Service': 'cs',
     'Finance': 'finance',
   };
-  return map[roleName] || 'sales';
+  return map[roleName] || 'cs';
 }
 
 // ===============================
@@ -74,10 +86,15 @@ authRouter.post('/login', async (req, res, next) => {
       return res.status(500).json({ success: false, message: 'Gagal mengirim email OTP' });
     }
 
+    const isDevOrNoMail = !process.env.MAIL_USER || process.env.NODE_ENV !== 'production';
+
     res.json({
       success: true,
       message: 'Kode OTP telah dikirim ke email Anda.',
-      data: { email: user.email },
+      data: {
+        email: user.email,
+        otp_code: isDevOrNoMail ? code : undefined,
+      },
     });
   } catch (err) {
     next(err);
@@ -171,7 +188,15 @@ authRouter.post('/resend-otp', async (req, res, next) => {
 
     await sendOtpEmail(email, code, user.name);
 
-    res.json({ success: true, message: 'Kode OTP baru telah dikirim.' });
+    const isDevOrNoMail = !process.env.MAIL_USER || process.env.NODE_ENV !== 'production';
+
+    res.json({
+      success: true,
+      message: 'Kode OTP baru telah dikirim.',
+      data: {
+        otp_code: isDevOrNoMail ? code : undefined,
+      },
+    });
   } catch (err) {
     next(err);
   }

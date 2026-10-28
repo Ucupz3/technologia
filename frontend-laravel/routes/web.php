@@ -79,9 +79,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
 
 // ========================================
-// SALES
+// CS / CUSTOMER SERVICE
 // ========================================
-Route::middleware(['auth', 'role:sales'])->prefix('sales')->name('sales.')->group(function () {
+Route::middleware(['auth', 'role:cs'])->prefix('cs')->name('cs.')->group(function () {
     // Customers
     Route::get('/customers', fn() => Inertia::render('Sales/Customers/Index'))->name('customers.index');
     Route::get('/customers/{id}', fn($id) => Inertia::render('Sales/Customers/Show', ['customerId' => (int) $id]))->name('customers.show');

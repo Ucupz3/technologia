@@ -36,6 +36,14 @@ export function removeOtp(email) {
   store.delete(email.toLowerCase());
 }
 
+export function getActiveOtp(email) {
+  if (!email) return null;
+  const entry = store.get(email.toLowerCase());
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) return null;
+  return entry.code;
+}
+
 // Cleanup otomatis tiap 1 menit
 setInterval(() => {
   const now = Date.now();

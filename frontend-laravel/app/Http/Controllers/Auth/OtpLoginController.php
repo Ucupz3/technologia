@@ -24,9 +24,12 @@ class OtpLoginController extends Controller
             return redirect()->route('login');
         }
 
+        $devOtp = session('dev_otp_code') ?: $this->express->getActiveOtp((string) $email);
+
         return Inertia::render('Auth/VerifyOtp', [
-            'email' => $email,
-            'status' => session('status'),
+            'email'        => (string) $email,
+            'status'       => session('status'),
+            'dev_otp_code' => $devOtp,
         ]);
     }
 
@@ -42,7 +45,7 @@ class OtpLoginController extends Controller
             return redirect()->route('login');
         }
 
-        $expressUser = $this->express->verifyOtp($email, $data['code']);
+        $expressUser = $this->express->verifyOtp((string) $email, $data['code']);
 
         if (!$expressUser) {
             throw ValidationException::withMessages([
@@ -54,8 +57,8 @@ class OtpLoginController extends Controller
         $roleName = match ($expressUser['role_slug'] ?? null) {
             'super_admin' => 'Super Admin',
             'admin'       => 'Admin',
-            'sales'       => 'Sales',
-            default       => 'Sales',
+            'cs'          => 'CS',
+            default       => 'CS',
         };
 
         $role = Role::where('name', $roleName)->first();
@@ -72,7 +75,7 @@ class OtpLoginController extends Controller
         $user->fill([
             'role_id'       => $role->id,
             'name'          => $expressUser['name'],
-            'status'        => 'ACTIVE',
+            'status'        => 'active',
             'last_login_at' => now(),
         ]);
 
@@ -87,6 +90,7 @@ class OtpLoginController extends Controller
         Auth::login($user);
 
         $request->session()->forget('otp_email');
+        $request->session()->forget('dev_otp_code');
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));
@@ -100,12 +104,16 @@ class OtpLoginController extends Controller
             return redirect()->route('login');
         }
 
-        $ok = $this->express->resendOtp($email);
+        $result = $this->express->resendOtp((string) $email);
 
-        if (!$ok) {
-            return back()->withErrors(['code' => 'Gagal kirim ulang OTP']);
+        if (!$result['success']) {
+            return back()->withErrors(['code' => $result['message'] ?? 'Gagal kirim ulang OTP']);
         }
 
-        return back()->with('status', 'Kode OTP baru telah dikirim ke email Anda.');
+        if (!empty($result['otp_code'])) {
+            $request->session()->put('dev_otp_code', $result['otp_code']);
+        }
+
+        return back()->with('status', 'Kode OTP baru telah dikirim.');
     }
 }

@@ -17,7 +17,7 @@ class DashboardController extends Controller
         return match ($role) {
             'super_admin' => Inertia::render('SuperAdmin/Dashboard'),
             'admin'       => Inertia::render('Admin/Dashboard'),
-            'sales'       => Inertia::render('Sales/Dashboard'),
+            'cs'          => Inertia::render('Sales/Dashboard'),
             default       => Inertia::render('Shared/Forbidden'),
         };
     }

@@ -13,8 +13,8 @@ class ExpressService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(env('EXPRESS_API_URL', 'http://localhost:4000'), '/');
-        $this->token = env('EXPRESS_INTERNAL_TOKEN', '');
+        $this->baseUrl = rtrim(config('services.express.url', env('EXPRESS_API_URL', env('BACKEND_URL', 'http://localhost:4000'))), '/');
+        $this->token = config('services.express.token', env('EXPRESS_INTERNAL_TOKEN', env('INTERNAL_TOKEN', 'tekna-internal-secret-2026')));
     }
 
     protected function http()
@@ -41,8 +41,9 @@ class ExpressService
             }
 
             return [
-                'success' => true,
-                'message' => $response->json('message'),
+                'success'  => true,
+                'message'  => $response->json('message'),
+                'otp_code' => $response->json('data.otp_code'),
             ];
         } catch (\Throwable $e) {
             Log::error('Express requestLogin exception', [
@@ -78,16 +79,51 @@ class ExpressService
         }
     }
 
-    public function resendOtp(string $email): bool
+    public function resendOtp(string $email): array
     {
         try {
             $response = $this->http()->post("{$this->baseUrl}/api/v1/auth/resend-otp", [
                 'email' => $email,
             ]);
 
-            return $response->successful();
+            if (!$response->successful()) {
+                return [
+                    'success' => false,
+                    'message' => $response->json('message') ?? 'Gagal mengirim ulang OTP',
+                ];
+            }
+
+            return [
+                'success'  => true,
+                'message'  => $response->json('message'),
+                'otp_code' => $response->json('data.otp_code'),
+            ];
         } catch (\Throwable $e) {
-            return false;
+            Log::error('Express resendOtp exception', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'success' => false,
+                'message' => 'Tidak bisa menghubungi server',
+            ];
+        }
+    }
+
+    public function getActiveOtp(string $email): ?string
+    {
+        try {
+            $response = $this->http()->get("{$this->baseUrl}/api/v1/auth/current-otp", [
+                'email' => $email,
+            ]);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            return $response->json('code');
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 
@@ -115,10 +151,10 @@ class ExpressService
         $roleName = $user->role?->name;
 
         return match ($roleName) {
-            'Super Admin' => 'super_admin',
-            'Admin'       => 'admin',
-            'Sales'       => 'sales',
-            default       => null,
+            'Super Admin'      => 'super_admin',
+            'Admin'            => 'admin',
+            'CS', 'Customer Service' => 'cs',
+            default            => null,
         };
     }
 
