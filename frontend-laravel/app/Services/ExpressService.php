@@ -117,7 +117,7 @@ class ExpressService
         return match ($roleName) {
             'Super Admin' => 'super_admin',
             'Admin'       => 'admin',
-            'CS'          => 'sales',
+            'CS'       => 'cs',
             default       => null,
         };
     }
