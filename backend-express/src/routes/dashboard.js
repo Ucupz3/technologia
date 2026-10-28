@@ -3,6 +3,171 @@ import { prisma } from '../lib/prisma.js';
 
 export const dashboardRouter = Router();
 
+// GET /api/v1/dashboard/admin
+dashboardRouter.get('/admin', async (_req, res, next) => {
+  try {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - 6);
+
+    const [
+      pending_orders,
+      today_schedules,
+      today_deadlines,
+      pending_payments,
+      total_orders,
+      weeklyOrders,
+      schedules,
+      orders,
+      invoices,
+    ] = await Promise.all([
+      prisma.orders.count({
+        where: { deleted_at: null, status: 'pending' },
+      }),
+      prisma.maintenances.count({
+        where: {
+          deleted_at: null,
+          status: { in: ['scheduled', 'in_progress'] },
+          start_datetime: { gte: startOfToday, lt: startOfTomorrow },
+        },
+      }),
+      prisma.orders.count({
+        where: {
+          deleted_at: null,
+          status: { notIn: ['completed', 'cancelled'] },
+          end_date_project: { gte: startOfToday, lt: startOfTomorrow },
+        },
+      }),
+      prisma.invoices.count({
+        where: {
+          deleted_at: null,
+          status: { in: ['unpaid', 'partial', 'overdue'] },
+        },
+      }),
+      prisma.orders.count({ where: { deleted_at: null } }),
+      prisma.orders.findMany({
+        where: {
+          deleted_at: null,
+          created_at: { gte: startOfWeek, lt: startOfTomorrow },
+        },
+        select: { created_at: true },
+      }),
+      prisma.maintenances.findMany({
+        where: {
+          deleted_at: null,
+          status: { in: ['scheduled', 'in_progress'] },
+          start_datetime: { gte: now },
+        },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          start_datetime: true,
+          orders: {
+            select: {
+              customer_name_snapshot: true,
+              teams: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: { start_datetime: 'asc' },
+        take: 3,
+      }),
+      prisma.orders.findMany({
+        where: { deleted_at: null },
+        select: {
+          order_number: true,
+          customer_name_snapshot: true,
+          grand_total: true,
+          status: true,
+          created_at: true,
+          customers: { select: { name: true } },
+          order_services: {
+            where: { deleted_at: null },
+            select: { service_name_snapshot: true },
+            take: 1,
+          },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 10,
+      }),
+      prisma.invoices.findMany({
+        where: {
+          deleted_at: null,
+          status: { in: ['unpaid', 'partial', 'overdue'] },
+        },
+        select: {
+          id: true,
+          invoice_number: true,
+          total_paid: true,
+          status: true,
+          due_date: true,
+          orders: { select: { grand_total: true } },
+          customers: { select: { name: true } },
+        },
+        orderBy: [{ due_date: 'asc' }, { created_at: 'desc' }],
+        take: 10,
+      }),
+    ]);
+
+    const dayKey = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const weeklyMap = new Map();
+    for (let offset = 0; offset < 7; offset += 1) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + offset);
+      weeklyMap.set(dayKey(date), 0);
+    }
+    weeklyOrders.forEach((order) => {
+      if (!order.created_at) return;
+      const key = dayKey(new Date(order.created_at));
+      if (weeklyMap.has(key)) weeklyMap.set(key, weeklyMap.get(key) + 1);
+    });
+
+    res.json({
+      success: true,
+      data: {
+        stats: {
+          pending_orders,
+          today_schedules,
+          today_deadlines,
+          pending_payments,
+        },
+        total_orders,
+        weekly_orders: Array.from(weeklyMap, ([date, count]) => ({ date, count })),
+        schedules: schedules.map((schedule) => ({
+          ...schedule,
+          customer_name: schedule.orders?.customer_name_snapshot || 'Customer tidak diketahui',
+          team_name: schedule.orders?.teams?.name || 'Belum ditugaskan',
+        })),
+        orders: orders.map((order) => ({
+          order_number: order.order_number,
+          customer_name: order.customers?.name || order.customer_name_snapshot || 'Customer tidak diketahui',
+          service_name: order.order_services[0]?.service_name_snapshot || 'Layanan tidak tersedia',
+          grand_total: Number(order.grand_total),
+          status: order.status,
+        })),
+        invoices: invoices.map((invoice) => ({
+          invoice_number: invoice.invoice_number,
+          customer_name: invoice.customers?.name || 'Customer tidak diketahui',
+          amount_due: Math.max(Number(invoice.orders?.grand_total || 0) - Number(invoice.total_paid || 0), 0),
+          status: invoice.status,
+          due_date: invoice.due_date,
+        })),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/v1/dashboard/super-admin
 dashboardRouter.get('/super-admin', async (_req, res, next) => {
   try {
