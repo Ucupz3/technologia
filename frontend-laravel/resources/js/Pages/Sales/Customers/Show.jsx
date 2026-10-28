@@ -3,7 +3,7 @@ import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import {
   ArrowLeft, RefreshCw, Mail, Phone, MapPin,
-  AlertCircle, CheckCircle2, Plus,
+  AlertCircle, CheckCircle2, Plus, Pencil, Save,
   Package, User,
 } from 'lucide-react';
 
@@ -33,7 +33,9 @@ export default function CustomerShow({ customerId }) {
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
 
+  const [editOpen, setEditOpen] = useState(false);
   const [picModalOpen, setPicModalOpen] = useState(false);
+  const [salesList, setSalesList] = useState([]);
 
   const basePath = getBasePath();
 
@@ -58,8 +60,16 @@ export default function CustomerShow({ customerId }) {
       });
   };
 
+  const loadSales = () => {
+    fetch('/api/v1/customers/sales/options')
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setSalesList(d.data || []); })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     load();
+    loadSales();
   }, [customerId]);
 
   if (loading) {
@@ -131,6 +141,10 @@ export default function CustomerShow({ customerId }) {
             <button onClick={load}
               className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition">
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
+            </button>
+            <button onClick={() => setEditOpen(true)}
+              className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2">
+              <Pencil size={14} /> Edit Customer
             </button>
           </div>
         </div>
@@ -277,6 +291,16 @@ export default function CustomerShow({ customerId }) {
         </div>
       </div>
 
+      {editOpen && (
+        <CustomerEditModal
+          customer={data}
+          salesList={salesList}
+          onClose={() => setEditOpen(false)}
+          onSuccess={(msg) => { setEditOpen(false); load(); showToast('success', msg); }}
+          onError={(msg) => showToast('error', msg)}
+        />
+      )}
+
       {picModalOpen && (
         <PicFormModal
           customerId={data.id}
@@ -315,6 +339,110 @@ function InfoRow({ icon: Icon, label, value }) {
         <div className="text-sm text-brand-text break-words">{value}</div>
       </div>
     </div>
+  );
+}
+
+function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError }) {
+  const [form, setForm] = useState({
+    name: customer?.name || '',
+    email: customer?.email || '',
+    phone: customer?.phone || '',
+    address: customer?.address || '',
+    notes: customer?.notes || '',
+    sales_id: customer?.sales_id || '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setSubmitting(true);
+    setErrors({});
+
+    const payload = { ...form };
+    if (!payload.phone) payload.phone = null;
+    if (!payload.sales_id) payload.sales_id = null;
+
+    try {
+      const res = await fetch(`/api/v1/customers/${customer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        if (data.errors) setErrors(data.errors);
+        onError(data.message || 'Gagal menyimpan');
+      } else {
+        onSuccess('Customer berhasil diupdate');
+      }
+    } catch {
+      onError('Gagal menghubungi server');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title="Edit Customer" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+        <FormField label="Nama Customer" value={form.name}
+          onChange={(v) => setForm({ ...form, name: v })}
+          error={errors.name} placeholder="PT Maju Bersama" required />
+        <FormField label="Email" type="email" value={form.email}
+          onChange={(v) => setForm({ ...form, email: v })}
+          error={errors.email} placeholder="contact@majubersama.com" required />
+        <FormField label="Phone" value={form.phone}
+          onChange={(v) => setForm({ ...form, phone: v })}
+          error={errors.phone} placeholder="08123456789" />
+
+        <div>
+          <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Sales PIC</label>
+          <select
+            value={form.sales_id}
+            onChange={(e) => setForm({ ...form, sales_id: e.target.value })}
+            className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+          >
+            <option value="">— Tidak ada —</option>
+            {salesList.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Alamat</label>
+          <textarea
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            rows={2}
+            className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Notes</label>
+          <textarea
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            rows={2}
+            className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
+          />
+        </div>
+      </form>
+
+      <ModalFooter>
+        <button onClick={onClose} type="button"
+          className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
+          Batal
+        </button>
+        <button onClick={handleSubmit} disabled={submitting}
+          className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+          {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+          {submitting ? 'Menyimpan...' : 'Simpan'}
+        </button>
+      </ModalFooter>
+    </ModalShell>
   );
 }
 

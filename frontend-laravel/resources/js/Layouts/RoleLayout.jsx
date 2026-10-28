@@ -38,7 +38,7 @@ const menuByRole = {
 const roleLabel = {
   super_admin: 'Super Admin',
   admin: 'Admin',
-  sales: 'Sales',
+  sales: 'Customer Service',
 };
 
 const roleBadgeColor = {

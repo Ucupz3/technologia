@@ -8,8 +8,16 @@ export const customersRouter = Router();
 customersRouter.get('/', async (req, res, next) => {
   try {
     const { search } = req.query;
+    const userRole = req.header('X-User-Role');
+    const userId = req.header('X-User-Id');
 
     const where = { deleted_at: null };
+    
+    // Sales/CS hanya lihat customer mereka sendiri
+    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+      where.sales_id = BigInt(userId);
+    }
+
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -72,8 +80,17 @@ customersRouter.get('/sales/options', async (_req, res, next) => {
 // GET /api/v1/customers/:id
 customersRouter.get('/:id', async (req, res, next) => {
   try {
+    const userRole = req.header('X-User-Role');
+    const userId = req.header('X-User-Id');
+    const where = { id: BigInt(req.params.id), deleted_at: null };
+
+    // Sales/CS hanya lihat customer mereka sendiri
+    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+      where.sales_id = BigInt(userId);
+    }
+
     const customer = await prisma.customers.findFirst({
-      where: { id: BigInt(req.params.id), deleted_at: null },
+      where,
       select: {
         id: true, name: true, email: true, phone: true,
         address: true, notes: true, sales_id: true, created_at: true,
@@ -204,7 +221,14 @@ customersRouter.put('/:id', async (req, res, next) => {
     }
 
     const id = BigInt(req.params.id);
-    const existing = await prisma.customers.findFirst({ where: { id, deleted_at: null } });
+    const userRole = req.header('X-User-Role');
+    const userId = req.header('X-User-Id');
+    const where = { id, deleted_at: null };
+    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+      where.sales_id = BigInt(userId);
+    }
+
+    const existing = await prisma.customers.findFirst({ where });
     if (!existing) return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
 
     if (parsed.data.email && parsed.data.email !== existing.email) {

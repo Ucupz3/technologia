@@ -47,8 +47,19 @@ function computeInvoiceStatus(totalPaid, grandTotal, currentStatus) {
 // ============ GET LIST ============
 invoicesRouter.get('/', async (req, res, next) => {
   try {
+    const userRole = req.header('X-User-Role');
+    const userId = req.header('X-User-Id');
+    const where = { deleted_at: null };
+
+    // Sales/CS hanya lihat invoice dari customer mereka
+    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+      where.customers = {
+        sales_id: BigInt(userId)
+      };
+    }
+
     const invoices = await prisma.invoices.findMany({
-      where: { deleted_at: null },
+      where,
       select: {
         id: true, invoice_number: true, total_paid: true, status: true,
         due_date: true, issued_at: true, paid_at: true, created_at: true,
@@ -78,8 +89,19 @@ invoicesRouter.get('/', async (req, res, next) => {
 // ============ GET DETAIL ============
 invoicesRouter.get('/:id', async (req, res, next) => {
   try {
+    const userRole = req.header('X-User-Role');
+    const userId = req.header('X-User-Id');
+    const where = { id: BigInt(req.params.id), deleted_at: null };
+
+    // Sales/CS hanya lihat invoice dari customer mereka
+    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+      where.customers = {
+        sales_id: BigInt(userId)
+      };
+    }
+
     const invoice = await prisma.invoices.findFirst({
-      where: { id: BigInt(req.params.id), deleted_at: null },
+      where,
       include: {
         orders: { include: { order_services: true } },
         customers: true, 
