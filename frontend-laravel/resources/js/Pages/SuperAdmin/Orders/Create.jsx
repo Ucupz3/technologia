@@ -3,7 +3,7 @@ import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import {
   ArrowLeft, RefreshCw, Save, ChevronDown, Check,
-  User, UserCircle, Briefcase, Users, Package, Percent
+  User, UserCircle, Briefcase, Users, Package, Percent, Plus, Trash2, AlertCircle
 } from 'lucide-react';
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
@@ -12,7 +12,6 @@ function getBasePath() {
   return window.location.pathname.replace(/\/orders.*$/, '');
 }
 
-// ============ CUSTOM SELECT COMPONENT ============
 function CustomSelect({ label, value, options, onChange, placeholder, disabled, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(o => String(o.value) === String(value));
@@ -65,7 +64,6 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
   );
 }
 
-// ============ MAIN COMPONENT ============
 export default function OrderCreate() {
   const [options, setOptions] = useState({ customers: [], services: [], sales: [], teams: [] });
   const [loading, setLoading] = useState(true);
@@ -77,9 +75,10 @@ export default function OrderCreate() {
     pic_id: '',
     sales_id: '',
     team_id: '',
-    service_id: '', 
-    price_deal: '',
-    quantity: 1,
+    // ✅ STATE UNTUK MULTIPLE SERVICES
+    services: [
+      { service_id: '', price_deal: '', quantity: 1 }
+    ],
     discount_type: 'fixed',
     discount: 0,
     tax_rate: 0,
@@ -110,9 +109,11 @@ export default function OrderCreate() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Hitung total secara real-time
-  const price = Number(form.price_deal) || 0;
-  const subtotal = price * form.quantity;
+  // ✅ HITUNG TOTAL DARI ARRAY SERVICES
+  const subtotal = form.services.reduce((acc, curr) => {
+    return acc + (Number(curr.price_deal) || 0) * (Number(curr.quantity) || 1);
+  }, 0);
+
   const discountAmount = form.discount_type === 'percent' ? (subtotal * form.discount) / 100 : Number(form.discount);
   const taxAmount = ((subtotal - discountAmount) * form.tax_rate) / 100;
   const grandTotal = subtotal - discountAmount + taxAmount;
@@ -121,17 +122,39 @@ export default function OrderCreate() {
     setForm({ ...form, customer_id: val, pic_id: '' });
   };
 
-  const handleServiceChange = (val) => {
-    const selectedService = options.services.find(s => String(s.id) === String(val));
+  const currentCustomer = options.customers.find(c => String(c.id) === String(form.customer_id));
+  const customerPics = currentCustomer?.customer_pics || [];
+
+  // ✅ HANDLER UNTUK MULTIPLE SERVICES
+  const handleServiceChange = (index, field, value) => {
+    const newServices = [...form.services];
+    
+    if (field === 'service_id') {
+      const selectedService = options.services.find(s => String(s.id) === String(value));
+      newServices[index] = {
+        ...newServices[index],
+        service_id: value,
+        price_deal: selectedService ? selectedService.default_price : ''
+      };
+    } else {
+      newServices[index] = { ...newServices[index], [field]: value };
+    }
+    
+    setForm({ ...form, services: newServices });
+  };
+
+  const addServiceRow = () => {
     setForm({
       ...form,
-      service_id: val,
-      price_deal: selectedService ? selectedService.price : ''
+      services: [...form.services, { service_id: '', price_deal: '', quantity: 1 }]
     });
   };
 
-  const currentCustomer = options.customers.find(c => String(c.id) === String(form.customer_id));
-  const customerPics = currentCustomer?.customer_pics || [];
+  const removeServiceRow = (index) => {
+    if (form.services.length === 1) return; // Minimal 1
+    const newServices = form.services.filter((_, i) => i !== index);
+    setForm({ ...form, services: newServices });
+  };
 
   const handleTeamChange = (val) => {
     setForm(prev => {
@@ -169,29 +192,43 @@ export default function OrderCreate() {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!form.customer_id) return setErrors({ customer_id: ['Customer wajib dipilih'] });
-    if (!form.service_id) return setErrors({ service_id: ['Layanan wajib dipilih'] });
-    if (!form.price_deal) return setErrors({ price_deal: ['Harga deal wajib diisi'] });
     
+    const hasEmptyService = form.services.some(s => !s.service_id || !s.price_deal);
+    if (hasEmptyService) return alert('Harap lengkapi semua layanan dan harganya.');
+
+    const assignmentsArray = Object.values(form.assignments);
+    if (form.team_id && assignmentsArray.length > 0) {
+      const missingJobs = assignmentsArray.filter(a => !a.job_id);
+      if (missingJobs.length > 0) {
+        return alert('Ada anggota tim yang belum dipilih "Posisi / Job"-nya.');
+      }
+    }
+
     setSubmitting(true);
     setErrors({});
-
-    const assignmentsArray = Object.values(form.assignments).filter(a => a.job_id !== '');
 
     const payload = {
       customer_id: form.customer_id,
       pic_id: form.pic_id || null,
       sales_id: form.sales_id || null,
       team_id: form.team_id || null,
-      service_id: form.service_id,
-      price_deal: Number(form.price_deal),
-      quantity: Number(form.quantity),
+      // ✅ KIRIM ARRAY SERVICES KE BACKEND
+      services: form.services.map(s => ({
+        service_id: Number(s.service_id),
+        price_deal: Number(s.price_deal),
+        quantity: Number(s.quantity)
+      })),
       discount_type: form.discount_type,
       discount: Number(form.discount),
       tax_rate: Number(form.tax_rate),
       start_date_project: form.start_date_project || null,
       end_date_project: form.end_date_project || null,
       notes: form.notes || null,
-      assignments: assignmentsArray
+      assignments: assignmentsArray.map(a => ({
+        team_member_id: Number(a.team_member_id),
+        job_id: Number(a.job_id),
+        is_lead: a.is_lead
+      }))
     };
 
     try {
@@ -239,11 +276,9 @@ export default function OrderCreate() {
         <p className="text-sm text-brand-text-muted mt-1">Invoice akan otomatis dibuat setelah order tersimpan.</p>
       </div>
 
-      {/* ✅ FULL WIDTH: max-w-4xl dihilangkan */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border p-6 w-full">
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* BARIS 1: CUSTOMER & PIC */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CustomSelect
               label="Customer *"
@@ -264,7 +299,6 @@ export default function OrderCreate() {
             />
           </div>
 
-          {/* BARIS 2: SALES & TIM */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CustomSelect
               label="Sales PIC"
@@ -284,40 +318,67 @@ export default function OrderCreate() {
             />
           </div>
 
-          {/* BARIS 3: LAYANAN, HARGA DEAL, & QTY */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="md:col-span-2">
-              <CustomSelect
-                label="Layanan / Service *"
-                placeholder="— Pilih Layanan —"
-                value={form.service_id}
-                options={options.services.map(s => ({ value: s.id, label: s.name }))}
-                onChange={handleServiceChange}
-                icon={Package}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Harga Deal (Rp) <span className="text-red-500">*</span></label>
-              <input 
-                type="number" 
-                min="0" 
-                value={form.price_deal} 
-                onChange={(e) => setForm({ ...form, price_deal: e.target.value })} 
-                className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all ${errors.price_deal ? 'border-red-500' : 'border-brand-border'}`} 
-                placeholder="0"
-                required
-              />
+          {/* ✅ UI MULTIPLE SERVICES */}
+          <div className="pt-4 border-t border-brand-border">
+            <div className="flex items-center justify-between mb-4">
+              <label className="block text-sm font-bold text-brand-text">Daftar Layanan</label>
+              <button 
+                type="button" 
+                onClick={addServiceRow}
+                className="text-xs bg-brand-primary border border-brand-border hover:bg-brand-muted hover:text-brand-accent px-3 py-1.5 rounded-lg flex items-center gap-1 transition font-semibold"
+              >
+                <Plus size={14} /> Tambah Layanan
+              </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Quantity</label>
-              <input type="number" min="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
+            <div className="space-y-4">
+              {form.services.map((svc, index) => (
+                <div key={index} className="flex flex-col md:flex-row gap-4 items-end bg-brand-primary/30 p-4 rounded-xl border border-brand-border relative">
+                  <div className="flex-1 w-full md:w-auto">
+                    <CustomSelect
+                      label="Layanan / Service *"
+                      placeholder="— Pilih Layanan —"
+                      value={svc.service_id}
+                      options={options.services.map(s => ({ value: s.id, label: s.name }))}
+                      onChange={(val) => handleServiceChange(index, 'service_id', val)}
+                      icon={Package}
+                    />
+                  </div>
+                  <div className="w-full md:w-48">
+                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Harga Deal (Rp) *</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={svc.price_deal} 
+                      onChange={(e) => handleServiceChange(index, 'price_deal', e.target.value)} 
+                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
+                      required
+                    />
+                  </div>
+                  <div className="w-full md:w-24">
+                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Qty</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={svc.quantity} 
+                      onChange={(e) => handleServiceChange(index, 'quantity', e.target.value)} 
+                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
+                    />
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => removeServiceRow(index)}
+                    disabled={form.services.length === 1}
+                    className="mb-1 p-2.5 text-red-500 hover:bg-red-500/10 rounded-lg transition disabled:opacity-30"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* BARIS 4: DISKON & PAJAK */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-brand-primary/20 p-5 rounded-xl border border-brand-border">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-brand-primary/20 p-5 rounded-xl border border-brand-border mt-6">
             <CustomSelect
               label="Tipe Diskon"
               placeholder="— Pilih Tipe —"
@@ -331,27 +392,25 @@ export default function OrderCreate() {
             />
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Nilai Diskon</label>
-              <input type="number" min="0" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
+              <input type="number" min="0" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Pajak / PPN (%)</label>
-              <input type="number" min="0" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
+              <input type="number" min="0" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
             </div>
           </div>
 
-          {/* BARIS 5: TANGGAL PROYEK */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Mulai Proyek</label>
-              <input type="date" value={form.start_date_project} onChange={(e) => setForm({ ...form, start_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
+              <input type="date" value={form.start_date_project} onChange={(e) => setForm({ ...form, start_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Selesai Proyek</label>
-              <input type="date" value={form.end_date_project} onChange={(e) => setForm({ ...form, end_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
+              <input type="date" value={form.end_date_project} onChange={(e) => setForm({ ...form, end_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
             </div>
           </div>
 
-          {/* LIST ANGGOTA TIM & JOB */}
           {form.team_id && Object.keys(form.assignments).length > 0 && (
             <div className="pt-4 border-t border-brand-border">
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-3">Atur Posisi Anggota Tim</label>
@@ -359,16 +418,26 @@ export default function OrderCreate() {
                 {options.teams.find(t => String(t.id) === String(form.team_id))?.team_members?.map((tm) => {
                   const assign = form.assignments[tm.id] || {};
                   const userJobs = tm.users?.user_jobs || [];
+                  
                   return (
                     <div key={tm.id} className="flex flex-col sm:flex-row sm:items-center gap-4 bg-brand-primary/40 border border-brand-border p-4 rounded-xl">
-                      <div className="flex-1 min-w-0 font-medium text-brand-text">{tm.users?.name}</div>
+                      <div className="flex-1 min-w-0 font-medium text-brand-text">
+                        {tm.users?.name}
+                        {userJobs.length === 0 && (
+                          <div className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                            <AlertCircle size={12} /> User ini belum punya Job di Master Data
+                          </div>
+                        )}
+                      </div>
+                      
                       <div className="w-full sm:w-64">
                         <CustomSelect
-                          label="Posisi / Job"
+                          label="Posisi / Job *"
                           placeholder="— Pilih Job —"
                           value={assign.job_id || ''}
                           options={userJobs.map(uj => ({ value: uj.job_id, label: uj.jobs?.name }))}
                           onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
+                          disabled={userJobs.length === 0}
                         />
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer sm:w-24 mt-4 sm:mt-0">
@@ -387,15 +456,16 @@ export default function OrderCreate() {
             </div>
           )}
 
-          {/* CATATAN & RINGKASAN TOTAL */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-brand-border">
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Catatan Tambahan</label>
-              <textarea rows={5} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Catatan..." className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none" />
+              <textarea rows={5} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Catatan..." className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all resize-none" />
             </div>
+            
+            {/* ✅ RINGKASAN TOTAL DARI KESELURUHAN LAYANAN */}
             <div className="bg-brand-primary/40 p-6 rounded-xl border border-brand-border space-y-3 flex flex-col justify-center">
               <div className="flex justify-between text-sm text-brand-text-muted">
-                <span>Subtotal</span>
+                <span>Subtotal Layanan</span>
                 <span>{formatRupiah(subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm text-red-500">

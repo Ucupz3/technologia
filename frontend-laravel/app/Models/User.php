@@ -13,6 +13,9 @@ class User extends Authenticatable
 
     protected $table = 'users';
 
+    // ✅ WAJIB: Memberitahu Laravel nama kolom password adalah password_hash
+    protected $authPasswordName = 'password_hash';
+
     protected $fillable = [
         'role_id',
         'name',
@@ -39,17 +42,11 @@ class User extends Authenticatable
         return $this->password_hash;
     }
 
-    /**
-     * Relasi ke Role (Tepat 1 role)
-     */
     public function role()
     {
         return $this->belongsTo(Role::class, 'role_id');
     }
 
-    /**
-     * Relasi ke Jobs (Bisa banyak / opsional via pivot user_jobs)
-     */
     public function jobs()
     {
         return $this->belongsToMany(Job::class, 'user_jobs', 'user_id', 'job_id')
