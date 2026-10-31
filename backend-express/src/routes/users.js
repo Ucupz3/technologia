@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma.js';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const usersRouter = Router();
 
@@ -193,7 +194,13 @@ usersRouter.put('/:id', async (req, res, next) => {
       return res.status(422).json({ success: false, message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors });
     }
     const id = BigInt(req.params.id);
-    const existing = await prisma.users.findFirst({ where: { id, deleted_at: null } });
+    const existing = await prisma.users.findFirst({ 
+      where: { id, deleted_at: null },
+      include: {
+        roles: { select: { name: true } },
+        user_jobs: { include: { jobs: { select: { name: true } } } }
+      }
+    });
     if (!existing) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
 
     const data = { ...parsed.data };
@@ -250,6 +257,34 @@ usersRouter.put('/:id', async (req, res, next) => {
       });
     });
 
+    // Audit log - track changes
+    const userId = req.headers['x-user-id'];
+    const changes = [];
+    if (parsed.data.name && parsed.data.name !== existing.name) changes.push(`Nama: "${existing.name}" → "${parsed.data.name}"`);
+    if (parsed.data.email && parsed.data.email !== existing.email) changes.push(`Email: "${existing.email}" → "${parsed.data.email}"`);
+    if (parsed.data.phone !== undefined && parsed.data.phone !== existing.phone) changes.push(`Telepon: "${existing.phone || '-'}" → "${parsed.data.phone || '-'}"`);
+    if (parsed.data.status && parsed.data.status !== existing.status) changes.push(`Status: "${existing.status}" → "${parsed.data.status}"`);
+    if (parsed.data.role_id && BigInt(parsed.data.role_id).toString() !== existing.role_id.toString()) {
+      const newRole = await prisma.roles.findUnique({ where: { id: BigInt(parsed.data.role_id) } });
+      changes.push(`Role: "${existing.roles.name}" → "${newRole?.name}"`);
+    }
+    if (parsed.data.password) changes.push('Password diubah');
+
+    const detailText = changes.length > 0 
+      ? `Mengedit user ${existing.name}.\n${changes.join('\n')}`
+      : `Mengedit user ${existing.name}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'UPDATE',
+      entityType: 'User',
+      entityId: id,
+      module: 'Users',
+      details: detailText,
+      data: { changes },
+      req,
+    });
+
     res.json({ success: true, data: user, message: 'User berhasil diupdate' });
   } catch (err) { next(err); }
 });
@@ -276,10 +311,41 @@ usersRouter.patch('/:id/status', async (req, res, next) => {
 // DELETE /api/v1/users/:id (soft delete)
 usersRouter.delete('/:id', async (req, res, next) => {
   try {
+    const id = BigInt(req.params.id);
+    const existing = await prisma.users.findFirst({
+      where: { id, deleted_at: null },
+      include: {
+        roles: { select: { name: true } },
+        user_jobs: { include: { jobs: { select: { name: true } } } }
+      }
+    });
+    
+    if (!existing) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
     await prisma.users.update({
-      where: { id: BigInt(req.params.id) },
+      where: { id },
       data: { deleted_at: new Date(), status: 'inactive' },
     });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const jobNames = existing.user_jobs.map(uj => uj.jobs.name).join(', ');
+    const detailText = `Menghapus user ${existing.name}.
+Email: ${existing.email}
+Telepon: ${existing.phone || '-'}
+Role: ${existing.roles.name}${jobNames ? '\nPekerjaan: ' + jobNames : ''}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'DELETE',
+      entityType: 'User',
+      entityId: id,
+      module: 'Users',
+      details: detailText,
+      data: { name: existing.name, email: existing.email, phone: existing.phone, role: existing.roles.name },
+      req,
+    });
+
     res.json({ success: true, message: 'User berhasil dihapus' });
   } catch (err) { next(err); }
 });
@@ -336,6 +402,26 @@ usersRouter.post('/', async (req, res, next) => {
           },
         },
       });
+    });
+
+    // Audit log dengan detail lengkap
+    const userId = req.headers['x-user-id'];
+    const jobNames = user.user_jobs.map(uj => uj.jobs.name).join(', ');
+    const detailText = `Menambahkan user baru.
+Nama: ${name}
+Email: ${email}
+Telepon: ${phone || '-'}
+Role: ${user.roles.name}${jobNames ? '\nPekerjaan: ' + jobNames : ''}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'CREATE',
+      entityType: 'User',
+      entityId: user.id,
+      module: 'Users',
+      details: detailText,
+      data: { name, email, phone, role: user.roles.name, jobs: jobNames },
+      req,
     });
 
     res.status(201).json({ success: true, data: user, message: 'User berhasil dibuat' });

@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "concurrently \"php artisan serve --port=8001\" \"vite\" --names server,vite --kill-others"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",

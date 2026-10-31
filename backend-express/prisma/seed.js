@@ -4,7 +4,17 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  const role = await prisma.roles.create({
+  // Create Super Admin role
+  const superAdminRole = await prisma.roles.create({
+    data: {
+      name: 'Super Admin',
+      description: 'Super Administrator',
+      is_default: false
+    }
+  });
+
+  // Create Admin role
+  const adminRole = await prisma.roles.create({
     data: {
       name: 'Admin',
       description: 'Administrator',
@@ -14,9 +24,21 @@ async function main() {
 
   const hash = await bcrypt.hash('12345678', 10);
   
+  // Super Admin user
   await prisma.users.create({
     data: {
-      role_id: role.id,
+      role_id: superAdminRole.id,
+      name: 'Super Admin',
+      email: 'amrullahcheetah@gmail.com',
+      password_hash: hash,
+      status: 'active'
+    }
+  });
+
+  // Admin user
+  await prisma.users.create({
+    data: {
+      role_id: adminRole.id,
       name: 'Test User',
       email: 'swastikaaa21@gmail.com',
       password_hash: hash,
@@ -24,7 +46,7 @@ async function main() {
     }
   });
 
-  console.log('User created successfully');
+  console.log('Users created successfully');
 }
 
 main()

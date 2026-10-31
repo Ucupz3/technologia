@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const servicesRouter = Router();
 
@@ -141,6 +142,23 @@ servicesRouter.post('/', async (req, res, next) => {
       },
     });
 
+    const detailText = `Menambahkan layanan baru.
+Nama: ${name}
+Kategori: ${category.name}
+Harga: Rp ${resolvedPrice.toLocaleString('id-ID')}
+Durasi: ${duration} hari${description ? '\nDeskripsi: ' + description : ''}
+Status: ${status}`;
+
+    await createAuditLog({
+      action: 'CREATE',
+      entityType: 'Service',
+      entityId: service.id,
+      module: 'Management',
+      details: detailText,
+      data: { name, category: category.name, price: resolvedPrice, status },
+      req,
+    });
+
     res.status(201).json({
       success: true,
       data: {
@@ -206,6 +224,34 @@ servicesRouter.put('/:id', async (req, res, next) => {
       },
     });
 
+    const changes = [];
+    if (parsed.data.name && parsed.data.name !== existing.name) changes.push(`Nama: "${existing.name}" → "${parsed.data.name}"`);
+    if (parsed.data.category_id && BigInt(parsed.data.category_id).toString() !== existing.category_id.toString()) {
+      const newCat = await prisma.service_categories.findUnique({ where: { id: BigInt(parsed.data.category_id) } });
+      changes.push(`Kategori: "${existing.service_categories?.name || '-'}" → "${newCat?.name || '-'}"`);
+    }
+    if (data.default_price !== undefined && Number(data.default_price) !== Number(existing.default_price)) {
+      changes.push(`Harga: "Rp ${Number(existing.default_price).toLocaleString('id-ID')}" → "Rp ${Number(data.default_price).toLocaleString('id-ID')}"`);
+    }
+    if (data.duration !== undefined && Number(data.duration) !== Number(existing.duration)) {
+      changes.push(`Durasi: "${existing.duration} hari" → "${data.duration} hari"`);
+    }
+    if (parsed.data.status && parsed.data.status !== existing.status) changes.push(`Status: "${existing.status}" → "${parsed.data.status}"`);
+
+    const detailText = changes.length > 0 
+      ? `Mengedit layanan ${existing.name}.\n${changes.join('\n')}`
+      : `Mengedit layanan ${existing.name}`;
+
+    await createAuditLog({
+      action: 'UPDATE',
+      entityType: 'Service',
+      entityId: id,
+      module: 'Management',
+      details: detailText,
+      data: { changes },
+      req,
+    });
+
     res.json({
       success: true,
       data: {
@@ -245,6 +291,21 @@ servicesRouter.delete('/:id', async (req, res, next) => {
     await prisma.services.update({
       where: { id },
       data: { deleted_at: new Date() },
+    });
+
+    const detailText = `Menghapus layanan ${service.name}.
+Harga: Rp ${Number(service.default_price).toLocaleString('id-ID')}
+Durasi: ${service.duration} hari${service.description ? '\nDeskripsi: ' + service.description : ''}
+Status: ${service.status}`;
+
+    await createAuditLog({
+      action: 'DELETE',
+      entityType: 'Service',
+      entityId: id,
+      module: 'Management',
+      details: detailText,
+      data: { name: service.name },
+      req,
     });
 
     res.json({ success: true, message: 'Service berhasil dihapus' });

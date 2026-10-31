@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { generateOrderNumber } from '../lib/orderHelpers.js';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const ordersRouter = Router();
 
@@ -254,6 +255,32 @@ ordersRouter.post('/', async (req, res, next) => {
       return newOrder;
     });
 
+    // Audit log dengan detail lengkap
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menambahkan order baru.
+Order Number: ${order.order_number}
+Customer: ${customer.name}${pic ? '\nPIC: ' + pic.name : ''}
+Service: ${service.name}
+Quantity: ${quantity}
+Grand Total: Rp ${grandTotal.toLocaleString('id-ID')}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'CREATE',
+      entityType: 'Order',
+      entityId: order.id,
+      module: 'Orders',
+      details: detailText,
+      data: { 
+        order_number: order.order_number, 
+        customer: customer.name, 
+        service: service.name, 
+        quantity, 
+        grand_total: grandTotal 
+      },
+      req,
+    });
+
     res.status(201).json({ success: true, data: order, message: 'Order berhasil dibuat & Invoice otomatis terbuat' });
   } catch (err) { next(err); }
 });
@@ -269,6 +296,8 @@ ordersRouter.patch('/:id/status', async (req, res, next) => {
     }
 
     const id = BigInt(req.params.id);
+    const existing = await prisma.orders.findFirst({ where: { id, deleted_at: null } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
     
     // Update status di tabel orders
     const updatedOrder = await prisma.orders.update({
@@ -280,10 +309,23 @@ ordersRouter.patch('/:id/status', async (req, res, next) => {
     await prisma.order_status_history.create({
       data: {
         order_id: id,
-        from_status: null, // Bisa disesuaikan jika ingin menyimpan status sebelumnya
+        from_status: existing.status,
         to_status: status,
         notes: `Status pengerjaan diubah menjadi ${status}`,
       }
+    });
+
+    const detailText = `Mengedit status order ${existing.order_number}.
+Status: "${existing.status}" → "${status}"`;
+
+    await createAuditLog({
+      action: 'UPDATE',
+      entityType: 'Order',
+      entityId: id,
+      module: 'Orders',
+      details: detailText,
+      data: { order_number: existing.order_number, from: existing.status, to: status },
+      req,
     });
 
     res.json({ success: true, data: updatedOrder, message: 'Status pengerjaan berhasil diupdate' });
@@ -296,7 +338,26 @@ ordersRouter.patch('/:id/status', async (req, res, next) => {
 ordersRouter.delete('/:id', async (req, res, next) => {
   try {
     const id = BigInt(req.params.id);
+    const existing = await prisma.orders.findFirst({ where: { id, deleted_at: null } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
+
     await prisma.orders.update({ where: { id }, data: { deleted_at: new Date() } });
+
+    const detailText = `Menghapus order ${existing.order_number}.
+Customer: ${existing.customer_name_snapshot || '-'}
+Grand Total: Rp ${Number(existing.grand_total || 0).toLocaleString('id-ID')}
+Status: ${existing.status}`;
+
+    await createAuditLog({
+      action: 'DELETE',
+      entityType: 'Order',
+      entityId: id,
+      module: 'Orders',
+      details: detailText,
+      data: { order_number: existing.order_number },
+      req,
+    });
+
     res.json({ success: true, message: 'Order berhasil dihapus' });
   } catch (err) { next(err); }
 });

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const customersRouter = Router();
 
@@ -195,6 +196,24 @@ customersRouter.post('/', async (req, res, next) => {
       });
     }
 
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menambahkan customer baru.
+Nama: ${name}
+Email: ${email}
+Telepon: ${phone || '-'}${address ? '\nAlamat: ' + address : ''}${sales_id ? '\nSales ID: ' + sales_id : ''}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'CREATE',
+      entityType: 'Customer',
+      entityId: customer.id,
+      module: 'Customers',
+      details: detailText,
+      data: { name, email, phone, address, sales_id },
+      req,
+    });
+
     res.status(201).json({ success: true, data: customer, message: 'Customer berhasil dibuat' });
   } catch (err) { next(err); }
 });
@@ -249,6 +268,34 @@ customersRouter.put('/:id', async (req, res, next) => {
       select: { id: true, name: true, email: true, phone: true, address: true, notes: true, sales_id: true, created_at: true },
     });
 
+    // Audit log
+    const auditUserId = req.headers['x-user-id'];
+    const changes = [];
+    if (parsed.data.name && parsed.data.name !== existing.name) changes.push(`Nama: "${existing.name}" → "${parsed.data.name}"`);
+    if (parsed.data.email && parsed.data.email !== existing.email) changes.push(`Email: "${existing.email}" → "${parsed.data.email}"`);
+    if (parsed.data.phone !== undefined && parsed.data.phone !== existing.phone) changes.push(`Telepon: "${existing.phone || '-'}" → "${parsed.data.phone || '-'}"`);
+    if (parsed.data.address !== undefined && parsed.data.address !== existing.address) changes.push(`Alamat: "${existing.address || '-'}" → "${parsed.data.address || '-'}"`);
+    if (parsed.data.sales_id !== undefined) {
+      const oldSalesId = existing.sales_id ? existing.sales_id.toString() : '-';
+      const newSalesId = parsed.data.sales_id ? parsed.data.sales_id.toString() : '-';
+      if (oldSalesId !== newSalesId) changes.push(`Sales ID: "${oldSalesId}" → "${newSalesId}"`);
+    }
+
+    const detailText = changes.length > 0 
+      ? `Mengedit customer ${existing.name}.\n${changes.join('\n')}`
+      : `Mengedit customer ${existing.name}`;
+    
+    await createAuditLog({
+      userId: auditUserId,
+      action: 'UPDATE',
+      entityType: 'Customer',
+      entityId: id,
+      module: 'Customers',
+      details: detailText,
+      data: { changes },
+      req,
+    });
+
     res.json({ success: true, data: customer, message: 'Customer berhasil diupdate' });
   } catch (err) { next(err); }
 });
@@ -269,6 +316,24 @@ customersRouter.delete('/:id', async (req, res, next) => {
     }
 
     await prisma.customers.update({ where: { id }, data: { deleted_at: new Date() } });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menghapus customer ${customer.name}.
+Email: ${customer.email}
+Telepon: ${customer.phone || '-'}${customer.address ? '\nAlamat: ' + customer.address : ''}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'DELETE',
+      entityType: 'Customer',
+      entityId: id,
+      module: 'Customers',
+      details: detailText,
+      data: { name: customer.name, email: customer.email, phone: customer.phone, address: customer.address },
+      req,
+    });
+
     res.json({ success: true, message: 'Customer berhasil dihapus' });
   } catch (err) { next(err); }
 });
@@ -328,6 +393,22 @@ customersRouter.post('/:id/pics', async (req, res, next) => {
         id: true, name: true, position: true,
         email: true, phone: true, is_primary: true, is_active: true,
       },
+    });
+
+    const detailText = `Menambahkan PIC ke customer ${customer.name}.
+Nama PIC: ${name}
+Posisi: ${position || '-'}
+Email: ${email || '-'}
+Telepon: ${phone || '-'}`;
+
+    await createAuditLog({
+      action: 'CREATE',
+      entityType: 'CustomerPIC',
+      entityId: pic.id,
+      module: 'Customers',
+      details: detailText,
+      data: { customer: customer.name, pic_name: name, position, email, phone },
+      req,
     });
 
     res.status(201).json({ success: true, data: pic, message: 'PIC berhasil ditambahkan' });

@@ -4,6 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const invoicesRouter = Router();
 export const paymentsRouter = invoicesRouter;
@@ -177,6 +178,21 @@ invoicesRouter.post('/:id/pay', upload.single('proof_file'), async (req, res, ne
       });
     });
 
+    const detailText = `Mencatat pembayaran invoice ${invoice.invoice_number}.
+Nominal: Rp ${amountPaid.toLocaleString('id-ID')}
+Total Dibayar: Rp ${newTotalPaid.toLocaleString('id-ID')}
+Status Invoice: ${newInvoiceStatus}`;
+
+    await createAuditLog({
+      action: 'UPDATE',
+      entityType: 'Invoice',
+      entityId: id,
+      module: 'Invoices',
+      details: detailText,
+      data: { invoice_number: invoice.invoice_number, amount: amountPaid, status: newInvoiceStatus },
+      req,
+    });
+
     res.json({ success: true, message: 'Pembayaran berhasil & Status Order telah disinkronisasi' });
   } catch (err) { next(err); }
 });
@@ -322,6 +338,25 @@ invoicesRouter.post('/:id/send-email', async (req, res) => {
         console.warn('Log gagal:', e.message);
       }
     }
+
+    // Audit log untuk send email (1 log untuk semua recipient)
+    const emailList = uniqueRecipients.join(', ');
+    const detailText = `Mengirim invoice ${invoice.invoice_number} ke email:
+${uniqueRecipients.map(e => `- ${e}`).join('\n')}`;
+    
+    await createAuditLog({
+      action: 'SEND_EMAIL',
+      entityType: 'Invoice',
+      entityId: invoice.id,
+      module: 'Invoices',
+      details: detailText,
+      data: { 
+        recipients: uniqueRecipients, 
+        recipient_count: uniqueRecipients.length,
+        invoice_number: invoice.invoice_number 
+      },
+      req,
+    });
 
     res.json({ success: true, message: `Invoice berhasil dikirim ke ${uniqueRecipients.length} email.` });
   } catch (err) { 
