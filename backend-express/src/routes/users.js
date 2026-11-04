@@ -17,7 +17,7 @@ const createUserSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(1),
 });
 
@@ -25,9 +25,9 @@ function mapRoleToSlug(roleName) {
   const map = {
     'Super Admin': 'super_admin',
     'Admin': 'admin',
-    'CS': 'sales',
+    'CS': 'cs',
   };
-  return map[roleName] || 'sales';
+  return map[roleName] || 'cs';
 }
 
 // GET /api/v1/users (Daftar semua user + 1 role + list user_jobs)

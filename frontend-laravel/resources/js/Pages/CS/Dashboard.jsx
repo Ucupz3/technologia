@@ -238,7 +238,7 @@ export default function CustomerServiceDashboard() {
               <Award size={16} className="text-brand-accent" />
               <h2 className="text-sm font-semibold text-brand-text">Top 5 Customers</h2>
             </div>
-            <Link href="/sales/customers" className="text-xs text-brand-accent hover:underline flex items-center gap-1">
+            <Link href="/cs/customers" className="text-xs text-brand-accent hover:underline flex items-center gap-1">
               All Customers <ArrowRight size={12} />
             </Link>
           </div>
@@ -289,7 +289,7 @@ export default function CustomerServiceDashboard() {
             <Activity size={16} className="text-brand-accent" />
             <h2 className="text-sm font-semibold text-brand-text">Recent Customer Orders</h2>
           </div>
-          <Link href="/sales/orders" className="text-xs text-brand-accent hover:underline flex items-center gap-1">
+          <Link href="/cs/orders" className="text-xs text-brand-accent hover:underline flex items-center gap-1">
             View All Orders <ArrowRight size={12} />
           </Link>
         </div>
@@ -334,7 +334,7 @@ export default function CustomerServiceDashboard() {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <Link
-                        href={`/sales/orders/${order.id}`}
+                        href={`/cs/orders/${order.id}`}
                         className="px-2.5 py-1 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition inline-block"
                       >
                         Detail

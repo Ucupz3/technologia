@@ -4,7 +4,7 @@ import { Head, usePage } from '@inertiajs/react';
 import {
   CheckCircle2, Clock, AlertCircle,
   Briefcase, ListTodo, RefreshCw, User,
-  Save, X, Search, UploadCloud, FileImage, Trash2
+  Save, X, Search, UploadCloud, FileImage, Trash2, Lock
 } from 'lucide-react';
 
 const getStatusBadge = (status) => {
@@ -85,7 +85,7 @@ export default function DeveloperTasksIndex() {
           method: 'POST',
           body: formData,
         });
-        if (!uploadRes.ok) alert('Progress tersimpan, tapi gagal upload gambar.');
+        if (!uploadRes.ok) alert('Progress tersimpan, tapi gagal upload lampiran.');
       }
 
       setSelectedTask(null);
@@ -122,7 +122,7 @@ export default function DeveloperTasksIndex() {
             Task & Progress
           </h1>
           <p className="text-sm text-brand-text-muted mt-1">
-            Kelola pengerjaan dan update status progress proyek Anda.
+            Kelola pengerjaan teknis modul proyek Anda (Internal Developer).
           </p>
         </div>
         <button 
@@ -158,93 +158,108 @@ export default function DeveloperTasksIndex() {
             <p>Belum ada task yang ditugaskan kepada Anda.</p>
           </div>
         ) : (
-          filteredTasks.map((task) => (
-            <div key={task.id} className="bg-brand-secondary border border-brand-border rounded-xl p-5 hover:border-brand-accent/50 transition shadow-sm">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-accent/10 text-brand-accent border border-brand-accent/20 px-2 py-0.5 rounded">
-                      {task.job_name}
-                    </span>
-                    <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border font-bold ${getStatusBadge(task.status)}`}>
-                      {task.status.replace('_', ' ')}
-                    </span>
-                    {task.is_overdue && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-red-500/15 text-red-600 border border-red-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                        <AlertCircle size={10} /> Overdue
+          filteredTasks.map((task) => {
+            const isOrderCompleted = task.order_status === 'completed';
+            const isTaskCompleted = task.status === 'completed' || task.progress === 100;
+
+            return (
+              <div key={task.id} className="bg-brand-secondary border border-brand-border rounded-xl p-5 hover:border-brand-accent/50 transition shadow-sm">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-accent/10 text-brand-accent border border-brand-accent/20 px-2 py-0.5 rounded">
+                        {task.job_name}
                       </span>
+                      <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border font-bold ${getStatusBadge(task.status)}`}>
+                        {task.status.replace('_', ' ')}
+                      </span>
+                      {isOrderCompleted && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded flex items-center gap-1">
+                          <Lock size={10} /> Proyek Closed (Selesai)
+                        </span>
+                      )}
+                      {task.is_overdue && !isOrderCompleted && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-red-500/15 text-red-600 border border-red-500/30 px-2 py-0.5 rounded flex items-center gap-1">
+                          <AlertCircle size={10} /> Overdue
+                        </span>
+                      )}
+                    </div>
+                    
+                    <h3 className="text-lg font-bold text-brand-text">{task.title}</h3>
+                    
+                    <div className="flex items-center gap-4 mt-2 text-sm text-brand-text-muted">
+                      <span className="font-mono flex items-center gap-1.5 bg-brand-muted px-2 py-1 rounded-md"><Briefcase size={14} /> {task.order_number}</span>
+                      <span className="flex items-center gap-1.5"><User size={14} /> {task.customer}</span>
+                      <span className={`flex items-center gap-1.5 ${task.is_overdue && !isOrderCompleted ? 'text-red-500 font-semibold' : ''}`}>
+                        <Clock size={14} /> {task.deadline}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="lg:w-72 shrink-0 space-y-3 border-t lg:border-t-0 lg:border-l border-brand-border pt-4 lg:pt-0 lg:pl-6">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1.5">
+                        <span className="text-brand-text-muted font-medium">Progress</span>
+                        <span className="font-bold text-brand-text">{task.progress}%</span>
+                      </div>
+                      <div className="w-full bg-brand-muted rounded-full h-2">
+                        <div className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(task.status)}`} style={{ width: `${task.progress}%` }}></div>
+                      </div>
+                    </div>
+
+                    {isOrderCompleted ? (
+                      <button
+                        disabled
+                        className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
+                        title="Proyek telah disahkan selesai oleh Admin/Super Admin"
+                      >
+                        <CheckCircle2 size={16} /> Proyek Selesai (Terkunci)
+                      </button>
+                    ) : isTaskCompleted ? (
+                      <button
+                        disabled
+                        className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
+                        title="Pengerjaan tugas sudah 100% selesai. Menunggu validasi Admin."
+                      >
+                        <CheckCircle2 size={16} /> Tugas Selesai (100%)
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => openModal(task)}
+                        className="w-full bg-brand-primary border border-brand-border text-brand-text py-2 rounded-lg hover:bg-brand-muted hover:text-brand-accent transition text-sm font-semibold flex items-center justify-center gap-2"
+                      >
+                        Update Progress
+                      </button>
                     )}
                   </div>
-                  
-                  <h3 className="text-lg font-bold text-brand-text">{task.title}</h3>
-                  
-                  <div className="flex items-center gap-4 mt-2 text-sm text-brand-text-muted">
-                    <span className="font-mono flex items-center gap-1.5 bg-brand-muted px-2 py-1 rounded-md"><Briefcase size={14} /> {task.order_number}</span>
-                    <span className="flex items-center gap-1.5"><User size={14} /> {task.customer}</span>
-                    <span className={`flex items-center gap-1.5 ${task.is_overdue ? 'text-red-500 font-semibold' : ''}`}>
-                      <Clock size={14} /> {task.deadline}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="lg:w-72 shrink-0 space-y-3 border-t lg:border-t-0 lg:border-l border-brand-border pt-4 lg:pt-0 lg:pl-6">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-brand-text-muted font-medium">Progress</span>
-                      <span className="font-bold text-brand-text">{task.progress}%</span>
-                    </div>
-                    <div className="w-full bg-brand-muted rounded-full h-2">
-                      <div className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(task.status)}`} style={{ width: `${task.progress}%` }}></div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => openModal(task)}
-                    className="w-full bg-brand-primary border border-brand-border text-brand-text py-2 rounded-lg hover:bg-brand-muted hover:text-brand-accent transition text-sm font-semibold flex items-center justify-center gap-2"
-                  >
-                    Update Progress
-                  </button>
                 </div>
-
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* MODAL UPDATE PROGRESS */}
       {selectedTask && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between sticky top-0 bg-brand-secondary z-10">
-              <h2 className="text-lg font-bold text-brand-text">Update Task</h2>
+              <h2 className="text-lg font-bold text-brand-text">Update Progress Tugas</h2>
               <button onClick={() => setSelectedTask(null)} className="text-brand-text-muted hover:text-brand-accent transition"><X size={20} /></button>
             </div>
             
             <form onSubmit={handleUpdate} className="p-6 space-y-5">
               <div>
-                <div className="text-xs text-brand-text-muted uppercase tracking-widest mb-1">Task</div>
+                <div className="text-xs text-brand-text-muted uppercase tracking-widest mb-1">Tugas Anda</div>
                 <div className="font-semibold text-brand-text">{selectedTask.title}</div>
                 <div className="text-sm text-brand-text-muted mt-1">{selectedTask.order_number} - {selectedTask.customer}</div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Status</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </div>
-
-              <div>
                 <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5 flex justify-between">
-                  <span>Progress (%)</span>
-                  <span className="text-brand-accent">{form.progress_percentage}%</span>
+                  <span>Persentase Pengerjaan (%)</span>
+                  <span className="text-brand-accent font-bold text-sm">{form.progress_percentage}%</span>
                 </label>
                 <input
                   type="range"
@@ -252,24 +267,47 @@ export default function DeveloperTasksIndex() {
                   max="100"
                   step="5"
                   value={form.progress_percentage}
-                  onChange={(e) => setForm({ ...form, progress_percentage: parseInt(e.target.value) })}
-                  className="w-full accent-brand-accent"
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    let newStatus = form.status;
+                    if (val === 100) newStatus = 'completed';
+                    else if (val > 0) newStatus = 'in_progress';
+                    else newStatus = 'pending';
+                    setForm({ ...form, progress_percentage: val, status: newStatus });
+                  }}
+                  className="w-full accent-brand-accent cursor-pointer"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Catatan (Opsional)</label>
+                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Status Pengerjaan</label>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+                >
+                  <option value="pending">Pending (Belum Mulai)</option>
+                  <option value="in_progress">In Progress (Sedang Dikerjakan)</option>
+                  <option value="completed">Completed (Selesai 100%)</option>
+                </select>
+                <p className="text-[11px] text-brand-text-muted mt-1.5">
+                  *Catatan: Ini status pengerjaan teknis modul Anda. Status Order utama tetap dikelola oleh Admin.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Catatan Pengerjaan (Opsional)</label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Tambahkan catatan pengerjaan..."
+                  placeholder="Tambahkan catatan hasil pengerjaan atau update patch..."
                   className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Upload Bukti (Gambar/Dokumen)</label>
+                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Upload Bukti (Gambar / Dokumen)</label>
                 
                 <div 
                   onClick={() => fileInputRef.current.click()}
@@ -311,7 +349,7 @@ export default function DeveloperTasksIndex() {
                 </button>
                 <button type="submit" disabled={submitting} className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
                   {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  Simpan & Upload
+                  Simpan Progress
                 </button>
               </div>
             </form>

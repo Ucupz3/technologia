@@ -34,20 +34,20 @@ export default function DeveloperIndex() {
     if (!currentUserId) return;
     setLoading(true);
     setError('');
-    
+
     fetch(`/api/v1/developer/dashboard?user_id=${currentUserId}`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) {
-          setStats(d.data.stats);
-          setTasks(d.data.tasks);
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          setStats(res.data.stats || { total_active: 0, total_completed: 0, total_pending: 0, total_overdue: 0 });
+          setTasks(res.data.tasks || []);
         } else {
-          setError(d.message || 'Gagal mengambil data');
+          setError(res.message || 'Gagal mengambil data dari server');
         }
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message);
+        setError('Gagal menghubungi backend: ' + err.message);
         setLoading(false);
       });
   };
@@ -56,15 +56,14 @@ export default function DeveloperIndex() {
     loadDashboard();
   }, [currentUserId]);
 
-  // Ambil 3 Task Deadline Terdekat
   const closestDeadlineTasks = tasks
-    .filter(t => t.status !== 'completed')
+    .filter((t) => t.status !== 'completed')
     .sort((a, b) => {
       if (a.deadline === '-') return 1;
       if (b.deadline === '-') return -1;
       return new Date(a.deadline) - new Date(b.deadline);
     })
-    .slice(0, 3); 
+    .slice(0, 3);
 
   return (
     <RoleLayout>
@@ -79,8 +78,8 @@ export default function DeveloperIndex() {
             Pantau task, progress, dan deadline pengerjaan proyek Anda.
           </p>
         </div>
-        <button 
-          onClick={loadDashboard} 
+        <button
+          onClick={loadDashboard}
           disabled={loading}
           className="bg-brand-secondary border border-brand-border text-brand-text px-4 py-2 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm font-medium transition shadow-sm disabled:opacity-50 w-fit"
         >
@@ -90,9 +89,9 @@ export default function DeveloperIndex() {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-600 p-4 rounded-xl mb-6 flex items-center justify-between">
-          <p>Error: {error}</p>
-          <button onClick={loadDashboard} className="underline text-sm font-bold">Coba Lagi</button>
+        <div className="bg-red-500/10 border border-red-500/30 text-red-600 p-4 rounded-xl mb-6 flex items-center justify-between text-sm">
+          <p>{error}</p>
+          <button onClick={loadDashboard} className="underline font-bold">Coba Lagi</button>
         </div>
       )}
 
@@ -108,9 +107,12 @@ export default function DeveloperIndex() {
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-bold text-brand-text text-lg flex items-center gap-2">
               <ListTodo size={20} className="text-brand-accent" />
-              3 Deadline Terdekat
+              Tugas Deadline Terdekat
             </h2>
-            <Link href="/developer/tasks" className="text-sm font-semibold text-brand-accent hover:underline flex items-center gap-1">
+            <Link
+              href="/developer/tasks"
+              className="text-sm font-semibold text-brand-accent hover:underline flex items-center gap-1"
+            >
               Lihat Semua Task <ChevronRight size={16} />
             </Link>
           </div>
@@ -118,20 +120,20 @@ export default function DeveloperIndex() {
           {loading ? (
             <div className="bg-brand-secondary border border-brand-border rounded-xl p-10 text-center text-brand-text-muted">
               <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-              Memuat daftar task...
+              Memuat data task...
             </div>
           ) : closestDeadlineTasks.length === 0 ? (
             <div className="bg-brand-secondary border border-brand-border rounded-xl p-10 text-center text-brand-text-muted">
               <CheckCircle2 size={40} className="mx-auto mb-3 text-emerald-500/50" />
-              <p>Belum ada task yang ditugaskan kepada Anda.</p>
+              <p>Tidak ada task aktif yang menunggu saat ini.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {closestDeadlineTasks.map((task) => (
-                <Link 
-                  key={task.id} 
+                <Link
+                  key={task.id}
                   href="/developer/tasks"
-                  className="block bg-brand-secondary border border-brand-border rounded-xl p-4 hover:border-brand-accent/50 hover:shadow-md transition shadow-sm group cursor-pointer"
+                  className="block bg-brand-secondary border border-brand-border rounded-xl p-4 hover:border-brand-accent/50 hover:shadow-md transition shadow-sm group"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                     <div>
@@ -148,8 +150,9 @@ export default function DeveloperIndex() {
                           </span>
                         )}
                       </div>
-                      <h3 className="text-base font-bold text-brand-text group-hover:text-brand-accent transition">{task.title}</h3>
-                      
+                      <h3 className="text-base font-bold text-brand-text group-hover:text-brand-accent transition">
+                        {task.title}
+                      </h3>
                       <div className="flex items-center gap-3 mt-1 text-xs text-brand-text-muted">
                         <span className="font-mono flex items-center gap-1"><Briefcase size={12} /> {task.order_number}</span>
                         <span className="flex items-center gap-1"><User size={12} /> {task.customer}</span>
@@ -163,10 +166,13 @@ export default function DeveloperIndex() {
                       <span className="font-bold text-brand-text">{task.progress}%</span>
                     </div>
                     <div className="w-full bg-brand-muted rounded-full h-2">
-                      <div className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(task.status)}`} style={{ width: `${task.progress}%` }}></div>
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(task.status)}`}
+                        style={{ width: `${task.progress}%` }}
+                      ></div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-3 flex items-center justify-between text-xs text-brand-text-muted border-t border-brand-border/40 pt-3">
                     <span className={`flex items-center gap-1 ${task.is_overdue ? 'text-red-500 font-semibold' : ''}`}>
                       <Clock size={12} /> Deadline: {task.deadline}
@@ -187,8 +193,8 @@ export default function DeveloperIndex() {
               <Activity size={16} className="text-brand-accent" /> Panduan Task
             </h2>
             <div className="text-sm text-brand-text-muted space-y-3">
-              <p>Di halaman ini, Anda hanya melihat task yang <strong>ditugaskan langsung kepada Anda</strong>.</p>
-              <p>Jika tabel masih kosong, berarti Anda belum dimasukkan ke dalam Tim di halaman Order oleh Admin.</p>
+              <p>Di halaman ini, Anda melihat ringkasan task yang ditugaskan langsung kepada Anda.</p>
+              <p>Jika ada task baru, segera update progres di menu <strong>Task & Progress</strong>.</p>
             </div>
           </div>
         </div>
@@ -198,7 +204,7 @@ export default function DeveloperIndex() {
 }
 
 function StatCard({ title, value, icon: Icon, color }) {
-  const colorMap = {
+  const colors = {
     emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
     blue: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     amber: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
@@ -207,7 +213,7 @@ function StatCard({ title, value, icon: Icon, color }) {
 
   return (
     <div className="bg-brand-secondary border border-brand-border rounded-xl p-4 shadow-sm flex items-center gap-4 hover:shadow-md transition">
-      <div className={`p-3 rounded-lg border ${colorMap[color]}`}>
+      <div className={`p-3 rounded-lg border ${colors[color]}`}>
         <Icon size={22} />
       </div>
       <div>

@@ -280,7 +280,7 @@ export default function SalesOrderCreate() {
       } else {
         showToast('success', 'Order created successfully! Invoice automatically generated.');
         setTimeout(() => {
-          router.visit('/sales/orders');
+          router.visit('/cs/orders');
         }, 800);
       }
     } catch {
@@ -323,7 +323,7 @@ export default function SalesOrderCreate() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href="/sales/orders"
+          href="/cs/orders"
           className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
         >
           <ArrowLeft size={16} /> Back to Orders
@@ -587,7 +587,7 @@ export default function SalesOrderCreate() {
           {/* ACTION BUTTONS */}
           <div className="flex justify-end gap-3 pt-6 border-t border-brand-border">
             <Link
-              href="/sales/orders"
+              href="/cs/orders"
               className="bg-brand-muted text-brand-text px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-border transition"
             >
               Cancel

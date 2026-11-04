@@ -236,7 +236,7 @@ export default function CustomerServiceOrdersIndex() {
               <span>Refresh</span>
             </button>
             <Link
-              href="/sales/orders/create"
+              href="/cs/orders/create"
               className="bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-sm transition shadow-sm whitespace-nowrap"
             >
               <Plus size={16} /> Create Order
@@ -345,7 +345,7 @@ export default function CustomerServiceOrdersIndex() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end">
                         <Link
-                          href={`/sales/orders/${o.id}`}
+                          href={`/cs/orders/${o.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
                         >
                           Detail

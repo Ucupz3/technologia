@@ -25,7 +25,7 @@ export default function CustomerServiceCustomersIndex() {
   const [createOpen, setCreateOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const basePath = getBasePath() || '/sales';
+  const basePath = getBasePath() || '/cs';
 
   const showToast = (type, message) => {
     setToast({ type, message });

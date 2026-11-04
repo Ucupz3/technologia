@@ -13,35 +13,35 @@ import { useTheme } from '@/hooks/useTheme';
    ============================================================ */
 const menuByRole = {
   super_admin: [
-    { label: 'Dashboard',   href: '/dashboard',             icon: Home },
-    { label: 'Users',       href: '/super-admin/users',      icon: Users },
-    { label: 'Roles',       href: '/super-admin/roles',      icon: Shield },
-    { label: 'Management',  href: '/super-admin/master-data', icon: Database },
-    { label: 'Customers',   href: '/super-admin/customers',  icon: Contact },
-    { label: 'Orders',      href: '/super-admin/orders',     icon: Package },
-    { label: 'Invoices',    href: '/super-admin/invoices',   icon: Newspaper },
-    { label: 'Schedules',   href: '/super-admin/schedules',  icon: Calendar },
-    { label: 'Audit Logs',  href: '/super-admin/audit-logs', icon: ClipboardClock },
+    { label: 'Dashboard', href: '/dashboard', icon: Home },
+    { label: 'Users', href: '/super-admin/users', icon: Users },
+    { label: 'Roles', href: '/super-admin/roles', icon: Shield },
+    { label: 'Management', href: '/super-admin/master-data', icon: Database },
+    { label: 'Customers', href: '/super-admin/customers', icon: Contact },
+    { label: 'Orders', href: '/super-admin/orders', icon: Package },
+    { label: 'Invoices', href: '/super-admin/invoices', icon: Newspaper },
+    { label: 'Schedules', href: '/super-admin/schedules', icon: Calendar },
+    { label: 'Audit Logs', href: '/super-admin/audit-logs', icon: ClipboardClock },
   ],
   admin: [
-    { label: 'Dashboard', href: '/dashboard',         icon: Home },
-    { label: 'Services',  href: '/admin/services',    icon: Database },
-    { label: 'Customers', href: '/admin/customers',   icon: Contact },
-    { label: 'Orders',    href: '/admin/orders',      icon: Package },
-    { label: 'Schedules', href: '/admin/schedules',   icon: Calendar },
-    { label: 'Invoices',  href: '/admin/invoices',    icon: Newspaper },
+    { label: 'Dashboard', href: '/dashboard', icon: Home },
+    { label: 'Services', href: '/admin/services', icon: Database },
+    { label: 'Customers', href: '/admin/customers', icon: Contact },
+    { label: 'Orders', href: '/admin/orders', icon: Package },
+    { label: 'Schedules', href: '/admin/schedules', icon: Calendar },
+    { label: 'Invoices', href: '/admin/invoices', icon: Newspaper },
   ],
-  sales: [
-    { label: 'Dashboard', href: '/dashboard',         icon: Home },
-    { label: 'Customers', href: '/sales/customers',   icon: Contact },
-    { label: 'Orders',    href: '/sales/orders',      icon: Package },
-    { label: 'Invoices',  href: '/sales/invoices',    icon: Newspaper },
+  cs: [
+    { label: 'Dashboard', href: '/dashboard', icon: Home },
+    { label: 'Customers', href: '/cs/customers', icon: Contact },
+    { label: 'Orders', href: '/cs/orders', icon: Package },
+    { label: 'Invoices', href: '/cs/invoices', icon: Newspaper },
   ],
   developer: [
-    { label: 'Dashboard',       href: '/developer/dashboard', icon: Home },
-    { label: 'Task & Progress', href: '/developer/tasks',     icon: Briefcase },
-    { label: 'Jadwal',   href: '/developer/schedules', icon: Calendar },
-    { label: 'Maintenance',     href: '/developer/maintenance',      icon: ClipboardClock },
+    { label: 'Dashboard', href: '/developer/dashboard', icon: Home },
+    { label: 'Task & Progress', href: '/developer/tasks', icon: Briefcase },
+    { label: 'Jadwal', href: '/developer/schedules', icon: Calendar },
+    { label: 'Maintenance', href: '/developer/maintenance', icon: ClipboardClock },
   ],
 };
 
@@ -63,8 +63,8 @@ const MODE_META = {
     badge: 'bg-blue-500/10 text-blue-500 border-blue-500/30 dark:text-blue-400',
     dot: 'bg-blue-500',
   },
-  sales: {
-    label: 'Sales',
+  cs: {
+    label: 'Customer Service (CS)',
     description: 'Kelola customer & order',
     icon: Briefcase,
     badge: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30 dark:text-emerald-400',
@@ -127,7 +127,7 @@ export default function RoleLayout({ children }) {
 
     if (activeMode === 'developer' && isMainDashboard) {
       router.visit('/developer/dashboard');
-    } 
+    }
     else if (activeMode !== 'developer' && isDeveloperRoute) {
       router.visit('/dashboard');
     }
@@ -195,9 +195,8 @@ export default function RoleLayout({ children }) {
   return (
     <div className="min-h-screen bg-brand-primary flex">
       <aside
-        className={`bg-brand-secondary text-brand-text transition-all duration-200 flex flex-col sticky top-0 h-screen shrink-0 border-r border-brand-border ${
-          sidebarOpen ? 'w-64' : 'w-16'
-        }`}
+        className={`bg-brand-secondary text-brand-text transition-all duration-200 flex flex-col sticky top-0 h-screen shrink-0 border-r border-brand-border ${sidebarOpen ? 'w-64' : 'w-16'
+          }`}
       >
         <div className="h-24 flex items-center relative px-4 border-b border-brand-border/40">
           {sidebarOpen ? (
@@ -220,13 +219,11 @@ export default function RoleLayout({ children }) {
                 key={item.href}
                 href={item.href}
                 title={!sidebarOpen ? item.label : ''}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-sm ${
-                  sidebarOpen ? '' : 'justify-center'
-                } ${
-                  active
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-sm ${sidebarOpen ? '' : 'justify-center'
+                  } ${active
                     ? 'bg-brand-accent text-brand-primary font-semibold shadow-sm'
                     : 'text-brand-text-muted hover:bg-brand-muted hover:text-brand-text'
-                }`}
+                  }`}
               >
                 <Icon size={18} className="shrink-0" />
                 {sidebarOpen && <span>{item.label}</span>}
@@ -241,9 +238,8 @@ export default function RoleLayout({ children }) {
             method="post"
             as="button"
             title={!sidebarOpen ? 'Logout' : ''}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-brand-text-muted hover:bg-red-500/10 hover:text-red-500 w-full transition text-sm ${
-              sidebarOpen ? '' : 'justify-center'
-            }`}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-brand-text-muted hover:bg-red-500/10 hover:text-red-500 w-full transition text-sm ${sidebarOpen ? '' : 'justify-center'
+              }`}
           >
             <LogOut size={18} className="shrink-0" />
             {sidebarOpen && <span>Logout</span>}
@@ -357,9 +353,8 @@ function WorkspaceButton({ active, icon: Icon, label, description, onClick, acce
   return (
     <button
       onClick={onClick}
-      className={`group w-full text-left rounded-lg px-3 py-2.5 transition border ${
-        active ? `border-transparent ring-2 ${accentRing} ${accentBg}` : 'border-transparent hover:bg-brand-muted'
-      }`}
+      className={`group w-full text-left rounded-lg px-3 py-2.5 transition border ${active ? `border-transparent ring-2 ${accentRing} ${accentBg}` : 'border-transparent hover:bg-brand-muted'
+        }`}
     >
       <div className="flex items-start gap-3">
         <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? `${accentBg} ${accentText}` : 'bg-brand-muted text-brand-text-muted'}`}>

@@ -27,15 +27,14 @@ router.get('/', async (req, res, next) => {
     if (!userIdStr) return res.status(401).json({ success: false, message: 'User ID tidak ditemukan' });
     const userId = BigInt(userIdStr);
 
-    // ✅ KETAT: Hanya ambil assignment milik user ini
     const assignments = await prisma.order_assignments.findMany({
       where: {
         team_members: { user_id: userId }
       },
       include: {
         jobs: true,
-        orders: { select: { order_number: true, customer_name_snapshot: true, end_date_project: true } },
-        progress_order: { 
+        orders: { select: { order_number: true, customer_name_snapshot: true, end_date_project: true, status: true } },
+        progress_order: {
           orderBy: { created_at: 'desc' },
           include: { progress_attachments: true }
         }
@@ -47,6 +46,8 @@ router.get('/', async (req, res, next) => {
     const today = new Date();
 
     assignments.forEach(assignment => {
+      const orderStatus = assignment.orders?.status || 'pending';
+
       if (assignment.progress_order && assignment.progress_order.length > 0) {
         assignment.progress_order.forEach(task => {
           allTasks.push({
@@ -57,6 +58,7 @@ router.get('/', async (req, res, next) => {
             order_id: assignment.order_id,
             order_number: assignment.orders?.order_number || '-',
             customer: assignment.orders?.customer_name_snapshot || '-',
+            order_status: orderStatus,
             status: task.status,
             progress: task.progress_percentage,
             deadline: assignment.orders?.end_date_project ? new Date(assignment.orders.end_date_project).toISOString().split('T')[0] : '-',
@@ -74,6 +76,7 @@ router.get('/', async (req, res, next) => {
           order_id: assignment.order_id,
           order_number: assignment.orders?.order_number || '-',
           customer: assignment.orders?.customer_name_snapshot || '-',
+          order_status: orderStatus,
           status: 'pending',
           progress: 0,
           deadline: assignment.orders?.end_date_project ? new Date(assignment.orders.end_date_project).toISOString().split('T')[0] : '-',
@@ -102,8 +105,19 @@ router.put('/:id', async (req, res, next) => {
 
     if (isNaN(id)) {
       const assignmentId = BigInt(id.replace('assign-', ''));
-      const assignment = await prisma.order_assignments.findUnique({ where: { id: assignmentId }, include: { jobs: true } });
-      
+      const assignment = await prisma.order_assignments.findUnique({
+        where: { id: assignmentId },
+        include: { jobs: true, orders: true }
+      });
+
+      if (!assignment) {
+        return res.status(404).json({ success: false, message: 'Penugasan tidak ditemukan' });
+      }
+
+      if (assignment.orders?.status === 'completed') {
+        return res.status(403).json({ success: false, message: 'Proyek ini sudah berstatus Selesai (Completed), progress tidak dapat diubah.' });
+      }
+
       const newProgress = await prisma.progress_order.create({
         data: {
           assignment_id: assignmentId,
@@ -117,6 +131,15 @@ router.put('/:id', async (req, res, next) => {
       });
       targetId = newProgress.id;
     } else {
+      const currentProgress = await prisma.progress_order.findUnique({
+        where: { id: BigInt(id) },
+        include: { order_assignments: { include: { orders: true } } }
+      });
+
+      if (currentProgress?.order_assignments?.orders?.status === 'completed') {
+        return res.status(403).json({ success: false, message: 'Proyek ini sudah berstatus Selesai (Completed) oleh Admin, progress tidak dapat diubah.' });
+      }
+
       await prisma.progress_order.update({
         where: { id: BigInt(id) },
         data: {

@@ -62,7 +62,7 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
   const [sendToPic, setSendToPic] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
 
-  const basePath = getBasePath() || '/sales';
+  const basePath = getBasePath() || '/cs';
 
   const showToast = (type, message) => {
     setToast({ type, message });

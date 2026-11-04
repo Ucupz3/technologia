@@ -54,6 +54,7 @@ class OtpLoginController extends Controller
         $roleName = match ($expressUser['role_slug'] ?? null) {
             'super_admin' => 'Super Admin',
             'admin'       => 'Admin',
+            'cs'          => 'CS',
             'sales'       => 'CS',
             default       => 'CS',
         };

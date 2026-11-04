@@ -46,7 +46,7 @@ export default function CustomerServiceInvoicesIndex() {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const basePath = getBasePath() || '/sales';
+  const basePath = getBasePath() || '/cs';
 
   const showToast = (type, message) => {
     setToast({ type, message });

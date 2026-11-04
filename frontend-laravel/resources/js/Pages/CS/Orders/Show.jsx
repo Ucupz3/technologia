@@ -105,7 +105,7 @@ export default function CustomerServiceOrderShow({ orderId }) {
         <Head title="Order Detail" />
         <div className="p-8 text-center">
           <p className="text-red-500 dark:text-red-400 mb-3">Error: {error || 'Order not found'}</p>
-          <Link href="/sales/orders" className="text-brand-accent underline">
+          <Link href="/cs/orders" className="text-brand-accent underline">
             ← Back to Orders list
           </Link>
         </div>
@@ -136,7 +136,7 @@ export default function CustomerServiceOrderShow({ orderId }) {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href="/sales/orders"
+          href="/cs/orders"
           className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
         >
           <ArrowLeft size={16} /> Back to Orders

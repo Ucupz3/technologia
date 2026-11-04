@@ -15,10 +15,10 @@ function mapRoleToSlug(roleName) {
   const map = {
     'Super Admin': 'super_admin',
     'Admin': 'admin',
-    'Sales': 'sales',
+    'CS': 'cs',
     'Finance': 'finance',
   };
-  return map[roleName] || 'sales';
+  return map[roleName] || 'cs';
 }
 
 // ===============================

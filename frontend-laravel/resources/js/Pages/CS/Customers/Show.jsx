@@ -42,7 +42,7 @@ export default function CustomerServiceCustomerShow({ customerId }) {
   const [picModalOpen, setPicModalOpen] = useState(false);
   const [salesList, setSalesList] = useState([]);
 
-  const basePath = getBasePath() || '/sales';
+  const basePath = getBasePath() || '/cs';
 
   const showToast = (type, message) => {
     setToast({ type, message });
