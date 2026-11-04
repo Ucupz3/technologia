@@ -383,14 +383,6 @@ export default function AuditLogsPage() {
                   </div>
                 )}
 
-                {/* IP Address */}
-                {selectedLog.ip_address && (
-                  <div>
-                    <label className="text-xs text-brand-text-muted uppercase tracking-wider font-semibold">IP Address</label>
-                    <p className="text-brand-text mt-1 font-mono text-sm">{selectedLog.ip_address}</p>
-                  </div>
-                )}
-
                 {/* Detail Aktivitas */}
                 <div>
                   <label className="text-xs text-brand-text-muted uppercase tracking-wider font-semibold">Detail Aktivitas</label>

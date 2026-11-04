@@ -64,7 +64,6 @@ auditLogsRouter.get('/', async (req, res, next) => {
       where.OR = [
         { action: { contains: search } },
         { entity_type: { contains: search } },
-        { ip_address: { contains: search } },
       ];
       if (userIdsFromSearch.length > 0) {
         where.OR.push({ user_id: { in: userIdsFromSearch } });
@@ -85,7 +84,6 @@ auditLogsRouter.get('/', async (req, res, next) => {
         action: true,
         entity_type: true,
         entity_id: true,
-        ip_address: true,
         created_at: true,
         user_id: true,
         after_data: true,
@@ -131,7 +129,6 @@ auditLogsRouter.get('/', async (req, res, next) => {
         user_role: userMap[String(l.user_id)]?.role || null,
         entity_type: l.entity_type,
         entity_id: l.entity_id,
-        ip_address: l.ip_address,
         details,
         after_data: l.after_data,
       };

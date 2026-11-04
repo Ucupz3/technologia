@@ -13,7 +13,7 @@ export async function createAuditLog({ userId, action, entityType, entityId, mod
         entity_type: entityType,
         entity_id: entityId ? BigInt(entityId) : null,
         after_data: JSON.stringify({ module, details, ...data }),
-        ip_address: req?.ip || req?.connection?.remoteAddress || null,
+        ip_address: null,
         user_agent: req?.headers?.['user-agent']?.substring(0, 255) || null,
       },
     });

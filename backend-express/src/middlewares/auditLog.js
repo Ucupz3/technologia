@@ -42,7 +42,7 @@ export async function auditLog(req, res, next) {
               action,
               entity_type: entityType,
               entity_id: entityId,
-              ip_address: req.ip || req.connection.remoteAddress,
+              ip_address: null,
               user_agent: req.headers['user-agent']?.substring(0, 255),
               after_data: JSON.stringify(data.data || data || {}),
             },

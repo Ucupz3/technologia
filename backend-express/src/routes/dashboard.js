@@ -145,7 +145,6 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
         action: true,
         entity_type: true,
         entity_id: true,
-        ip_address: true,
         created_at: true,
         user_id: true,
       },
@@ -165,7 +164,6 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
       action: l.action,
       entity_type: l.entity_type,
       entity_id: l.entity_id,
-      ip_address: l.ip_address,
       created_at: l.created_at,
       user_name: userMap[String(l.user_id)] || 'System',
     }));
