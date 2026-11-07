@@ -31,6 +31,7 @@ import { progressRouter, orderProgressRouter } from './routes/progress.js';
 import { developerDashboardRouter } from './routes/developer-dashboard.js';
 import { developerTasksRouter } from './routes/developer-tasks.js';
 import { developerMaintenanceRouter } from './routes/developer-maintenance.js';
+import { maintenancesRouter } from './routes/maintenances.js';
 import swaggerUi from 'swagger-ui-express';
 import { openapiSpecification } from './docs/swagger.js';
 
@@ -91,6 +92,7 @@ app.use('/api/v1/orders/:orderId/progress', orderProgressRouter);
 app.use('/api/v1/developer/dashboard', developerDashboardRouter);
 app.use('/api/v1/developer/tasks', developerTasksRouter);
 app.use('/api/v1/developer/maintenance', developerMaintenanceRouter);
+app.use('/api/v1/maintenances', maintenancesRouter);
 
 // ============ 404 ============
 app.use((_req, res) => {

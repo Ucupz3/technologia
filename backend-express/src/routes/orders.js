@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { generateOrderNumber } from '../lib/orderHelpers.js';
+import { generateOrderNumber, generateInvoiceNumber } from '../lib/orderHelpers.js';
 
 export const ordersRouter = Router();
 
@@ -94,10 +94,15 @@ ordersRouter.get('/:id', async (req, res, next) => {
         customer_pics: true,
         sales_user: true,
         teams: true,
-        order_services: true, // ✅ Multi services akan muncul di sini
+        order_services: true,
         invoices: true,
         order_assignments: {
-          include: { team_members: { include: { users: true } }, jobs: true },
+          include: {
+            team_members: { include: { users: true } },
+            jobs: true,
+            progress_order: true,
+          },
+          orderBy: { phase_order: 'asc' },
         },
       },
     });
@@ -129,7 +134,10 @@ const createSchema = z.object({
   assignments: z.array(z.object({
     team_member_id: z.coerce.number().int().positive(),
     job_id: z.coerce.number().int().positive(),
-    is_lead: z.boolean().optional().default(false)
+    is_lead: z.boolean().optional().default(false),
+    phase_order: z.coerce.number().int().min(1).default(1),
+    start_date: z.string().optional().nullable(),
+    end_date: z.string().optional().nullable(),
   })).optional()
 });
 
@@ -139,6 +147,14 @@ ordersRouter.post('/', async (req, res, next) => {
     console.log("Services:", req.body.services);
     console.log("Assignments:", req.body.assignments);
     console.log("=====================");
+
+    if (!req.body.services && req.body.service_id) {
+      req.body.services = [{
+        service_id: req.body.service_id,
+        price_deal: req.body.price_deal ?? 0,
+        quantity: req.body.quantity ?? 1
+      }];
+    }
 
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return res.status(422).json({ success: false, message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors });
@@ -150,7 +166,7 @@ ordersRouter.post('/', async (req, res, next) => {
     } = parsed.data;
 
     if (team_id && (!assignments || assignments.length === 0)) {
-      return res.status(422).json({ success: false, message: 'Harap pilih "Posisi / Job" untuk anggota tim sebelum menyimpan.' });
+      return res.status(422).json({ success: false, message: 'Harap pilih minimal satu anggota tim yang ditugaskan untuk proyek ini.' });
     }
 
     const customer = await prisma.customers.findFirst({ where: { id: BigInt(customer_id), deleted_at: null } });
@@ -232,24 +248,32 @@ ordersRouter.post('/', async (req, res, next) => {
       // 3. Simpan Order Assignments (Tim)
       if (assignments && assignments.length > 0) {
         for (const a of assignments) {
-          await tx.order_assignments.create({
+          const newAssignment = await tx.order_assignments.create({
             data: {
               order_id: newOrder.id,
               team_member_id: BigInt(a.team_member_id),
               job_id: BigInt(a.job_id),
               is_lead: a.is_lead,
+              phase_order: a.phase_order || 1,
+              start_date: a.start_date ? new Date(a.start_date) : null,
+              end_date: a.end_date ? new Date(a.end_date) : null,
               assigned_at: new Date(),
+            }
+          });
+
+          await tx.progress_order.create({
+            data: {
+              assignment_id: newAssignment.id,
+              title: `Pengerjaan Modul Fase ${a.phase_order || 1}`,
+              status: 'pending',
+              progress_percentage: 0,
             }
           });
         }
       }
 
       // 4. OTOMATIS BUAT INVOICE
-      const today = new Date();
-      const ym = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-      const prefix = `INV-${ym}-`;
-      const countInv = await tx.invoices.count({ where: { invoice_number: { startsWith: prefix } } });
-      const invoiceNum = `${prefix}${String(countInv + 1).padStart(3, '0')}`;
+      const invoiceNum = await generateInvoiceNumber(tx);
 
       await tx.invoices.create({
         data: {
@@ -304,6 +328,32 @@ ordersRouter.patch('/:id/status', async (req, res, next) => {
         notes: `Status pengerjaan diubah menjadi ${status}`,
       }
     });
+
+    if (status === 'completed') {
+      const existingCentral = await prisma.maintenances.findFirst({
+        where: {
+          order_id: id,
+          title: { contains: 'Pasca Rilis' },
+          deleted_at: null,
+        },
+      });
+
+      if (!existingCentral) {
+        const orderData = await prisma.orders.findUnique({ where: { id } });
+        await prisma.maintenances.create({
+          data: {
+            order_id: id,
+            title: 'Garansi Sistem Pasca Rilis (Pusat)',
+            description: 'Proyek telah disahkan selesai (Completed) dan resmi masuk masa garansi dan pemeliharaan sistem pusat.',
+            status: 'scheduled',
+            start_datetime: new Date(),
+            end_datetime: orderData?.end_date_project
+              ? new Date(new Date(orderData.end_date_project).getTime() + 30 * 24 * 60 * 60 * 1000)
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        });
+      }
+    }
 
     res.json({ success: true, data: updatedOrder, message: 'Status pengerjaan berhasil diupdate' });
   } catch (err) {

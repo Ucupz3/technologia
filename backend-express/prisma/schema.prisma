@@ -284,6 +284,9 @@ model order_assignments {
   team_member_id BigInt           @db.UnsignedBigInt
   job_id         BigInt           @db.UnsignedBigInt
   is_lead        Boolean          @default(false)
+  phase_order    Int              @default(1)
+  start_date     DateTime?        @db.Date
+  end_date       DateTime?        @db.Date
   assigned_at    DateTime?        @default(now()) @db.Timestamp(0)
   jobs           jobs             @relation(fields: [job_id], references: [id], map: "fk_oa_job")
   orders         orders           @relation(fields: [order_id], references: [id], onDelete: Cascade, map: "fk_oa_order")
@@ -294,6 +297,7 @@ model order_assignments {
   @@index([order_id], map: "idx_oa_order_id")
   @@index([team_member_id], map: "idx_oa_team_member_id")
   @@index([job_id], map: "idx_oa_job_id")
+  @@index([phase_order], map: "idx_oa_phase_order")
   @@index([team_member_id, is_lead], map: "idx_oa_lead")
   @@map("order_assignments")
 }

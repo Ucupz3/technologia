@@ -305,25 +305,54 @@ export default function OrderShow({ orderId }) {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-brand-muted/30 border-b border-brand-border">
                     <tr>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted">Fase</th>
                       <th className="px-3 py-2 font-medium text-brand-text-muted">Nama Anggota</th>
                       <th className="px-3 py-2 font-medium text-brand-text-muted">Job / Posisi</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted">Jadwal (Mulai - Selesai)</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted">Progress</th>
                       <th className="px-3 py-2 font-medium text-brand-text-muted text-center">Lead</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-brand-border/50">
-                    {assignments.map((a) => (
-                      <tr key={a.id} className="hover:bg-brand-muted/20">
-                        <td className="px-3 py-2 text-brand-text">{a.team_members?.users?.name}</td>
-                        <td className="px-3 py-2">
-                          <span className="inline-block text-xs px-2 py-0.5 rounded bg-brand-muted border border-brand-border">
-                            {a.jobs?.name || '—'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {a.is_lead ? <Star size={14} className="fill-amber-500 text-amber-500 inline" /> : '—'}
-                        </td>
-                      </tr>
-                    ))}
+                    {assignments.map((a) => {
+                      const progress = a.progress_order?.[0]?.progress_percentage ?? 0;
+                      return (
+                        <tr key={a.id} className="hover:bg-brand-muted/20">
+                          <td className="px-3 py-2">
+                            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 border border-purple-500/30">
+                              Fase {a.phase_order || 1}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-medium text-brand-text">{a.team_members?.users?.name}</td>
+                          <td className="px-3 py-2">
+                            <span className="inline-block text-xs px-2 py-0.5 rounded bg-brand-muted border border-brand-border">
+                              {a.jobs?.name || '—'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-xs text-brand-text-muted">
+                            {a.start_date && a.end_date
+                              ? `${formatDate(a.start_date)} s/d ${formatDate(a.end_date)}`
+                              : a.end_date
+                              ? `Deadline: ${formatDate(a.end_date)}`
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-brand-muted rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-full ${progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-semibold text-brand-text">{progress}%</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {a.is_lead ? <Star size={14} className="fill-amber-500 text-amber-500 inline" /> : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

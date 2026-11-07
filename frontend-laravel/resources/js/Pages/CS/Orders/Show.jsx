@@ -327,33 +327,62 @@ export default function CustomerServiceOrderShow({ orderId }) {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-brand-muted/30 border-b border-brand-border">
                     <tr>
+                      <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Phase</th>
                       <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Member Name</th>
                       <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Job / Position</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Schedule</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Progress</th>
                       <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase text-center">Team Lead</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-brand-border/50">
-                    {assignments.map((a) => (
-                      <tr key={a.id} className="hover:bg-brand-muted/20 transition">
-                        <td className="px-4 py-3 font-medium text-brand-text">
-                          {a.team_members?.users?.name || `Member #${a.team_member_id}`}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-block text-xs px-2.5 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text-muted">
-                            {a.jobs?.name || 'Task Assignment'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {a.is_lead ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                              <Star size={12} className="fill-amber-400" /> Lead
+                    {assignments.map((a) => {
+                      const progress = a.progress_order?.[0]?.progress_percentage ?? 0;
+                      return (
+                        <tr key={a.id} className="hover:bg-brand-muted/20 transition">
+                          <td className="px-4 py-3">
+                            <span className="inline-block text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/15 text-purple-600 border border-purple-500/30">
+                              Phase {a.phase_order || 1}
                             </span>
-                          ) : (
-                            <span className="text-brand-text-muted text-xs">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-brand-text">
+                            {a.team_members?.users?.name || `Member #${a.team_member_id}`}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-block text-xs px-2.5 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text-muted">
+                              {a.jobs?.name || 'Task Assignment'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-brand-text-muted">
+                            {a.start_date && a.end_date
+                              ? `${formatDate(a.start_date)} - ${formatDate(a.end_date)}`
+                              : a.end_date
+                              ? `Due: ${formatDate(a.end_date)}`
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-brand-muted rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-full ${progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-semibold text-brand-text">{progress}%</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {a.is_lead ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                                <Star size={12} className="fill-amber-400" /> Lead
+                              </span>
+                            ) : (
+                              <span className="text-brand-text-muted text-xs">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

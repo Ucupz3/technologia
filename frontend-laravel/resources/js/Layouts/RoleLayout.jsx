@@ -28,6 +28,7 @@ const menuByRole = {
     { label: 'Services', href: '/admin/services', icon: Database },
     { label: 'Customers', href: '/admin/customers', icon: Contact },
     { label: 'Orders', href: '/admin/orders', icon: Package },
+    { label: 'Maintenance', href: '/admin/maintenance', icon: ClipboardClock },
     { label: 'Schedules', href: '/admin/schedules', icon: Calendar },
     { label: 'Invoices', href: '/admin/invoices', icon: Newspaper },
   ],

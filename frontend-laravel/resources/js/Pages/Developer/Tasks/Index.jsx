@@ -1,361 +1,505 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
-  CheckCircle2, Clock, AlertCircle,
-  Briefcase, ListTodo, RefreshCw, User,
-  Save, X, Search, UploadCloud, FileImage, Trash2, Lock
+    ListTodo, RefreshCw, Briefcase, Calendar, CheckCircle2,
+    Lock, PlayCircle, Clock, AlertCircle, Search, ChevronRight,
+    ArrowRight, Sparkles, X, Save, Sliders, Cpu, FileText
 } from 'lucide-react';
 
 const getStatusBadge = (status) => {
-  switch (status) {
-    case 'pending':     return 'bg-amber-500/15 text-amber-600 border-amber-500/30';
-    case 'in_progress': return 'bg-blue-500/15 text-blue-600 border-blue-500/30';
-    case 'completed':   return 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30';
-    default:            return 'bg-gray-500/15 text-gray-600 border-gray-500/30';
-  }
-};
-
-const getProgressColor = (status) => {
-  if (status === 'completed') return 'bg-emerald-500';
-  if (status === 'in_progress') return 'bg-blue-500';
-  return 'bg-gray-300 dark:bg-gray-600';
+    switch (status) {
+        case 'pending':
+            return {
+                label: 'Pending',
+                className: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
+                icon: <Clock size={12} />
+            };
+        case 'in_progress':
+            return {
+                label: 'In Progress',
+                className: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
+                icon: <PlayCircle size={12} />
+            };
+        case 'completed':
+            return {
+                label: 'Completed',
+                className: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
+                icon: <CheckCircle2 size={12} />
+            };
+        case 'cancelled':
+            return {
+                label: 'Cancelled',
+                className: 'bg-red-500/15 text-red-500 border-red-500/30',
+                icon: <AlertCircle size={12} />
+            };
+        default:
+            return {
+                label: status,
+                className: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
+                icon: <Clock size={12} />
+            };
+    }
 };
 
 export default function DeveloperTasksIndex() {
-  const { auth } = usePage().props;
-  const currentUserId = auth?.user?.id;
+    const { auth } = usePage().props;
+    const currentUserId = auth?.user?.id;
 
-  const [loading, setLoading] = useState(true);
-  const [tasks, setTasks] = useState([]);
-  const [search, setSearch] = useState('');
-  
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [form, setForm] = useState({ status: 'pending', progress_percentage: 0, notes: '' });
-  const [files, setFiles] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
-  const fileInputRef = useRef(null);
+    const [loading, setLoading] = useState(true);
+    const [tasks, setTasks] = useState([]);
+    const [search, setSearch] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
 
-  const loadTasks = () => {
-    if (!currentUserId) return;
-    setLoading(true);
-    
-    fetch(`/api/v1/developer/tasks?user_id=${currentUserId}`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) setTasks(d.data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    loadTasks();
-  }, [currentUserId]);
-
-  const openModal = (task) => {
-    setSelectedTask(task);
-    setForm({
-      status: task.status,
-      progress_percentage: task.progress,
-      notes: task.notes || ''
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [modalForm, setModalForm] = useState({
+        progress_percentage: 0,
+        status: 'pending',
+        notes: ''
     });
-    setFiles([]);
-  };
+    const [submitting, setSubmitting] = useState(false);
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
+    const loadTasks = () => {
+        if (!currentUserId) return;
+        setLoading(true);
+        fetch(`/api/v1/developer/tasks?user_id=${currentUserId}`, { cache: 'no-store' })
+            .then((res) => res.json())
+            .then((res) => {
+                if (res.success && Array.isArray(res.data)) {
+                    setTasks(res.data);
+                }
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    };
 
-    try {
-      const res = await fetch(`/api/v1/developer/tasks/${selectedTask.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message);
+    useEffect(() => {
+        loadTasks();
+    }, [currentUserId]);
 
-      if (files.length > 0) {
-        const targetId = data.new_id || selectedTask.id;
-        const formData = new FormData();
-        files.forEach(file => formData.append('files', file));
-
-        const uploadRes = await fetch(`/api/v1/developer/tasks/${targetId}/attachments`, {
-          method: 'POST',
-          body: formData,
+    const openUpdateModal = (task) => {
+        setSelectedTask(task);
+        setModalForm({
+            progress_percentage: task.progress || 0,
+            status: task.status || 'pending',
+            notes: task.notes || ''
         });
-        if (!uploadRes.ok) alert('Progress tersimpan, tapi gagal upload lampiran.');
-      }
+    };
 
-      setSelectedTask(null);
-      loadTasks(); 
-    } catch (err) {
-      alert(err.message || 'Gagal update task');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    const handleProgressChange = (val) => {
+        const num = Number(val);
+        let nextStatus = modalForm.status;
 
-  const handleFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    setFiles(prev => [...prev, ...selectedFiles]);
-  };
+        if (num === 100) {
+            nextStatus = 'completed';
+        } else if (num > 0 && modalForm.status !== 'in_progress') {
+            nextStatus = 'in_progress';
+        } else if (num === 0 && modalForm.status === 'completed') {
+            nextStatus = 'pending';
+        }
 
-  const removeFile = (index) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
+        setModalForm((prev) => ({
+            ...prev,
+            progress_percentage: num,
+            status: nextStatus
+        }));
+    };
 
-  const filteredTasks = tasks.filter(t => 
-    t.title.toLowerCase().includes(search.toLowerCase()) || 
-    t.order_number.toLowerCase().includes(search.toLowerCase())
-  );
+    const handleSaveProgress = async (e) => {
+        e.preventDefault();
+        if (!selectedTask) return;
+        setSubmitting(true);
 
-  return (
-    <RoleLayout>
-      <Head title="Task & Progress" />
+        try {
+            const res = await fetch(`/api/v1/developer/tasks/${selectedTask.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(modalForm)
+            });
+            const data = await res.json();
 
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
-            <ListTodo size={24} className="text-brand-accent" />
-            Task & Progress
-          </h1>
-          <p className="text-sm text-brand-text-muted mt-1">
-            Kelola pengerjaan teknis modul proyek Anda (Internal Developer).
-          </p>
-        </div>
-        <button 
-          onClick={loadTasks} 
-          disabled={loading}
-          className="bg-brand-secondary border border-brand-border text-brand-text px-4 py-2 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm font-medium transition shadow-sm disabled:opacity-50 w-fit"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
-      </div>
+            if (!data.success) throw new Error(data.message || 'Gagal menyimpan progres');
 
-      <div className="mb-6 relative max-w-md">
-        <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
-        <input
-          type="text"
-          placeholder="Cari nama task atau no. order..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-brand-secondary border border-brand-border rounded-xl text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
-        />
-      </div>
+            setSelectedTask(null);
+            loadTasks();
+        } catch (err) {
+            alert(err.message || 'Terjadi kesalahan saat menyimpan progres.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
-      <div className="space-y-3">
-        {loading ? (
-          <div className="p-12 text-center text-brand-text-muted">
-            <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-            Memuat data...
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="p-12 text-center text-brand-text-muted bg-brand-secondary border border-brand-border rounded-xl">
-            <CheckCircle2 size={48} className="mx-auto mb-3 text-emerald-500/40" />
-            <p>Belum ada task yang ditugaskan kepada Anda.</p>
-          </div>
-        ) : (
-          filteredTasks.map((task) => {
-            const isOrderCompleted = task.order_status === 'completed';
-            const isTaskCompleted = task.status === 'completed' || task.progress === 100;
+    const filteredTasks = tasks.filter((t) => {
+        if (filterStatus === 'pending' && t.status !== 'pending') return false;
+        if (filterStatus === 'in_progress' && t.status !== 'in_progress') return false;
+        if (filterStatus === 'completed' && t.status !== 'completed') return false;
+        if (filterStatus === 'locked' && !t.is_locked) return false;
 
-            return (
-              <div key={task.id} className="bg-brand-secondary border border-brand-border rounded-xl p-5 hover:border-brand-accent/50 transition shadow-sm">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-accent/10 text-brand-accent border border-brand-accent/20 px-2 py-0.5 rounded">
-                        {task.job_name}
-                      </span>
-                      <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border font-bold ${getStatusBadge(task.status)}`}>
-                        {task.status.replace('_', ' ')}
-                      </span>
-                      {isOrderCompleted && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                          <Lock size={10} /> Proyek Closed (Selesai)
-                        </span>
-                      )}
-                      {task.is_overdue && !isOrderCompleted && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-red-500/15 text-red-600 border border-red-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                          <AlertCircle size={10} /> Overdue
-                        </span>
-                      )}
-                    </div>
-                    
-                    <h3 className="text-lg font-bold text-brand-text">{task.title}</h3>
-                    
-                    <div className="flex items-center gap-4 mt-2 text-sm text-brand-text-muted">
-                      <span className="font-mono flex items-center gap-1.5 bg-brand-muted px-2 py-1 rounded-md"><Briefcase size={14} /> {task.order_number}</span>
-                      <span className="flex items-center gap-1.5"><User size={14} /> {task.customer}</span>
-                      <span className={`flex items-center gap-1.5 ${task.is_overdue && !isOrderCompleted ? 'text-red-500 font-semibold' : ''}`}>
-                        <Clock size={14} /> {task.deadline}
-                      </span>
-                    </div>
-                  </div>
+        const q = search.toLowerCase();
+        const titleMatch = (t.title || '').toLowerCase().includes(q);
+        const jobMatch = (t.job_name || '').toLowerCase().includes(q);
+        const orderMatch = (t.order_number || '').toLowerCase().includes(q);
+        const customerMatch = (t.customer || '').toLowerCase().includes(q);
 
-                  <div className="lg:w-72 shrink-0 space-y-3 border-t lg:border-t-0 lg:border-l border-brand-border pt-4 lg:pt-0 lg:pl-6">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-brand-text-muted font-medium">Progress</span>
-                        <span className="font-bold text-brand-text">{task.progress}%</span>
-                      </div>
-                      <div className="w-full bg-brand-muted rounded-full h-2">
-                        <div className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(task.status)}`} style={{ width: `${task.progress}%` }}></div>
-                      </div>
-                    </div>
+        return titleMatch || jobMatch || orderMatch || customerMatch;
+    });
 
-                    {isOrderCompleted ? (
-                      <button
-                        disabled
-                        className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
-                        title="Proyek telah disahkan selesai oleh Admin/Super Admin"
-                      >
-                        <CheckCircle2 size={16} /> Proyek Selesai (Terkunci)
-                      </button>
-                    ) : isTaskCompleted ? (
-                      <button
-                        disabled
-                        className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
-                        title="Pengerjaan tugas sudah 100% selesai. Menunggu validasi Admin."
-                      >
-                        <CheckCircle2 size={16} /> Tugas Selesai (100%)
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => openModal(task)}
-                        className="w-full bg-brand-primary border border-brand-border text-brand-text py-2 rounded-lg hover:bg-brand-muted hover:text-brand-accent transition text-sm font-semibold flex items-center justify-center gap-2"
-                      >
-                        Update Progress
-                      </button>
-                    )}
-                  </div>
+    const stats = {
+        total: tasks.length,
+        in_progress: tasks.filter((t) => t.status === 'in_progress' && !t.is_locked).length,
+        completed: tasks.filter((t) => t.status === 'completed' || t.progress === 100).length,
+        locked: tasks.filter((t) => t.is_locked).length
+    };
 
+    return (
+        <RoleLayout>
+            <Head title="Task & Progress Developer" />
+
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
+                        <ListTodo size={24} className="text-brand-accent" />
+                        Task & Progress Pengerjaan
+                    </h1>
+                    <p className="text-sm text-brand-text-muted mt-1">
+                        Kelola dan update kemajuan tugas modul pengerjaan yang ditugaskan kepada Anda.
+                    </p>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {selectedTask && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between sticky top-0 bg-brand-secondary z-10">
-              <h2 className="text-lg font-bold text-brand-text">Update Progress Tugas</h2>
-              <button onClick={() => setSelectedTask(null)} className="text-brand-text-muted hover:text-brand-accent transition"><X size={20} /></button>
+                <button
+                    onClick={loadTasks}
+                    disabled={loading}
+                    className="bg-brand-secondary border border-brand-border text-brand-text px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-brand-muted transition shadow-sm w-fit disabled:opacity-50"
+                >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    Refresh Tugas
+                </button>
             </div>
-            
-            <form onSubmit={handleUpdate} className="p-6 space-y-5">
-              <div>
-                <div className="text-xs text-brand-text-muted uppercase tracking-widest mb-1">Tugas Anda</div>
-                <div className="font-semibold text-brand-text">{selectedTask.title}</div>
-                <div className="text-sm text-brand-text-muted mt-1">{selectedTask.order_number} - {selectedTask.customer}</div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5 flex justify-between">
-                  <span>Persentase Pengerjaan (%)</span>
-                  <span className="text-brand-accent font-bold text-sm">{form.progress_percentage}%</span>
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={form.progress_percentage}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    let newStatus = form.status;
-                    if (val === 100) newStatus = 'completed';
-                    else if (val > 0) newStatus = 'in_progress';
-                    else newStatus = 'pending';
-                    setForm({ ...form, progress_percentage: val, status: newStatus });
-                  }}
-                  className="w-full accent-brand-accent cursor-pointer"
-                />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <StatCard title="Total Tugas Anda" value={stats.total} icon={ListTodo} color="purple" />
+                <StatCard title="Sedang Dikerjakan" value={stats.in_progress} icon={PlayCircle} color="blue" />
+                <StatCard title="Selesai (100%)" value={stats.completed} icon={CheckCircle2} color="emerald" />
+                <StatCard title="Terkunci (Antri Fase)" value={stats.locked} icon={Lock} color="amber" />
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Status Pengerjaan</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
-                >
-                  <option value="pending">Pending (Belum Mulai)</option>
-                  <option value="in_progress">In Progress (Sedang Dikerjakan)</option>
-                  <option value="completed">Completed (Selesai 100%)</option>
-                </select>
-                <p className="text-[11px] text-brand-text-muted mt-1.5">
-                  *Catatan: Ini status pengerjaan teknis modul Anda. Status Order utama tetap dikelola oleh Admin.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Catatan Pengerjaan (Opsional)</label>
-                <textarea
-                  rows={2}
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Tambahkan catatan hasil pengerjaan atau update patch..."
-                  className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Upload Bukti (Gambar / Dokumen)</label>
-                
-                <div 
-                  onClick={() => fileInputRef.current.click()}
-                  className="border-2 border-dashed border-brand-border hover:border-brand-accent/60 rounded-lg p-4 text-center cursor-pointer transition"
-                >
-                  <UploadCloud size={24} className="mx-auto text-brand-text-muted mb-2" />
-                  <p className="text-sm text-brand-text font-medium">Klik untuk pilih file</p>
-                  <p className="text-xs text-brand-text-muted mt-1">Maks. 5 file, 5MB per file</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="relative max-w-md w-full">
+                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+                    <input
+                        type="text"
+                        placeholder="Cari tugas, nama modul, nomor order, atau klien..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-brand-secondary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                    />
                 </div>
-                <input 
-                  type="file" 
-                  multiple 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  onChange={handleFileChange}
-                  accept="image/*,application/pdf"
-                />
 
-                {files.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {files.map((file, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-brand-primary border border-brand-border p-2 rounded-lg">
-                        <div className="flex items-center gap-2 truncate">
-                          <FileImage size={16} className="text-brand-accent shrink-0" />
-                          <span className="text-xs text-brand-text truncate">{file.name}</span>
-                        </div>
-                        <button type="button" onClick={() => removeFile(idx)} className="text-red-500 hover:text-red-600 p-1">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                    <button
+                        onClick={() => setFilterStatus('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            filterStatus === 'all'
+                                ? 'bg-brand-accent text-brand-secondary border-brand-accent'
+                                : 'bg-brand-secondary text-brand-text-muted border-brand-border hover:bg-brand-muted hover:text-brand-text'
+                        }`}
+                    >
+                        Semua ({tasks.length})
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('in_progress')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            filterStatus === 'in_progress'
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-brand-secondary text-blue-400 border-brand-border hover:bg-brand-muted hover:text-blue-300'
+                        }`}
+                    >
+                        Sedang Dikerjakan ({stats.in_progress})
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('completed')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            filterStatus === 'completed'
+                                ? 'bg-emerald-500 text-white border-emerald-500'
+                                : 'bg-brand-secondary text-emerald-400 border-brand-border hover:bg-brand-muted hover:text-emerald-300'
+                        }`}
+                    >
+                        Selesai ({stats.completed})
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('locked')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            filterStatus === 'locked'
+                                ? 'bg-amber-500 text-white border-amber-500'
+                                : 'bg-brand-secondary text-amber-400 border-brand-border hover:bg-brand-muted hover:text-amber-300'
+                        }`}
+                    >
+                        Terkunci ({stats.locked})
+                    </button>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                {loading ? (
+                    <div className="p-12 text-center text-brand-text-muted bg-brand-secondary border border-brand-border rounded-xl">
+                        <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
+                        Memuat daftar tugas...
+                    </div>
+                ) : filteredTasks.length === 0 ? (
+                    <div className="p-12 text-center text-brand-text-muted bg-brand-secondary border border-brand-border rounded-xl">
+                        <ListTodo size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
+                        <p className="font-semibold text-brand-text">Tidak ada tugas yang sesuai.</p>
+                        <p className="text-xs text-brand-text-muted mt-1">
+                            Semua tugas yang ditugaskan kepada Anda akan tampil di halaman ini.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                        {filteredTasks.map((task) => {
+                            const badge = getStatusBadge(task.status);
+                            const isFinished = task.status === 'completed' || task.progress === 100;
+
+                            return (
+                                <div
+                                    key={task.id}
+                                    className={`bg-brand-secondary border rounded-xl p-5 shadow-sm transition hover:border-brand-accent/40 ${
+                                        task.is_locked ? 'border-brand-border/60 opacity-80' : 'border-brand-border'
+                                    }`}
+                                >
+                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
+                                        <div>
+                                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text-muted">
+                                                    {task.order_number}
+                                                </span>
+                                                <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                                                    Fase {task.phase_order || 1}
+                                                </span>
+                                                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border flex items-center gap-1.5 ${badge.className}`}>
+                                                    {badge.icon} {badge.label}
+                                                </span>
+                                                {task.is_locked && (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
+                                                        <Lock size={11} /> Terkunci
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <h3 className="text-base font-bold text-brand-text">
+                                                {task.job_name} — {task.title}
+                                            </h3>
+                                            <p className="text-xs text-brand-text-muted mt-0.5">
+                                                Klien: <strong className="text-brand-text">{task.customer}</strong>
+                                            </p>
+                                        </div>
+
+                                        <div className="text-right shrink-0">
+                                            <span className="text-[11px] text-brand-text-muted uppercase block">Jadwal / Deadline</span>
+                                            <span className={`text-xs font-medium flex items-center gap-1 sm:justify-end ${task.is_overdue ? 'text-red-500 font-semibold' : 'text-brand-text'}`}>
+                                                <Calendar size={12} className={task.is_overdue ? 'text-red-500' : 'text-brand-text-muted'} />
+                                                {task.start_date && task.end_date
+                                                    ? `${task.start_date} s/d ${task.end_date}`
+                                                    : task.deadline}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {task.is_locked && task.lock_reason && (
+                                        <div className="text-xs text-amber-500/90 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 rounded-lg mb-3">
+                                            <Lock size={14} className="shrink-0" />
+                                            <span>{task.lock_reason}</span>
+                                        </div>
+                                    )}
+
+                                    {task.notes && (
+                                        <div className="mb-3 p-3 bg-brand-primary/40 border border-brand-border/40 rounded-lg text-xs">
+                                            <span className="text-brand-text-muted block mb-1 font-semibold flex items-center gap-1">
+                                                <FileText size={12} /> Catatan Terakhir:
+                                            </span>
+                                            <p className="text-brand-text italic">"{task.notes}"</p>
+                                        </div>
+                                    )}
+
+                                    <div className="pt-3 border-t border-brand-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3 sm:w-72">
+                                            <span className="text-xs font-semibold text-brand-text-muted shrink-0">Progres:</span>
+                                            <div className="w-full bg-brand-muted rounded-full h-2.5 overflow-hidden">
+                                                <div
+                                                    className={`h-full transition-all duration-500 ${
+                                                        isFinished
+                                                            ? 'bg-emerald-500'
+                                                            : task.status === 'in_progress'
+                                                            ? 'bg-blue-500'
+                                                            : 'bg-gray-500'
+                                                    }`}
+                                                    style={{ width: `${task.progress || 0}%` }}
+                                                />
+                                            </div>
+                                            <span className="font-bold text-brand-text min-w-[36px] text-right text-xs">
+                                                {task.progress || 0}%
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2.5 self-end sm:self-center">
+                                            {isFinished ? (
+                                                <Link
+                                                    href="/developer/maintenance"
+                                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 hover:bg-purple-500/25 transition shadow-sm"
+                                                >
+                                                    <Cpu size={13} />
+                                                    Selesai 100% • Buka di Maintenance Modul
+                                                    <ArrowRight size={13} />
+                                                </Link>
+                                            ) : task.is_locked ? (
+                                                <button
+                                                    disabled
+                                                    className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-brand-muted border border-brand-border text-brand-text-muted/60 cursor-not-allowed flex items-center gap-1.5"
+                                                >
+                                                    <Lock size={12} /> Belum Dapat Dikerjakan
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => openUpdateModal(task)}
+                                                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-accent text-brand-secondary hover:bg-brand-accent/90 transition shadow-sm"
+                                                >
+                                                    <Sliders size={13} />
+                                                    Update Progres
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
-              </div>
+            </div>
 
-              <div className="pt-2 flex justify-end gap-2 sticky bottom-0 bg-brand-secondary pb-2">
-                <button type="button" onClick={() => setSelectedTask(null)} className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg text-sm font-medium transition">
-                  Batal
-                </button>
-                <button type="submit" disabled={submitting} className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
-                  {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  Simpan Progress
-                </button>
-              </div>
-            </form>
-          </div>
+            {selectedTask && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+                        <div className="p-5 border-b border-brand-border flex items-center justify-between">
+                            <div>
+                                <h3 className="font-bold text-brand-text">Update Progres Pekerjaan</h3>
+                                <p className="text-xs text-brand-text-muted mt-0.5">
+                                    {selectedTask.order_number} — {selectedTask.job_name} ({selectedTask.customer})
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedTask(null)}
+                                className="text-brand-text-muted hover:text-brand-text p-1 rounded-lg"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveProgress} className="p-5 space-y-4">
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="text-xs font-semibold text-brand-text-muted uppercase">
+                                        Persentase Progres
+                                    </label>
+                                    <span className="text-sm font-bold text-brand-accent">
+                                        {modalForm.progress_percentage}%
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="5"
+                                    value={modalForm.progress_percentage}
+                                    onChange={(e) => handleProgressChange(e.target.value)}
+                                    className="w-full accent-brand-accent cursor-pointer"
+                                />
+                                <div className="flex justify-between text-[11px] text-brand-text-muted mt-1">
+                                    <span>0% (Belum Mulai)</span>
+                                    <span>50% (Sedang Jalan)</span>
+                                    <span>100% (Selesai Penuh)</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                    Status Pengerjaan
+                                </label>
+                                <select
+                                    value={modalForm.status}
+                                    onChange={(e) => setModalForm({ ...modalForm, status: e.target.value })}
+                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                >
+                                    <option value="pending">Pending (Belum Dimulai)</option>
+                                    <option value="in_progress">In Progress (Sedang Dikerjakan)</option>
+                                    <option value="completed">Completed (Selesai 100%)</option>
+                                </select>
+                            </div>
+
+                            {modalForm.progress_percentage === 100 && (
+                                <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-400 flex items-start gap-2.5">
+                                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-emerald-200">Tugas Selesai (100%)</p>
+                                        <p className="text-[11px] text-emerald-300/80 mt-0.5">
+                                            Tugas ini akan ditandai selesai penuh.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                    Catatan & Laporan Pengerjaan
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    value={modalForm.notes}
+                                    onChange={(e) => setModalForm({ ...modalForm, notes: e.target.value })}
+                                    placeholder="Tuliskan kemajuan tugas, link aset, atau catatan teknis..."
+                                    className="w-full bg-brand-primary border border-brand-border rounded-xl p-3 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-3 border-t border-brand-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedTask(null)}
+                                    className="px-4 py-2 text-sm text-brand-text-muted hover:text-brand-text rounded-xl"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="bg-brand-accent text-brand-secondary px-5 py-2 rounded-xl text-sm font-semibold hover:bg-brand-accent/90 transition flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    <Save size={14} />
+                                    {submitting ? 'Menyimpan...' : 'Simpan Progres'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </RoleLayout>
+    );
+}
+
+function StatCard({ title, value, icon: Icon, color }) {
+    const colors = {
+        purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+        emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+        amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    };
+
+    return (
+        <div className="bg-brand-secondary border border-brand-border rounded-xl p-4 shadow-sm flex items-center gap-4 hover:shadow-md transition">
+            <div className={`p-3 rounded-lg border ${colors[color]}`}>
+                <Icon size={22} />
+            </div>
+            <div>
+                <p className="text-xs font-medium text-brand-text-muted mb-0.5">{title}</p>
+                <h3 className="text-2xl font-bold text-brand-text">{value}</h3>
+            </div>
         </div>
-      )}
-    </RoleLayout>
-  );
+    );
 }

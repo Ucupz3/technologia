@@ -70,18 +70,32 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
               <button
                 key={opt.value}
                 type="button"
+                disabled={opt.disabled}
                 onClick={() => {
+                  if (opt.disabled) return;
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
-                  String(value) === String(opt.value)
+                  opt.disabled
+                    ? 'opacity-40 cursor-not-allowed bg-transparent text-brand-text-muted'
+                    : String(value) === String(opt.value)
                     ? 'bg-brand-accent/15 text-brand-accent font-medium'
                     : 'text-brand-text hover:bg-brand-border/40'
                 }`}
               >
-                <span className="truncate">{opt.label}</span>
-                {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent" />}
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className="truncate">{opt.label}</span>
+                  {opt.subtext && <span className="text-[10px] text-brand-text-muted truncate">{opt.subtext}</span>}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                  {opt.badge && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${opt.badgeClassName || 'bg-brand-accent/10 text-brand-accent'}`}>
+                      {opt.badge}
+                    </span>
+                  )}
+                  {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent shrink-0" />}
+                </div>
               </button>
             ))}
           </div>
@@ -90,6 +104,77 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
     </div>
   );
 }
+
+const getRequiredJobKeywords = (svcNames) => {
+  if (!svcNames || svcNames.length === 0) return [];
+  const text = svcNames.join(' ').toLowerCase();
+  const keywords = [];
+
+  if (text.includes('ui/ux') || text.includes('ui') || text.includes('ux')) {
+    keywords.push('ui/ux', 'ui', 'ux');
+  }
+  if (text.includes('logo') || text.includes('branding') || text.includes('grafis') || text.includes('graphic')) {
+    keywords.push('graphic', 'grafis', 'desain', 'designer', 'logo');
+  }
+  if (text.includes('website') || text.includes('web') || text.includes('landing') || text.includes('company profile') || text.includes('commerce')) {
+    keywords.push('frontend', 'backend', 'full-stack', 'web');
+  }
+  if (text.includes('aplikasi') || text.includes('android') || text.includes('ios') || text.includes('mobile')) {
+    keywords.push('frontend', 'backend', 'full-stack', 'mobile');
+  }
+  if (text.includes('maintenance') || text.includes('pemeliharaan')) {
+    keywords.push('devops', 'backend', 'frontend', 'full-stack', 'qa');
+  }
+  if (keywords.length === 0 && (text.includes('desain') || text.includes('design'))) {
+    keywords.push('design', 'desain', 'ui', 'ux', 'graphic');
+  }
+  return [...new Set(keywords)];
+};
+
+const computeDefaultAssignments = (team, keywords) => {
+  if (!team || !team.team_members) return {};
+  const assignments = {};
+
+  const hasPrimaryMatch = keywords.length > 0 && team.team_members.some((tm) => {
+    const primary = tm.users?.user_jobs?.find((uj) => uj.is_primary) || tm.users?.user_jobs?.[0];
+    return primary && keywords.some((k) => (primary.jobs?.name || '').toLowerCase().includes(k));
+  });
+
+  team.team_members.forEach((tm) => {
+    const userJobs = tm.users?.user_jobs || [];
+    const primaryJob = userJobs.find((uj) => uj.is_primary) || userJobs[0];
+    const primaryMatches = primaryJob && keywords.some((k) => (primaryJob.jobs?.name || '').toLowerCase().includes(k));
+    const secondaryMatch = userJobs.find((uj) => keywords.some((k) => (uj.jobs?.name || '').toLowerCase().includes(k)));
+
+    let isAssigned = true;
+    let chosenJobId = primaryJob ? String(primaryJob.job_id) : '';
+
+    if (keywords.length > 0) {
+      if (primaryMatches) {
+        isAssigned = true;
+        chosenJobId = String(primaryJob.job_id);
+      } else if (!hasPrimaryMatch && secondaryMatch) {
+        isAssigned = true;
+        chosenJobId = String(secondaryMatch.job_id);
+      } else {
+        isAssigned = false;
+        chosenJobId = secondaryMatch ? String(secondaryMatch.job_id) : (primaryJob ? String(primaryJob.job_id) : '');
+      }
+    }
+
+    assignments[tm.id] = {
+      team_member_id: tm.id,
+      job_id: chosenJobId,
+      is_assigned: isAssigned,
+      is_lead: false,
+      phase_order: 1,
+      start_date: '',
+      end_date: '',
+    };
+  });
+
+  return assignments;
+};
 
 export default function SalesOrderCreate() {
   const page = usePage();
@@ -137,7 +222,6 @@ export default function SalesOrderCreate() {
     ])
       .then(([customers, services, sales, teams]) => {
         const rawSales = sales.data || [];
-        // Ensure current authenticated user is included in sales options
         if (authUser?.id && !rawSales.some((s) => Number(s.id) === Number(authUser.id))) {
           rawSales.unshift({ id: String(authUser.id), name: `${authUser.name} (You)` });
         }
@@ -149,7 +233,6 @@ export default function SalesOrderCreate() {
           teams: teams.data || [],
         });
 
-        // Auto select current sales user
         if (authUser?.id) {
           setForm((prev) => ({
             ...prev,
@@ -172,7 +255,6 @@ export default function SalesOrderCreate() {
   const taxAmount = ((subtotal - discountAmount) * form.tax_rate) / 100;
   const grandTotal = Math.max(0, subtotal - discountAmount + taxAmount);
 
-  // When Customer changes, automatically select the primary PIC or first available PIC
   const handleCustomerChange = (val) => {
     const cust = options.customers.find((c) => String(c.id) === String(val));
     const pics = cust?.customer_pics || [];
@@ -187,33 +269,83 @@ export default function SalesOrderCreate() {
 
   const handleServiceChange = (val) => {
     const selectedService = options.services.find((s) => String(s.id) === String(val));
-    setForm((prev) => ({
-      ...prev,
-      service_id: val,
-      price_deal: selectedService ? selectedService.default_price : prev.price_deal,
-    }));
+    const svcNames = selectedService ? [selectedService.name] : [];
+    const newKeywords = getRequiredJobKeywords(svcNames);
+
+    setForm((prev) => {
+      let nextTeamId = prev.team_id;
+      let nextAssignments = prev.assignments;
+
+      if (nextTeamId) {
+        const currentTeam = options.teams.find((t) => String(t.id) === String(nextTeamId));
+        const memberJobs = currentTeam?.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
+        const isTeamValid = newKeywords.length === 0 || memberJobs.some((jn) => newKeywords.some((k) => jn.toLowerCase().includes(k)));
+
+        if (!isTeamValid) {
+          nextTeamId = '';
+          nextAssignments = {};
+        } else if (currentTeam) {
+          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords);
+        }
+      }
+
+      return {
+        ...prev,
+        service_id: val,
+        price_deal: selectedService ? selectedService.default_price : prev.price_deal,
+        team_id: nextTeamId,
+        assignments: nextAssignments,
+      };
+    });
   };
 
   const currentCustomer = options.customers.find((c) => String(c.id) === String(form.customer_id));
   const customerPics = currentCustomer?.customer_pics || [];
 
+  const selectedService = options.services.find((s) => String(s.id) === String(form.service_id));
+  const requiredKeywords = getRequiredJobKeywords(selectedService ? [selectedService.name] : []);
+
+  const teamOptions = options.teams.map((t) => {
+    const memberJobs = t.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
+    const uniqueJobs = [...new Set(memberJobs)];
+
+    let hasMatch = true;
+    let badge = null;
+    let badgeClassName = '';
+
+    if (requiredKeywords.length > 0) {
+      hasMatch = memberJobs.some((jn) => requiredKeywords.some((k) => jn.toLowerCase().includes(k)));
+      if (hasMatch) {
+        badge = 'Cocok';
+        badgeClassName = 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30';
+      } else {
+        badge = 'Keahlian Tidak Ada';
+        badgeClassName = 'bg-red-500/15 text-red-400 border border-red-500/30';
+      }
+    }
+
+    return {
+      value: t.id,
+      label: t.name,
+      subtext: uniqueJobs.length > 0 ? `Keahlian: ${uniqueJobs.join(', ')}` : 'Belum ada anggota',
+      disabled: requiredKeywords.length > 0 && !hasMatch,
+      badge: badge,
+      badgeClassName: badgeClassName,
+    };
+  });
+
   const handleTeamChange = (val) => {
     setForm((prev) => {
-      const newForm = { ...prev, team_id: val, assignments: {} };
-      if (val) {
-        const team = options.teams.find((t) => String(t.id) === String(val));
-        if (team && team.team_members) {
-          team.team_members.forEach((tm) => {
-            const primaryJob = tm.users?.user_jobs?.find((uj) => uj.is_primary) || tm.users?.user_jobs?.[0];
-            newForm.assignments[tm.id] = {
-              team_member_id: tm.id,
-              job_id: primaryJob ? String(primaryJob.job_id) : '',
-              is_lead: false,
-            };
-          });
-        }
-      }
-      return newForm;
+      const selectedTeam = options.teams.find((t) => String(t.id) === String(val));
+      const curService = options.services.find((s) => String(s.id) === String(prev.service_id));
+      const svcNames = curService ? [curService.name] : [];
+      const keywords = getRequiredJobKeywords(svcNames);
+
+      return {
+        ...prev,
+        team_id: val,
+        assignments: selectedTeam ? computeDefaultAssignments(selectedTeam, keywords) : {},
+      };
     });
   };
 
@@ -244,10 +376,24 @@ export default function SalesOrderCreate() {
       return;
     }
 
+    const assignmentsArray = Object.values(form.assignments)
+      .filter((a) => a.is_assigned && a.job_id)
+      .map((a) => ({
+        team_member_id: Number(a.team_member_id),
+        job_id: Number(a.job_id),
+        is_lead: Boolean(a.is_lead),
+        phase_order: Number(a.phase_order || 1),
+        start_date: a.start_date || null,
+        end_date: a.end_date || null,
+      }));
+
+    if (form.team_id && assignmentsArray.length === 0) {
+      showToast('error', 'Pilih minimal satu anggota tim untuk ditugaskan pada proyek ini.');
+      return;
+    }
+
     setSubmitting(true);
     setErrors({});
-
-    const assignmentsArray = Object.values(form.assignments).filter((a) => a.job_id !== '');
 
     const payload = {
       customer_id: form.customer_id,
@@ -255,6 +401,11 @@ export default function SalesOrderCreate() {
       sales_id: form.sales_id || null,
       team_id: form.team_id || null,
       service_id: form.service_id,
+      services: [{
+        service_id: Number(form.service_id),
+        price_deal: Number(form.price_deal),
+        quantity: Number(form.quantity)
+      }],
       price_deal: Number(form.price_deal),
       quantity: Number(form.quantity),
       discount_type: form.discount_type,
@@ -390,7 +541,7 @@ export default function SalesOrderCreate() {
               label="Assigned Team"
               placeholder="— Select Working Team —"
               value={form.team_id}
-              options={options.teams.map((t) => ({ value: t.id, label: t.name }))}
+              options={teamOptions}
               onChange={handleTeamChange}
               icon={Users}
             />
@@ -510,39 +661,137 @@ export default function SalesOrderCreate() {
           {/* TEAM MEMBERS ASSIGNMENT */}
           {form.team_id && Object.keys(form.assignments).length > 0 && (
             <div className="pt-4 border-t border-brand-border">
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-3">
-                Assign Team Member Roles
-              </label>
-              <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-text-muted uppercase">
+                    Atur Posisi & Fase Anggota Tim
+                  </label>
+                  <p className="text-xs text-brand-text-muted mt-0.5">
+                    Pilih anggota tim yang ditugaskan untuk pengerjaan proyek ini.
+                  </p>
+                </div>
+                <div className="text-xs text-brand-text-muted">
+                  Ditugaskan: <span className="font-semibold text-brand-accent">
+                    {Object.values(form.assignments).filter((a) => a.is_assigned).length}
+                  </span> dari {Object.keys(form.assignments).length} anggota
+                </div>
+              </div>
+
+              <div className="space-y-4">
                 {options.teams
                   .find((t) => String(t.id) === String(form.team_id))
                   ?.team_members?.map((tm) => {
                     const assign = form.assignments[tm.id] || {};
                     const userJobs = tm.users?.user_jobs || [];
+                    const isAssigned = Boolean(assign.is_assigned);
+
                     return (
                       <div
                         key={tm.id}
-                        className="flex flex-col sm:flex-row sm:items-center gap-4 bg-brand-primary/40 border border-brand-border p-4 rounded-xl"
+                        className={`border p-4 rounded-xl space-y-3 transition-all ${
+                          isAssigned
+                            ? 'bg-brand-primary/40 border-brand-border'
+                            : 'bg-brand-primary/10 border-dashed border-brand-border/40 opacity-60'
+                        }`}
                       >
-                        <div className="flex-1 min-w-0 font-medium text-brand-text">{tm.users?.name}</div>
-                        <div className="w-full sm:w-64">
-                          <CustomSelect
-                            label="Role / Position"
-                            placeholder="— Select Role —"
-                            value={assign.job_id || ''}
-                            options={userJobs.map((uj) => ({ value: uj.job_id, label: uj.jobs?.name }))}
-                            onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
-                          />
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/40 pb-2">
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={isAssigned}
+                                onChange={(e) => handleAssignmentChange(tm.id, 'is_assigned', e.target.checked)}
+                                className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer"
+                              />
+                              <span className={`text-sm font-semibold flex items-center gap-2 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
+                                <User size={16} className={isAssigned ? 'text-brand-accent' : 'text-brand-text-muted'} />
+                                {tm.users?.name}
+                              </span>
+                            </label>
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                isAssigned
+                                  ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                                  : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
+                              }`}
+                            >
+                              {isAssigned ? 'Ditugaskan' : 'Tidak Ditugaskan'}
+                            </span>
+                          </div>
+
+                          {isAssigned && (
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={assign.is_lead || false}
+                                onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
+                                className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer"
+                              />
+                              <span className="text-xs font-semibold text-brand-text-muted">Lead Tim</span>
+                            </label>
+                          )}
                         </div>
-                        <label className="flex items-center gap-2 cursor-pointer sm:w-24 mt-4 sm:mt-0">
-                          <input
-                            type="checkbox"
-                            checked={assign.is_lead || false}
-                            onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
-                            className="w-5 h-5 rounded border-brand-border text-brand-accent focus:ring-brand-accent"
-                          />
-                          <span className="text-sm font-semibold text-brand-text-muted">Lead</span>
-                        </label>
+
+                        {isAssigned ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                            <div>
+                              <CustomSelect
+                                label="Posisi / Job *"
+                                placeholder="— Pilih Job —"
+                                value={assign.job_id || ''}
+                                options={userJobs.map((uj) => ({ value: uj.job_id, label: uj.jobs?.name }))}
+                                onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
+                                disabled={userJobs.length === 0}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                Urutan Pengerjaan
+                              </label>
+                              <select
+                                value={assign.phase_order || 1}
+                                onChange={(e) => handleAssignmentChange(tm.id, 'phase_order', Number(e.target.value))}
+                                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                              >
+                                <option value={1}>Fase 1 (Mulai Pertama)</option>
+                                <option value={2}>Fase 2 (Setelah Fase 1 Selesai)</option>
+                                <option value={3}>Fase 3 (Setelah Fase 2 Selesai)</option>
+                                <option value={4}>Fase 4 (Setelah Fase 3 Selesai)</option>
+                                <option value={5}>Fase 5 (Setelah Fase 4 Selesai)</option>
+                              </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                  Tgl Mulai
+                                </label>
+                                <input
+                                  type="date"
+                                  value={assign.start_date || ''}
+                                  onChange={(e) => handleAssignmentChange(tm.id, 'start_date', e.target.value)}
+                                  className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                  Deadline
+                                </label>
+                                <input
+                                  type="date"
+                                  value={assign.end_date || ''}
+                                  onChange={(e) => handleAssignmentChange(tm.id, 'end_date', e.target.value)}
+                                  className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-brand-text-muted italic py-1">
+                            Anggota ini tidak diikutsertakan dalam pengerjaan order ini. Centang "Tugaskan" di atas jika ingin menyertakannya.
+                          </p>
+                        )}
                       </div>
                     );
                   })}

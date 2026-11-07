@@ -20,9 +20,17 @@ router.get('/', async (req, res, next) => {
         jobs: true,
         orders: {
           select: {
+            id: true,
             order_number: true,
             customer_name_snapshot: true,
-            end_date_project: true
+            start_date_project: true,
+            end_date_project: true,
+            status: true,
+            order_services: {
+              select: {
+                service_name_snapshot: true
+              }
+            }
           }
         },
         progress_order: {
@@ -32,59 +40,133 @@ router.get('/', async (req, res, next) => {
       orderBy: { assigned_at: 'desc' }
     });
 
-    let allTasks = [];
-    let stats = { total_active: 0, total_completed: 0, total_pending: 0, total_overdue: 0 };
-    const today = new Date();
-
-    assignments.forEach(assignment => {
-      if (assignment.progress_order && assignment.progress_order.length > 0) {
-        assignment.progress_order.forEach(task => {
-          const isOverdue = task.status !== 'completed' &&
-            assignment.orders?.end_date_project &&
-            new Date(assignment.orders.end_date_project) < today;
-
-          allTasks.push({
-            id: task.id,
-            title: task.title,
-            job_name: assignment.jobs.name,
-            order_number: assignment.orders?.order_number || '-',
-            customer: assignment.orders?.customer_name_snapshot || '-',
-            status: task.status,
-            progress: task.progress_percentage,
-            deadline: assignment.orders?.end_date_project
-              ? new Date(assignment.orders.end_date_project).toISOString().split('T')[0]
-              : '-',
-            is_overdue: isOverdue
-          });
-
-          if (task.status === 'completed') stats.total_completed++;
-          else if (task.status === 'in_progress') stats.total_active++;
-          else if (task.status === 'pending') stats.total_pending++;
-
-          if (isOverdue) stats.total_overdue++;
-        });
-      } else {
-        allTasks.push({
-          id: `assign-${assignment.id}`,
-          title: `Pengerjaan ${assignment.jobs.name}`,
-          job_name: assignment.jobs.name,
-          order_number: assignment.orders?.order_number || '-',
-          customer: assignment.orders?.customer_name_snapshot || '-',
-          status: 'pending',
-          progress: 0,
-          deadline: assignment.orders?.end_date_project
-            ? new Date(assignment.orders.end_date_project).toISOString().split('T')[0]
-            : '-',
-          is_overdue: false
-        });
-        stats.total_pending++;
+    const orderIds = [...new Set(assignments.map(a => a.order_id))];
+    const siblingAssignments = await prisma.order_assignments.findMany({
+      where: { order_id: { in: orderIds } },
+      include: {
+        jobs: true,
+        progress_order: {
+          orderBy: { created_at: 'desc' },
+          take: 1
+        }
       }
     });
+
+    const today = new Date();
+    const projectsMap = new Map();
+    let allTasks = [];
+    let stats = {
+      total_projects: 0,
+      total_active: 0,
+      total_completed: 0,
+      total_pending: 0,
+      total_overdue: 0
+    };
+
+    assignments.forEach(assignment => {
+      const order = assignment.orders;
+      if (!order) return;
+      const orderIdStr = String(order.id);
+
+      if (!projectsMap.has(orderIdStr)) {
+        const serviceName = order.order_services?.[0]?.service_name_snapshot || 'Layanan Proyek';
+        projectsMap.set(orderIdStr, {
+          order_id: orderIdStr,
+          order_number: order.order_number,
+          customer_name: order.customer_name_snapshot || '-',
+          service_name: serviceName,
+          status: order.status,
+          start_date_project: order.start_date_project ? new Date(order.start_date_project).toISOString().split('T')[0] : null,
+          end_date_project: order.end_date_project ? new Date(order.end_date_project).toISOString().split('T')[0] : null,
+          jobs: []
+        });
+      }
+
+      const phaseOrder = assignment.phase_order || 1;
+      let isLocked = false;
+      let lockReason = null;
+
+      if (phaseOrder > 1) {
+        const priorPhases = siblingAssignments.filter(
+          s => s.order_id === assignment.order_id && (s.phase_order || 1) < phaseOrder
+        );
+
+        const unfinished = priorPhases.find(p => {
+          const prog = p.progress_order?.[0];
+          return !prog || prog.status !== 'completed' || prog.progress_percentage < 100;
+        });
+
+        if (unfinished) {
+          isLocked = true;
+          lockReason = `Menunggu fase ${unfinished.phase_order || 1} (${unfinished.jobs?.name || 'sebelumnya'}) selesai 100%`;
+        }
+      }
+
+      const effectiveDeadline = assignment.end_date || order.end_date_project;
+      const deadlineStr = effectiveDeadline ? new Date(effectiveDeadline).toISOString().split('T')[0] : '-';
+      const startDateStr = assignment.start_date ? new Date(assignment.start_date).toISOString().split('T')[0] : null;
+
+      const latestProgress = assignment.progress_order?.[0];
+      const progStatus = latestProgress?.status || 'pending';
+      const progPercent = latestProgress?.progress_percentage ?? 0;
+      const isOverdue = progStatus !== 'completed' && !isLocked && effectiveDeadline && new Date(effectiveDeadline) < today;
+
+      const jobItem = {
+        assignment_id: String(assignment.id),
+        task_id: latestProgress ? latestProgress.id : null,
+        job_id: String(assignment.job_id),
+        job_name: assignment.jobs?.name || '-',
+        is_lead: Boolean(assignment.is_lead),
+        phase_order: phaseOrder,
+        start_date: startDateStr,
+        end_date: assignment.end_date ? new Date(assignment.end_date).toISOString().split('T')[0] : null,
+        deadline: deadlineStr,
+        is_locked: isLocked,
+        lock_reason: lockReason,
+        status: progStatus,
+        progress: progPercent,
+        notes: latestProgress?.notes || null,
+        is_overdue: isOverdue
+      };
+
+      projectsMap.get(orderIdStr).jobs.push(jobItem);
+
+      allTasks.push({
+        id: latestProgress ? latestProgress.id : `assign-${assignment.id}`,
+        title: latestProgress?.title || `Pengerjaan ${assignment.jobs.name}`,
+        job_name: assignment.jobs.name,
+        order_number: order.order_number,
+        customer: order.customer_name_snapshot || '-',
+        phase_order: phaseOrder,
+        start_date: startDateStr,
+        end_date: assignment.end_date ? new Date(assignment.end_date).toISOString().split('T')[0] : null,
+        is_locked: isLocked,
+        lock_reason: lockReason,
+        status: progStatus,
+        progress: progPercent,
+        deadline: deadlineStr,
+        is_overdue: isOverdue
+      });
+
+      if (progStatus === 'completed') stats.total_completed++;
+      else if (progStatus === 'in_progress' && !isLocked) stats.total_active++;
+      else stats.total_pending++;
+
+      if (isOverdue) stats.total_overdue++;
+    });
+
+    const projects = Array.from(projectsMap.values()).map(proj => ({
+      ...proj,
+      jobs: proj.jobs.sort((a, b) => a.phase_order - b.phase_order)
+    }));
+
+    stats.total_projects = projects.length;
 
     res.json({
       success: true,
       data: {
         stats,
+        projects,
         tasks: allTasks
       }
     });

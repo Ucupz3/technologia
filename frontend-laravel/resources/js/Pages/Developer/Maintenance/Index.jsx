@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    ClipboardClock, RefreshCw, Briefcase, User,
-    Calendar, CheckCircle2, ShieldCheck, Wrench, Search,
-    Clock, AlertCircle, FileText, X, Save
+    Wrench, RefreshCw, Briefcase, Calendar, CheckCircle2,
+    Clock, AlertCircle, Search, ArrowRight, User, ShieldAlert
 } from 'lucide-react';
 
 const getStatusBadge = (status) => {
@@ -12,25 +11,25 @@ const getStatusBadge = (status) => {
         case 'scheduled':
             return {
                 label: 'Scheduled',
-                className: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
+                className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
                 icon: <Clock size={12} />
             };
         case 'in_progress':
             return {
                 label: 'In Progress',
-                className: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
+                className: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
                 icon: <Wrench size={12} />
             };
         case 'completed':
             return {
                 label: 'Completed',
-                className: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
+                className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
                 icon: <CheckCircle2 size={12} />
             };
         case 'cancelled':
             return {
                 label: 'Cancelled',
-                className: 'bg-red-500/15 text-red-500 border-red-500/30',
+                className: 'bg-red-500/15 text-red-400 border-red-500/30',
                 icon: <AlertCircle size={12} />
             };
         default:
@@ -49,10 +48,7 @@ export default function MaintenanceIndex() {
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState([]);
     const [search, setSearch] = useState('');
-
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [modalForm, setModalForm] = useState({ status: 'scheduled', notes: '' });
-    const [submitting, setSubmitting] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all');
 
     const loadData = () => {
         if (!currentUserId) return;
@@ -60,7 +56,9 @@ export default function MaintenanceIndex() {
         fetch(`/api/v1/developer/maintenance?user_id=${currentUserId}`, { cache: 'no-store' })
             .then((res) => res.json())
             .then((res) => {
-                if (res.success) setItems(res.data);
+                if (res.success && Array.isArray(res.data)) {
+                    setItems(res.data);
+                }
                 setLoading(false);
             })
             .catch(() => setLoading(false));
@@ -70,238 +68,225 @@ export default function MaintenanceIndex() {
         loadData();
     }, [currentUserId]);
 
-    const openUpdateModal = (item) => {
-        setSelectedItem(item);
-        setModalForm({
-            status: item.status,
-            notes: item.notes || '',
-        });
-    };
-
-    const handleSaveUpdate = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-
-        try {
-            const res = await fetch(`/api/v1/developer/maintenance/${selectedItem.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(modalForm),
-            });
-            const data = await res.json();
-
-            if (!data.success) throw new Error(data.message || 'Gagal menyimpan');
-
-            setSelectedItem(null);
-            loadData();
-        } catch (err) {
-            alert(err.message || 'Terjadi kesalahan saat menyimpan laporan.');
-        } finally {
-            setSubmitting(false);
+    const filteredItems = items.filter((item) => {
+        if (statusFilter !== 'all' && item.status !== statusFilter) {
+            return false;
         }
-    };
 
-    const filtered = items.filter((item) => {
         const q = search.toLowerCase();
-        return (
-            item.order_number?.toLowerCase().includes(q) ||
-            item.customer_name?.toLowerCase().includes(q) ||
-            item.title?.toLowerCase().includes(q)
-        );
+        const orderMatch = (item.order_number || '').toLowerCase().includes(q);
+        const parentMatch = (item.parent_order_number || '').toLowerCase().includes(q);
+        const customerMatch = (item.customer_name || '').toLowerCase().includes(q);
+        const titleMatch = (item.title || '').toLowerCase().includes(q);
+        const jobMatch = (item.job_name || '').toLowerCase().includes(q);
+
+        return orderMatch || parentMatch || customerMatch || titleMatch || jobMatch;
     });
+
+    const stats = {
+        total: items.length,
+        in_progress: items.filter((i) => i.status === 'in_progress').length,
+        scheduled: items.filter((i) => i.status === 'scheduled').length,
+        completed: items.filter((i) => i.status === 'completed').length,
+    };
 
     return (
         <RoleLayout>
-            <Head title="Maintenance Proyek" />
+            <Head title="Maintenance Developer" />
 
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
-                        <ClipboardClock size={24} className="text-brand-accent" />
-                        Maintenance & Pemeliharaan Proyek
+                        <Wrench size={24} className="text-brand-accent" />
+                        Penugasan Maintenance & Perbaikan
                     </h1>
                     <p className="text-sm text-brand-text-muted mt-1">
-                        Daftar jadwal pemeliharaan dan catatan teknis proyek yang Anda tangani.
+                        Daftar order perbaikan dan penanganan kendala yang ditugaskan Super Admin kepada Anda.
                     </p>
                 </div>
                 <button
                     onClick={loadData}
                     disabled={loading}
-                    className="bg-brand-secondary border border-brand-border text-brand-text px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-brand-muted transition shadow-sm w-fit"
+                    className="bg-brand-secondary border border-brand-border text-brand-text px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-brand-muted transition shadow-sm w-fit disabled:opacity-50"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    Refresh
+                    Refresh Data
                 </button>
             </div>
 
-            <div className="relative mb-6 max-w-md">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
-                <input
-                    type="text"
-                    placeholder="Cari nomor order, klien, atau judul tugas..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-brand-secondary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                />
+            {/* STATISTIK */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <StatCard title="Total Order Maintenance" value={stats.total} icon={Briefcase} color="purple" />
+                <StatCard title="Sedang Dikerjakan" value={stats.in_progress} icon={Wrench} color="blue" />
+                <StatCard title="Terjadwal / Antri" value={stats.scheduled} icon={Clock} color="amber" />
+                <StatCard title="Selesai Diperbaiki" value={stats.completed} icon={CheckCircle2} color="emerald" />
             </div>
 
-            {loading ? (
-                <div className="p-12 text-center text-brand-text-muted">
-                    <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-                    Memuat data pemeliharaan...
+            {/* PENCARIAN & FILTER STATUS */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="relative max-w-md w-full">
+                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+                    <input
+                        type="text"
+                        placeholder="Cari order, klien, modul, atau judul kendala..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-brand-secondary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                    />
                 </div>
-            ) : filtered.length === 0 ? (
-                <div className="p-12 text-center text-brand-text-muted bg-brand-secondary border border-brand-border rounded-xl">
-                    <ShieldCheck size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
-                    <p className="font-semibold text-brand-text">Belum ada tugas maintenance yang terdaftar.</p>
-                    <p className="text-xs text-brand-text-muted mt-1">
-                        Tiket maintenance akan otomatis muncul saat order disahkan <strong>Completed</strong> oleh Admin.
-                    </p>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                    <button
+                        onClick={() => setStatusFilter('all')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            statusFilter === 'all'
+                                ? 'bg-brand-accent text-brand-secondary border-brand-accent'
+                                : 'bg-brand-secondary text-brand-text-muted border-brand-border hover:bg-brand-muted hover:text-brand-text'
+                        }`}
+                    >
+                        Semua ({items.length})
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('in_progress')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            statusFilter === 'in_progress'
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-brand-secondary text-blue-400 border-brand-border hover:bg-brand-muted hover:text-blue-300'
+                        }`}
+                    >
+                        Sedang Dikerjakan ({stats.in_progress})
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('scheduled')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            statusFilter === 'scheduled'
+                                ? 'bg-amber-500 text-white border-amber-500'
+                                : 'bg-brand-secondary text-amber-400 border-brand-border hover:bg-brand-muted hover:text-amber-300'
+                        }`}
+                    >
+                        Terjadwal ({stats.scheduled})
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('completed')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            statusFilter === 'completed'
+                                ? 'bg-emerald-500 text-white border-emerald-500'
+                                : 'bg-brand-secondary text-emerald-400 border-brand-border hover:bg-brand-muted hover:text-emerald-300'
+                        }`}
+                    >
+                        Selesai ({stats.completed})
+                    </button>
                 </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filtered.map((item) => {
-                        const badge = getStatusBadge(item.status);
+            </div>
 
-                        return (
-                            <div
-                                key={item.id}
-                                className="bg-brand-secondary border border-brand-border rounded-xl p-5 shadow-sm hover:border-brand-accent/50 transition flex flex-col justify-between"
-                            >
-                                <div>
-                                    <div className="flex items-start justify-between gap-2 mb-3">
-                                        <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border flex items-center gap-1.5 ${badge.className}`}>
-                                            {badge.icon} {badge.label}
-                                        </span>
-                                        <span className="text-xs font-mono font-bold text-brand-text bg-brand-muted px-2 py-0.5 rounded">
-                                            {item.order_number}
-                                        </span>
-                                    </div>
-
-                                    <h3 className="text-base font-bold text-brand-text mb-1">{item.title}</h3>
-                                    <p className="text-xs font-medium text-brand-accent mb-3 flex items-center gap-1.5">
-                                        <User size={13} /> {item.customer_name}
-                                    </p>
-
-                                    <p className="text-xs text-brand-text-muted leading-relaxed mb-4 bg-brand-primary/40 p-2.5 rounded-lg border border-brand-border/40">
-                                        {item.description}
-                                    </p>
-
-                                    <div className="space-y-2 text-xs text-brand-text-muted border-t border-brand-border/60 pt-3">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={13} className="text-brand-text-muted/70" />
-                                            <span>Periode: <strong className="text-brand-text">{item.start_datetime}</strong> s/d <strong className="text-brand-text">{item.end_datetime}</strong></span>
-                                        </div>
-
-                                        <div className="pt-2">
-                                            <span className="text-brand-text-muted/70 block mb-1 font-medium flex items-center gap-1">
-                                                <FileText size={12} /> Catatan / Laporan Pengerjaan:
-                                            </span>
-                                            {item.notes ? (
-                                                <p className="text-brand-text bg-brand-muted/70 p-2 rounded text-[11px] italic">
-                                                    "{item.notes}"
-                                                </p>
-                                            ) : (
-                                                <p className="text-brand-text-muted/50 text-[11px] italic">
-                                                    Belum ada laporan pengerjaan.
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-5 pt-3 border-t border-brand-border/40 flex flex-col gap-2.5">
-                                    <span className="text-[11px] text-brand-text-muted truncate">
-                                        Tim: {item.team_members.map(m => m.name).join(', ') || '-'}
-                                    </span>
-                                    <button
-                                        onClick={() => openUpdateModal(item)}
-                                        className="w-full bg-brand-primary border border-brand-border hover:bg-brand-muted hover:text-brand-accent text-brand-text py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                                    >
-                                        <Wrench size={13} /> Update Status & Laporan
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {selectedItem && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-lg">
-                        <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between">
-                            <h2 className="text-base font-bold text-brand-text flex items-center gap-2">
-                                <Wrench size={18} className="text-brand-accent" />
-                                Update Pekerjaan Maintenance
-                            </h2>
-                            <button
-                                onClick={() => setSelectedItem(null)}
-                                className="text-brand-text-muted hover:text-brand-accent transition"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveUpdate} className="p-6 space-y-4">
-                            <div>
-                                <div className="text-xs text-brand-text-muted uppercase tracking-widest mb-1">Target Proyek</div>
-                                <div className="font-semibold text-brand-text">{selectedItem.title}</div>
-                                <div className="text-xs text-brand-text-muted mt-0.5">
-                                    {selectedItem.order_number} — {selectedItem.customer_name}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-                                    Status Pengerjaan
-                                </label>
-                                <select
-                                    value={modalForm.status}
-                                    onChange={(e) => setModalForm({ ...modalForm, status: e.target.value })}
-                                    className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60"
-                                >
-                                    <option value="scheduled">Scheduled (Terjadwal)</option>
-                                    <option value="in_progress">In Progress (Sedang Dikerjakan)</option>
-                                    <option value="completed">Completed (Selesai)</option>
-                                    <option value="cancelled">Cancelled (Dibatalkan)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-                                    Catatan / Laporan Hasil Pengerjaan (Notes)
-                                </label>
-                                <textarea
-                                    rows={4}
-                                    value={modalForm.notes}
-                                    onChange={(e) => setModalForm({ ...modalForm, notes: e.target.value })}
-                                    placeholder="Contoh: Database telah dibackup, update patch keamanan v1.2 selesai diuji, performa server optimal..."
-                                    className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 resize-none"
-                                />
-                            </div>
-
-                            <div className="pt-2 flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedItem(null)}
-                                    className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg text-sm font-medium transition"
-                                >
-                                    Batal
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
-                                >
-                                    {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                                    Simpan Laporan
-                                </button>
-                            </div>
-                        </form>
+            {/* DAFTAR ORDER MAINTENANCE LANGSUNG (TANPA ACCORDION / PER LURAHAN) */}
+            <div className="space-y-4">
+                {loading ? (
+                    <div className="bg-brand-secondary border border-brand-border rounded-xl p-12 text-center text-brand-text-muted">
+                        <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
+                        Memuat data order maintenance...
                     </div>
-                </div>
-            )}
+                ) : filteredItems.length === 0 ? (
+                    <div className="bg-brand-secondary border border-brand-border rounded-2xl p-12 text-center text-brand-text-muted">
+                        <ShieldAlert size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
+                        <p className="font-semibold text-brand-text text-base">Tidak ada penugasan maintenance</p>
+                        <p className="text-xs text-brand-text-muted mt-1 max-w-md mx-auto">
+                            Halaman ini hanya menampilkan order maintenance perbaikan kendala yang dibuat oleh Admin/Super Admin khusus untuk akun Anda.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                        {filteredItems.map((item) => {
+                            const badge = getStatusBadge(item.status);
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    className="bg-brand-secondary border border-brand-border rounded-2xl p-5 shadow-sm hover:border-brand-accent/40 transition flex flex-col md:flex-row md:items-center justify-between gap-5"
+                                >
+                                    <div className="space-y-3 min-w-0 flex-1">
+                                        {/* HEADER IDENTITAS ORDER */}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text">
+                                                {item.order_number}
+                                            </span>
+                                            {item.parent_order_number && (
+                                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                                                    Induk: {item.parent_order_number}
+                                                </span>
+                                            )}
+                                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand-accent/10 text-brand-accent border border-brand-accent/20">
+                                                {item.job_name}
+                                            </span>
+                                            <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border flex items-center gap-1 ${badge.className}`}>
+                                                {badge.icon} {badge.label}
+                                            </span>
+                                        </div>
+
+                                        {/* JUDUL KENDALA & KLIEN */}
+                                        <div>
+                                            <h3 className="text-lg font-bold text-brand-text group-hover:text-brand-accent transition">
+                                                {item.title}
+                                            </h3>
+                                            <p className="text-xs text-brand-text-muted mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <span>Klien: <strong className="text-brand-text">{item.customer_name}</strong></span>
+                                                {item.services?.length > 0 && (
+                                                    <span>• Layanan: {item.services.join(', ')}</span>
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        {/* DESKRIPSI KENDALA DARI ADMIN */}
+                                        <p className="text-xs text-brand-text-muted/90 line-clamp-2 bg-brand-primary/40 border border-brand-border/40 p-2.5 rounded-xl">
+                                            {item.description || 'Tidak ada deskripsi rincian kendala.'}
+                                        </p>
+                                    </div>
+
+                                    {/* SISI KANAN: JADWAL & TOMBOL DETAIL ORDER */}
+                                    <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-brand-border/60">
+                                        <div className="text-left md:text-right">
+                                            <span className="text-[11px] text-brand-text-muted uppercase block">Jadwal Perbaikan</span>
+                                            <span className="text-xs font-medium text-brand-text flex items-center gap-1 mt-0.5">
+                                                <Calendar size={13} className="text-brand-accent" />
+                                                {item.start_datetime} s/d {item.end_datetime}
+                                            </span>
+                                        </div>
+
+                                        <Link
+                                            href={`/developer/maintenance/${item.id}`}
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-accent text-brand-secondary hover:bg-brand-accent/90 transition shadow-sm"
+                                        >
+                                            Detail Order
+                                            <ArrowRight size={13} />
+                                        </Link>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </RoleLayout>
+    );
+}
+
+function StatCard({ title, value, icon: Icon, color }) {
+    const colors = {
+        purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+        emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+        amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    };
+
+    return (
+        <div className="bg-brand-secondary border border-brand-border rounded-xl p-4 shadow-sm flex items-center gap-4 hover:shadow-md transition">
+            <div className={`p-3 rounded-lg border ${colors[color]}`}>
+                <Icon size={22} />
+            </div>
+            <div>
+                <p className="text-xs font-medium text-brand-text-muted mb-0.5">{title}</p>
+                <h3 className="text-2xl font-bold text-brand-text">{value}</h3>
+            </div>
+        </div>
     );
 }
