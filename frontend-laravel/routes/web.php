@@ -9,6 +9,11 @@ Route::get('/', function () {
     return Inertia::render('Shared/Welcome');
 });
 
+Route::get('/projects', fn() => Inertia::render('Shared/Tekna/Projects/index'))->name('projects');
+Route::get('/products', fn() => Inertia::render('Shared/Tekna/Products/index'))->name('products');
+Route::get('/blog', fn() => Inertia::render('Shared/Tekna/Blog/index'))->name('blog');
+Route::get('/career', fn() => Inertia::render('Shared/Tekna/Career/index'))->name('career');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
