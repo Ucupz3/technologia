@@ -151,10 +151,11 @@ class ExpressService
         $roleName = $user->role?->name;
 
         return match ($roleName) {
-            'Super Admin'      => 'super_admin',
-            'Admin'            => 'admin',
-            'CS', 'Customer Service' => 'cs',
-            default            => null,
+            'Super Admin'             => 'super_admin',
+            'Admin'                   => 'admin',
+            'CS', 'Customer Service'  => 'cs',
+            'Developer', 'developer'  => 'developer',
+            default                   => null,
         };
     }
 

@@ -92,4 +92,12 @@ Route::middleware(['auth', 'role:cs'])->prefix('cs')->name('cs.')->group(functio
     Route::get('/invoices/{id}', fn($id) => Inertia::render('Sales/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 });
 
+// ========================================
+// DEVELOPER
+// ========================================
+Route::middleware(['auth', 'role:developer'])->prefix('developer')->name('developer.')->group(function () {
+    Route::get('/schedule', fn() => Inertia::render('Developer/Schedule/index'))->name('schedule.index');
+    Route::get('/schedules', fn() => Inertia::render('Developer/Schedule/index'))->name('schedules.index');
+});
+
 require __DIR__.'/auth.php';

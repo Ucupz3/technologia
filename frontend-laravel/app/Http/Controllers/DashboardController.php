@@ -18,6 +18,7 @@ class DashboardController extends Controller
             'super_admin' => Inertia::render('SuperAdmin/Dashboard'),
             'admin'       => Inertia::render('Admin/Dashboard'),
             'cs'          => Inertia::render('Sales/Dashboard'),
+            'developer'   => redirect()->route('developer.schedule.index'),
             default       => Inertia::render('Shared/Forbidden'),
         };
     }
