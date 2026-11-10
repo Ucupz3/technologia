@@ -13,11 +13,9 @@ class User extends Authenticatable
 
     protected $table = 'users';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
+    // ✅ WAJIB: Memberitahu Laravel nama kolom password adalah password_hash
+    protected $authPasswordName = 'password_hash';
+
     protected $fillable = [
         'role_id',
         'name',
@@ -28,20 +26,10 @@ class User extends Authenticatable
         'last_login_at',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password_hash',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'last_login_at' => 'datetime',
         'created_at' => 'datetime',
@@ -49,19 +37,20 @@ class User extends Authenticatable
         'deleted_at' => 'datetime',
     ];
 
-    /**
-     * Override default Laravel password column check.
-     */
     public function getAuthPassword()
     {
         return $this->password_hash;
     }
 
-    /**
-     * Relasi ke Role
-     */
     public function role()
     {
         return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function jobs()
+    {
+        return $this->belongsToMany(Job::class, 'user_jobs', 'user_id', 'job_id')
+                    ->withPivot('is_primary')
+                    ->withTimestamps();
     }
 }

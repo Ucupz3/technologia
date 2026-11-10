@@ -18,6 +18,8 @@ class DashboardController extends Controller
             'super_admin' => Inertia::render('SuperAdmin/Dashboard'),
             'admin'       => Inertia::render('Admin/Dashboard'),
             'sales'       => Inertia::render('Sales/Dashboard'),
+            // Opsional: Jika nanti ada user yang role aslinya memang developer
+            // 'developer'   => Inertia::render('Developer/Index'), 
             default       => Inertia::render('Shared/Forbidden'),
         };
     }

@@ -13,6 +13,7 @@ const createUserSchema = z.object({
   password: z.string().min(6).max(72),
   role_id: z.coerce.number().int().positive(),
   phone: z.string().max(30).optional(),
+  job_ids: z.array(z.coerce.number().int().positive()).optional().default([]),
 });
 
 const loginSchema = z.object({
@@ -24,21 +25,33 @@ function mapRoleToSlug(roleName) {
   const map = {
     'Super Admin': 'super_admin',
     'Admin': 'admin',
+    'CS': 'sales',
     'Sales': 'sales',
-    'Finance': 'finance',
   };
   return map[roleName] || 'sales';
 }
 
-// GET /api/v1/users
+// GET /api/v1/users (Daftar semua user + 1 role + list user_jobs)
 usersRouter.get('/', async (_req, res, next) => {
   try {
     const users = await prisma.users.findMany({
       where: { deleted_at: null },
       select: {
-        id: true, name: true, email: true, phone: true,
-        status: true, created_at: true,
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        created_at: true,
         roles: { select: { id: true, name: true } },
+        user_jobs: {
+          select: {
+            id: true,
+            job_id: true,
+            is_primary: true,
+            jobs: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: { id: 'asc' },
     });
@@ -46,7 +59,7 @@ usersRouter.get('/', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/v1/users/roles/options
+// GET /api/v1/users/roles/options (Pilihan Role)
 usersRouter.get('/roles/options', async (_req, res, next) => {
   try {
     const roles = await prisma.roles.findMany({
@@ -55,6 +68,18 @@ usersRouter.get('/roles/options', async (_req, res, next) => {
       orderBy: { id: 'asc' },
     });
     res.json({ success: true, data: roles });
+  } catch (err) { next(err); }
+});
+
+// GET /api/v1/users/jobs/options (Pilihan Job)
+usersRouter.get('/jobs/options', async (_req, res, next) => {
+  try {
+    const jobs = await prisma.jobs.findMany({
+      where: { status: 'active', deleted_at: null },
+      select: { id: true, name: true, description: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json({ success: true, data: jobs });
   } catch (err) { next(err); }
 });
 
@@ -67,14 +92,21 @@ usersRouter.get('/by-email/:email', async (req, res, next) => {
         id: true, name: true, email: true, phone: true,
         status: true, created_at: true,
         roles: { select: { id: true, name: true } },
+        user_jobs: {
+          select: {
+            job_id: true,
+            is_primary: true,
+            jobs: { select: { id: true, name: true } },
+          },
+        },
       },
     });
-    if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan di Express' });
+    if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     if (user.status !== 'active') return res.status(403).json({ success: false, message: 'User tidak aktif' });
 
     res.json({
       success: true,
-      data: { ...user, role_slug: mapRoleToSlug(user.roles.name) },
+      data: { ...user, role_slug: mapRoleToSlug(user.roles?.name) },
     });
   } catch (err) { next(err); }
 });
@@ -111,8 +143,8 @@ usersRouter.post('/login', async (req, res, next) => {
       data: {
         id: user.id, name: user.name, email: user.email, phone: user.phone,
         status: user.status,
-        role_slug: mapRoleToSlug(user.roles.name),
-        role_name: user.roles.name,
+        role_slug: mapRoleToSlug(user.roles?.name),
+        role_name: user.roles?.name,
       },
     });
   } catch (err) { next(err); }
@@ -127,6 +159,14 @@ usersRouter.get('/:id', async (req, res, next) => {
         id: true, name: true, email: true, phone: true,
         status: true, created_at: true,
         roles: { select: { id: true, name: true } },
+        user_jobs: {
+          select: {
+            id: true,
+            job_id: true,
+            is_primary: true,
+            jobs: { select: { id: true, name: true } },
+          },
+        },
       },
     });
     if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
@@ -141,6 +181,7 @@ const updateUserSchema = z.object({
   role_id: z.coerce.number().int().positive().optional(),
   phone: z.string().max(30).nullable().optional(),
   status: z.enum(STATUS_ENUM).optional(),
+  job_ids: z.array(z.coerce.number().int().positive()).optional(),
 });
 
 // PUT /api/v1/users/:id
@@ -155,6 +196,9 @@ usersRouter.put('/:id', async (req, res, next) => {
     if (!existing) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
 
     const data = { ...parsed.data };
+    const job_ids = data.job_ids;
+    delete data.job_ids;
+
     if (data.role_id) data.role_id = BigInt(data.role_id);
     if (data.password) {
       data.password_hash = await bcrypt.hash(data.password, 10);
@@ -165,14 +209,46 @@ usersRouter.put('/:id', async (req, res, next) => {
       if (dup) return res.status(409).json({ success: false, message: 'Email sudah dipakai' });
     }
 
-    const user = await prisma.users.update({
-      where: { id }, data,
-      select: {
-        id: true, name: true, email: true, phone: true,
-        status: true, created_at: true,
-        roles: { select: { id: true, name: true } },
-      },
+    const user = await prisma.$transaction(async (tx) => {
+      await tx.users.update({
+        where: { id },
+        data,
+      });
+
+      if (job_ids !== undefined) {
+        await tx.user_jobs.deleteMany({
+          where: { user_id: id },
+        });
+
+        if (job_ids.length > 0) {
+          await tx.user_jobs.createMany({
+            data: job_ids.map((jobId, index) => ({
+              user_id: id,
+              job_id: BigInt(jobId),
+              is_primary: index === 0,
+            })),
+          });
+        }
+      }
+
+      return tx.users.findUnique({
+        where: { id },
+        select: {
+          id: true, name: true, email: true, phone: true,
+          status: true, created_at: true,
+          roles: { select: { id: true, name: true } },
+          user_jobs: {
+            select: {
+              id: true,
+              job_id: true,
+              is_primary: true,
+              jobs: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
     });
+
     res.json({ success: true, data: user, message: 'User berhasil diupdate' });
   } catch (err) { next(err); }
 });
@@ -207,34 +283,60 @@ usersRouter.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/v1/users
+// POST /api/v1/users (Buat user baru: 1 role + opsi multiple job)
 usersRouter.post('/', async (req, res, next) => {
   try {
     const parsed = createUserSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(422).json({ success: false, message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors });
     }
-    const { name, email, password, role_id, phone } = parsed.data;
+    const { name, email, password, role_id, phone, job_ids } = parsed.data;
 
     const existing = await prisma.users.findUnique({ where: { email } });
     if (existing) return res.status(409).json({ success: false, message: 'Email sudah terdaftar' });
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await prisma.users.create({
-      data: {
-        name, email,
-        password_hash: passwordHash,
-        role_id: BigInt(role_id),
-        phone: phone || null,
-        status: 'active',
-      },
-      select: {
-        id: true, name: true, email: true, phone: true,
-        status: true, created_at: true,
-        roles: { select: { id: true, name: true } },
-      },
+    const user = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.users.create({
+        data: {
+          name,
+          email,
+          password_hash: passwordHash,
+          role_id: BigInt(role_id),
+          phone: phone || null,
+          status: 'active',
+        },
+      });
+
+      if (job_ids && job_ids.length > 0) {
+        await tx.user_jobs.createMany({
+          data: job_ids.map((jobId, idx) => ({
+            user_id: newUser.id,
+            job_id: BigInt(jobId),
+            is_primary: idx === 0,
+          })),
+        });
+      }
+
+      return tx.users.findUnique({
+        where: { id: newUser.id },
+        select: {
+          id: true, name: true, email: true, phone: true,
+          status: true, created_at: true,
+          roles: { select: { id: true, name: true } },
+          user_jobs: {
+            select: {
+              id: true,
+              job_id: true,
+              is_primary: true,
+              jobs: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
     });
+
     res.status(201).json({ success: true, data: user, message: 'User berhasil dibuat' });
   } catch (err) { next(err); }
 });
