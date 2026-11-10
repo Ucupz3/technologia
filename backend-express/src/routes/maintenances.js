@@ -91,6 +91,11 @@ maintenancesRouter.get('/', async (_req, res, next) => {
                 team_members: {
                   include: { users: { select: { id: true, name: true } } },
                 },
+                progress_order: {
+                  where: { deleted_at: null },
+                  orderBy: { created_at: 'desc' },
+                  take: 1,
+                },
               },
             },
             customers: {
@@ -106,12 +111,22 @@ maintenancesRouter.get('/', async (_req, res, next) => {
       const order = m.orders;
       const parent = order?.parent_order;
       const assign = order?.order_assignments?.[0];
+      const devProgress = assign?.progress_order?.[0] || null;
+
+      // Status resmi tiket: jika sempat diubah completed sebelum Super Admin mengesahkan (order.status !== 'completed'),
+      // pulihkan status resmi ke order.status || 'in_progress'
+      const officialStatus =
+        m.status === 'completed' && order?.status !== 'completed'
+          ? order?.status || 'in_progress'
+          : m.status;
 
       return {
         id: m.id.toString(),
         title: m.title,
         description: m.description || '-',
-        status: m.status,
+        status: officialStatus,
+        developer_progress_status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'in_progress'),
+        developer_progress_percentage: devProgress?.progress_percentage ?? (officialStatus === 'completed' ? 100 : 0),
         notes: m.notes || '',
         start_datetime: m.start_datetime ? new Date(m.start_datetime).toISOString().split('T')[0] : '-',
         end_datetime: m.end_datetime ? new Date(m.end_datetime).toISOString().split('T')[0] : '-',
@@ -305,7 +320,7 @@ maintenancesRouter.post('/', async (req, res, next) => {
           status,
           start_datetime: startDate,
           end_datetime: endDate,
-          notes: `Ditugaskan ke ${teamMember.user_id} (${job.name}). Menunggu perbaikan teknis.`,
+          notes: null,
         },
       });
 
@@ -339,6 +354,220 @@ maintenancesRouter.post('/', async (req, res, next) => {
         child_order_id: result.childOrder.id.toString(),
         child_order_number: result.childOrder.order_number,
         parent_order_number: parentOrder.order_number,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/v1/maintenances/:id
+// Mengambil detail lengkap satu tiket maintenance (termasuk order induk, tim awal, dan histori)
+maintenancesRouter.get('/:id', async (req, res, next) => {
+  try {
+    const id = BigInt(req.params.id);
+
+    const m = await prisma.maintenances.findFirst({
+      where: { id, deleted_at: null },
+      include: {
+        orders: {
+          include: {
+            parent_order: {
+              include: {
+                customers: true,
+                order_services: true,
+                order_assignments: {
+                  include: {
+                    jobs: true,
+                    team_members: {
+                      include: { users: { select: { id: true, name: true, email: true } } },
+                    },
+                  },
+                },
+              },
+            },
+            customers: true,
+            order_services: true,
+            order_assignments: {
+              include: {
+                jobs: true,
+                team_members: {
+                  include: { users: { select: { id: true, name: true, email: true } } },
+                },
+                progress_order: {
+                  where: { deleted_at: null },
+                  orderBy: { created_at: 'desc' },
+                  take: 1,
+                },
+              },
+            },
+            order_status_history: {
+              orderBy: { created_at: 'desc' },
+              take: 5,
+            },
+          },
+        },
+      },
+    });
+
+    if (!m) {
+      return res.status(404).json({ success: false, message: 'Tiket maintenance tidak ditemukan' });
+    }
+
+    const childOrder = m.orders;
+    const parentOrder = childOrder?.parent_order || null;
+    const customer = childOrder?.customers || parentOrder?.customers || null;
+    const currentAssign = childOrder?.order_assignments?.[0];
+    const devProgress = currentAssign?.progress_order?.[0] || null;
+
+    // Perbaiki inkonsistensi jika tiket sempat tertulis completed oleh bug lama tapi order anak belum completed
+    let officialStatus = m.status;
+    if (m.status === 'completed' && childOrder?.status !== 'completed') {
+      officialStatus = childOrder?.status || 'in_progress';
+      try {
+        await prisma.maintenances.update({
+          where: { id: m.id },
+          data: { status: officialStatus },
+        });
+      } catch (e) {
+        console.error('Failed to auto-repair maintenance status:', e);
+      }
+      m.status = officialStatus;
+    }
+
+    const originalTeam = (parentOrder?.order_assignments || []).map((a) => ({
+      user_id: a.team_members?.users?.id?.toString() || null,
+      name: a.team_members?.users?.name || '-',
+      email: a.team_members?.users?.email || '-',
+      job: a.jobs?.name || '-',
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        id: m.id.toString(),
+        title: m.title,
+        description: m.description || '-',
+        status: officialStatus,
+        notes: m.notes || '',
+        developer_progress: {
+          status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'in_progress'),
+          progress_percentage: devProgress?.progress_percentage ?? (officialStatus === 'completed' ? 100 : 0),
+          notes: devProgress?.notes || '',
+          updated_at: devProgress?.updated_at ? new Date(devProgress.updated_at).toISOString().replace('T', ' ').slice(0, 16) : null,
+        },
+        start_datetime: m.start_datetime ? new Date(m.start_datetime).toISOString().split('T')[0] : '-',
+        end_datetime: m.end_datetime ? new Date(m.end_datetime).toISOString().split('T')[0] : '-',
+        created_at: m.created_at ? new Date(m.created_at).toISOString().split('T')[0] : '-',
+        updated_at: m.updated_at ? new Date(m.updated_at).toISOString().split('T')[0] : '-',
+        child_order: {
+          id: childOrder?.id?.toString() || null,
+          order_number: childOrder?.order_number || '-',
+          status: childOrder?.status || '-',
+          notes: childOrder?.notes || '',
+        },
+        parent_order: parentOrder
+          ? {
+              id: parentOrder.id.toString(),
+              order_number: parentOrder.order_number,
+              status: parentOrder.status,
+              start_date: parentOrder.start_date_project
+                ? new Date(parentOrder.start_date_project).toISOString().split('T')[0]
+                : '-',
+              end_date: parentOrder.end_date_project
+                ? new Date(parentOrder.end_date_project).toISOString().split('T')[0]
+                : '-',
+              services: (parentOrder.order_services || []).map((s) => s.service_name_snapshot),
+            }
+          : null,
+        customer: {
+          name: childOrder?.customer_name_snapshot || customer?.name || '-',
+          email: customer?.email || '-',
+          phone: customer?.phone || '-',
+          address: childOrder?.customer_address_snapshot || customer?.address || '-',
+        },
+        assigned_developer: {
+          user_id: currentAssign?.team_members?.users?.id?.toString() || null,
+          name: currentAssign?.team_members?.users?.name || '-',
+          job: currentAssign?.jobs?.name || '-',
+        },
+        original_team: originalTeam,
+        history: (childOrder?.order_status_history || [])
+          .filter((h) => !h.from_status || h.from_status !== h.to_status)
+          .map((h) => ({
+            id: h.id.toString(),
+            from_status: h.from_status,
+            to_status: h.to_status,
+            notes: h.notes,
+            created_at: h.created_at ? new Date(h.created_at).toISOString().replace('T', ' ').slice(0, 16) : '-',
+          })),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/v1/maintenances/:id
+// Update status / catatan tiket maintenance oleh Super Admin atau Admin
+maintenancesRouter.put('/:id', async (req, res, next) => {
+  try {
+    const id = BigInt(req.params.id);
+    const { status, notes, start_datetime, end_datetime } = req.body;
+
+    const currentM = await prisma.maintenances.findUnique({
+      where: { id },
+      include: { orders: true },
+    });
+
+    if (!currentM) {
+      return res.status(404).json({ success: false, message: 'Tiket maintenance tidak ditemukan' });
+    }
+
+    const prevStatus = currentM.orders?.status || currentM.status;
+
+    const updated = await prisma.maintenances.update({
+      where: { id },
+      data: {
+        status: status || undefined,
+        notes: notes !== undefined ? notes : undefined,
+        start_datetime: start_datetime ? new Date(start_datetime) : undefined,
+        end_datetime: end_datetime ? new Date(end_datetime) : undefined,
+        updated_at: new Date(),
+      },
+      include: {
+        orders: true,
+      },
+    });
+
+    // Sinkronkan status order turunan sesuai status yang disahkan oleh Super Admin
+    if (status && updated.orders) {
+      await prisma.orders.update({
+        where: { id: updated.orders.id },
+        data: { status },
+      });
+
+      // Catat history hanya jika status berubah secara riil
+      if (prevStatus !== status) {
+        const evalNote = notes && !notes.startsWith('Ditugaskan ke') ? ` Catatan evaluasi: ${notes}` : '';
+        await prisma.order_status_history.create({
+          data: {
+            order_id: updated.orders.id,
+            from_status: prevStatus,
+            to_status: status,
+            notes: `Status tiket maintenance & order turunan disahkan oleh Super Admin menjadi '${status}'.${evalNote}`,
+          },
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Data tiket maintenance berhasil diperbarui.',
+      data: {
+        ...updated,
+        id: updated.id.toString(),
+        order_id: updated.order_id.toString(),
       },
     });
   } catch (err) {

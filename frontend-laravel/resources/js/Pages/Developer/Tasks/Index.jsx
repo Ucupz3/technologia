@@ -1,41 +1,41 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
-    ListTodo, RefreshCw, Briefcase, Calendar, CheckCircle2,
-    Lock, PlayCircle, Clock, AlertCircle, Search, ChevronRight,
-    ArrowRight, Sparkles, X, Save, Sliders, Cpu, FileText
+    ListTodo, RefreshCw, Calendar, CheckCircle2,
+    Lock, PlayCircle, Clock, AlertCircle, Search,
+    X, Save, Sliders, FileText, ShieldAlert
 } from 'lucide-react';
 
 const getStatusBadge = (status) => {
     switch (status) {
         case 'pending':
             return {
-                label: 'Pending',
+                label: 'Belum Dikerjakan',
                 className: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
                 icon: <Clock size={12} />
             };
         case 'in_progress':
             return {
-                label: 'In Progress',
+                label: 'Sedang Dikerjakan',
                 className: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
                 icon: <PlayCircle size={12} />
             };
         case 'completed':
             return {
-                label: 'Completed',
+                label: 'Sudah Dikerjakan',
                 className: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
                 icon: <CheckCircle2 size={12} />
             };
         case 'cancelled':
             return {
-                label: 'Cancelled',
+                label: 'Dibatalkan',
                 className: 'bg-red-500/15 text-red-500 border-red-500/30',
                 icon: <AlertCircle size={12} />
             };
         default:
             return {
-                label: status,
+                label: 'Belum Dikerjakan',
                 className: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
                 icon: <Clock size={12} />
             };
@@ -79,11 +79,30 @@ export default function DeveloperTasksIndex() {
 
     const openUpdateModal = (task) => {
         setSelectedTask(task);
+        const p = task.progress || 0;
+        const s = task.status || (p === 100 ? 'completed' : p > 0 ? 'in_progress' : 'pending');
         setModalForm({
-            progress_percentage: task.progress || 0,
-            status: task.status || 'pending',
+            progress_percentage: p,
+            status: s,
             notes: task.notes || ''
         });
+    };
+
+    const handleSelectStatus = (statusValue) => {
+        let newProgress = modalForm.progress_percentage;
+        if (statusValue === 'completed') {
+            newProgress = 100;
+        } else if (statusValue === 'pending') {
+            newProgress = 0;
+        } else if (statusValue === 'in_progress' && (newProgress === 0 || newProgress === 100)) {
+            newProgress = 50;
+        }
+
+        setModalForm((prev) => ({
+            ...prev,
+            status: statusValue,
+            progress_percentage: newProgress
+        }));
     };
 
     const handleProgressChange = (val) => {
@@ -92,9 +111,9 @@ export default function DeveloperTasksIndex() {
 
         if (num === 100) {
             nextStatus = 'completed';
-        } else if (num > 0 && modalForm.status !== 'in_progress') {
+        } else if (num > 0) {
             nextStatus = 'in_progress';
-        } else if (num === 0 && modalForm.status === 'completed') {
+        } else {
             nextStatus = 'pending';
         }
 
@@ -118,7 +137,7 @@ export default function DeveloperTasksIndex() {
             });
             const data = await res.json();
 
-            if (!data.success) throw new Error(data.message || 'Gagal menyimpan progres');
+            if (!data.success) throw new Error(data.message || 'Gagal menyimpan progres setoran');
 
             setSelectedTask(null);
             loadTasks();
@@ -132,7 +151,7 @@ export default function DeveloperTasksIndex() {
     const filteredTasks = tasks.filter((t) => {
         if (filterStatus === 'pending' && t.status !== 'pending') return false;
         if (filterStatus === 'in_progress' && t.status !== 'in_progress') return false;
-        if (filterStatus === 'completed' && t.status !== 'completed') return false;
+        if (filterStatus === 'completed' && t.status !== 'completed' && t.progress !== 100) return false;
         if (filterStatus === 'locked' && !t.is_locked) return false;
 
         const q = search.toLowerCase();
@@ -146,6 +165,7 @@ export default function DeveloperTasksIndex() {
 
     const stats = {
         total: tasks.length,
+        pending: tasks.filter((t) => t.status === 'pending' && !t.is_locked).length,
         in_progress: tasks.filter((t) => t.status === 'in_progress' && !t.is_locked).length,
         completed: tasks.filter((t) => t.status === 'completed' || t.progress === 100).length,
         locked: tasks.filter((t) => t.is_locked).length
@@ -153,16 +173,16 @@ export default function DeveloperTasksIndex() {
 
     return (
         <RoleLayout>
-            <Head title="Task & Progress Developer" />
+            <Head title="Setoran Progres Tugas Developer" />
 
             <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
                         <ListTodo size={24} className="text-brand-accent" />
-                        Task & Progress Pengerjaan
+                        Setoran Progres Tugas Developer
                     </h1>
                     <p className="text-sm text-brand-text-muted mt-1">
-                        Kelola dan update kemajuan tugas modul pengerjaan yang ditugaskan kepada Anda.
+                        Laporkan kemajuan pekerjaan tugas Anda (apakah sudah dikerjakan atau belum) untuk ditinjau oleh Super Admin.
                     </p>
                 </div>
                 <button
@@ -177,9 +197,9 @@ export default function DeveloperTasksIndex() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Total Tugas Anda" value={stats.total} icon={ListTodo} color="purple" />
+                <StatCard title="Belum Dikerjakan" value={stats.pending} icon={Clock} color="amber" />
                 <StatCard title="Sedang Dikerjakan" value={stats.in_progress} icon={PlayCircle} color="blue" />
-                <StatCard title="Selesai (100%)" value={stats.completed} icon={CheckCircle2} color="emerald" />
-                <StatCard title="Terkunci (Antri Fase)" value={stats.locked} icon={Lock} color="amber" />
+                <StatCard title="Sudah Dikerjakan" value={stats.completed} icon={CheckCircle2} color="emerald" />
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -206,6 +226,16 @@ export default function DeveloperTasksIndex() {
                         Semua ({tasks.length})
                     </button>
                     <button
+                        onClick={() => setFilterStatus('pending')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                            filterStatus === 'pending'
+                                ? 'bg-amber-500 text-white border-amber-500'
+                                : 'bg-brand-secondary text-amber-400 border-brand-border hover:bg-brand-muted hover:text-amber-300'
+                        }`}
+                    >
+                        Belum Dikerjakan ({stats.pending})
+                    </button>
+                    <button
                         onClick={() => setFilterStatus('in_progress')}
                         className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
                             filterStatus === 'in_progress'
@@ -223,7 +253,7 @@ export default function DeveloperTasksIndex() {
                                 : 'bg-brand-secondary text-emerald-400 border-brand-border hover:bg-brand-muted hover:text-emerald-300'
                         }`}
                     >
-                        Selesai ({stats.completed})
+                        Sudah Dikerjakan ({stats.completed})
                     </button>
                     <button
                         onClick={() => setFilterStatus('locked')}
@@ -282,6 +312,9 @@ export default function DeveloperTasksIndex() {
                                                         <Lock size={11} /> Terkunci
                                                     </span>
                                                 )}
+                                                <span className="text-[10px] text-brand-text-muted/80 bg-brand-primary/60 border border-brand-border px-2 py-0.5 rounded">
+                                                    Status Order Pusat: <strong className="uppercase">{task.order_status}</strong>
+                                                </span>
                                             </div>
 
                                             <h3 className="text-base font-bold text-brand-text">
@@ -313,9 +346,9 @@ export default function DeveloperTasksIndex() {
                                     {task.notes && (
                                         <div className="mb-3 p-3 bg-brand-primary/40 border border-brand-border/40 rounded-lg text-xs">
                                             <span className="text-brand-text-muted block mb-1 font-semibold flex items-center gap-1">
-                                                <FileText size={12} /> Catatan Terakhir:
+                                                <FileText size={12} /> Catatan Terakhir Setoran:
                                             </span>
-                                            <p className="text-brand-text italic">"{task.notes}"</p>
+                                            <p className="text-brand-text italic leading-relaxed">"{task.notes}"</p>
                                         </div>
                                     )}
 
@@ -340,16 +373,7 @@ export default function DeveloperTasksIndex() {
                                         </div>
 
                                         <div className="flex items-center gap-2.5 self-end sm:self-center">
-                                            {isFinished ? (
-                                                <Link
-                                                    href="/developer/maintenance"
-                                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 hover:bg-purple-500/25 transition shadow-sm"
-                                                >
-                                                    <Cpu size={13} />
-                                                    Selesai 100% • Buka di Maintenance Modul
-                                                    <ArrowRight size={13} />
-                                                </Link>
-                                            ) : task.is_locked ? (
+                                            {task.is_locked ? (
                                                 <button
                                                     disabled
                                                     className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-brand-muted border border-brand-border text-brand-text-muted/60 cursor-not-allowed flex items-center gap-1.5"
@@ -359,10 +383,14 @@ export default function DeveloperTasksIndex() {
                                             ) : (
                                                 <button
                                                     onClick={() => openUpdateModal(task)}
-                                                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-accent text-brand-secondary hover:bg-brand-accent/90 transition shadow-sm"
+                                                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm ${
+                                                        isFinished
+                                                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
+                                                            : 'bg-brand-accent text-brand-secondary hover:bg-brand-accent/90'
+                                                    }`}
                                                 >
                                                     <Sliders size={13} />
-                                                    Update Progres
+                                                    {isFinished ? 'Update Catatan Setoran' : 'Setor Progres Tugas'}
                                                 </button>
                                             )}
                                         </div>
@@ -374,86 +402,134 @@ export default function DeveloperTasksIndex() {
                 )}
             </div>
 
+            {/* MODAL SETORAN PROGRES TUGAS DEVELOPER */}
             {selectedTask && (
-                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+                <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
                         <div className="p-5 border-b border-brand-border flex items-center justify-between">
                             <div>
-                                <h3 className="font-bold text-brand-text">Update Progres Pekerjaan</h3>
+                                <h3 className="font-bold text-brand-text text-base">Setoran Progres Tugas Developer</h3>
                                 <p className="text-xs text-brand-text-muted mt-0.5">
-                                    {selectedTask.order_number} — {selectedTask.job_name} ({selectedTask.customer})
+                                    {selectedTask.order_number} &bull; {selectedTask.job_name} ({selectedTask.customer})
                                 </p>
                             </div>
                             <button
                                 onClick={() => setSelectedTask(null)}
-                                className="text-brand-text-muted hover:text-brand-text p-1 rounded-lg"
+                                className="text-brand-text-muted hover:text-brand-text p-1 rounded-lg hover:bg-brand-primary"
                             >
                                 <X size={18} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveProgress} className="p-5 space-y-4">
-                            <div>
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <label className="text-xs font-semibold text-brand-text-muted uppercase">
-                                        Persentase Progres
-                                    </label>
-                                    <span className="text-sm font-bold text-brand-accent">
-                                        {modalForm.progress_percentage}%
-                                    </span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    step="5"
-                                    value={modalForm.progress_percentage}
-                                    onChange={(e) => handleProgressChange(e.target.value)}
-                                    className="w-full accent-brand-accent cursor-pointer"
-                                />
-                                <div className="flex justify-between text-[11px] text-brand-text-muted mt-1">
-                                    <span>0% (Belum Mulai)</span>
-                                    <span>50% (Sedang Jalan)</span>
-                                    <span>100% (Selesai Penuh)</span>
-                                </div>
+                        <form onSubmit={handleSaveProgress} className="p-5 space-y-4 overflow-y-auto">
+                            {/* PEMBERITAHUAN HAK AKSES */}
+                            <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-xs text-blue-300 flex items-start gap-2.5">
+                                <ShieldAlert size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                                <p className="leading-relaxed text-[11px]">
+                                    <strong>Perhatian Hak Akses:</strong> Anda hanya berwenang menyetorkan progres tugas pengerjaan Anda (apakah sudah dikerjakan atau belum). <strong>Status order pusat</strong> tetap berada di bawah wewenang Super Admin.
+                                </p>
                             </div>
 
+                            {/* PILIHAN STATUS TUGAS: SUDAH DIKERJAKAN / SEDANG / BELUM */}
                             <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                    Status Pengerjaan
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-2">
+                                    Status Pengerjaan Tugas Anda <span className="text-red-400">*</span>
                                 </label>
-                                <select
-                                    value={modalForm.status}
-                                    onChange={(e) => setModalForm({ ...modalForm, status: e.target.value })}
-                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                                >
-                                    <option value="pending">Pending (Belum Dimulai)</option>
-                                    <option value="in_progress">In Progress (Sedang Dikerjakan)</option>
-                                    <option value="completed">Completed (Selesai 100%)</option>
-                                </select>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectStatus('pending')}
+                                        className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition text-center ${
+                                            modalForm.status === 'pending'
+                                                ? 'bg-amber-500/15 border-amber-500 text-amber-400 ring-2 ring-amber-500/20'
+                                                : 'bg-brand-primary border-brand-border text-brand-text-muted hover:border-brand-accent/40'
+                                        }`}
+                                    >
+                                        <Clock size={16} />
+                                        <span>Belum Dikerjakan</span>
+                                        <span className="text-[10px] opacity-75 font-normal">Progres 0%</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectStatus('in_progress')}
+                                        className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition text-center ${
+                                            modalForm.status === 'in_progress'
+                                                ? 'bg-blue-500/15 border-blue-500 text-blue-400 ring-2 ring-blue-500/20'
+                                                : 'bg-brand-primary border-brand-border text-brand-text-muted hover:border-brand-accent/40'
+                                        }`}
+                                    >
+                                        <PlayCircle size={16} />
+                                        <span>Sedang Dikerjakan</span>
+                                        <span className="text-[10px] opacity-75 font-normal">Dalam proses</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectStatus('completed')}
+                                        className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition text-center ${
+                                            modalForm.status === 'completed'
+                                                ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 ring-2 ring-emerald-500/20'
+                                                : 'bg-brand-primary border-brand-border text-brand-text-muted hover:border-brand-accent/40'
+                                        }`}
+                                    >
+                                        <CheckCircle2 size={16} />
+                                        <span>Sudah Dikerjakan</span>
+                                        <span className="text-[10px] opacity-75 font-normal">Selesai 100%</span>
+                                    </button>
+                                </div>
                             </div>
 
-                            {modalForm.progress_percentage === 100 && (
-                                <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-400 flex items-start gap-2.5">
+                            {/* SLIDER PERSENTASE PROGRES (Tampil saat sedang dikerjakan) */}
+                            {modalForm.status === 'in_progress' && (
+                                <div className="p-3.5 bg-brand-primary/50 border border-brand-border rounded-xl">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="text-xs font-semibold text-brand-text-muted uppercase">
+                                            Persentase Progres Tugas
+                                        </label>
+                                        <span className="text-sm font-bold text-blue-400">
+                                            {modalForm.progress_percentage}%
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="5"
+                                        max="95"
+                                        step="5"
+                                        value={modalForm.progress_percentage}
+                                        onChange={(e) => handleProgressChange(e.target.value)}
+                                        className="w-full accent-blue-500 cursor-pointer"
+                                    />
+                                    <div className="flex justify-between text-[11px] text-brand-text-muted mt-1">
+                                        <span>5% (Baru Mulai)</span>
+                                        <span>50% (Sedang Berjalan)</span>
+                                        <span>95% (Hampir Selesai)</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {modalForm.status === 'completed' && (
+                                <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-start gap-2.5">
                                     <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="font-semibold text-emerald-200">Tugas Selesai (100%)</p>
+                                        <p className="font-semibold text-emerald-200">Setoran Tugas Selesai 100%</p>
                                         <p className="text-[11px] text-emerald-300/80 mt-0.5">
-                                            Tugas ini akan ditandai selesai penuh.
+                                            Tugas Anda akan disetorkan sebagai selesai 100% ke Super Admin untuk diverifikasi dan disahkan ke sistem pusat.
                                         </p>
                                     </div>
                                 </div>
                             )}
 
+                            {/* CATATAN & LAPORAN PENGERJAAN */}
                             <div>
                                 <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                    Catatan & Laporan Pengerjaan
+                                    Catatan & Laporan Pengerjaan (Setoran)
                                 </label>
                                 <textarea
                                     rows={3}
                                     value={modalForm.notes}
                                     onChange={(e) => setModalForm({ ...modalForm, notes: e.target.value })}
-                                    placeholder="Tuliskan kemajuan tugas, link aset, atau catatan teknis..."
+                                    placeholder="Tuliskan kemajuan tugas, apa saja yang sudah dikerjakan, file yang diubah, dsb..."
                                     className="w-full bg-brand-primary border border-brand-border rounded-xl p-3 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
                                 />
                             </div>
@@ -472,7 +548,7 @@ export default function DeveloperTasksIndex() {
                                     className="bg-brand-accent text-brand-secondary px-5 py-2 rounded-xl text-sm font-semibold hover:bg-brand-accent/90 transition flex items-center gap-2 disabled:opacity-50"
                                 >
                                     <Save size={14} />
-                                    {submitting ? 'Menyimpan...' : 'Simpan Progres'}
+                                    {submitting ? 'Menyimpan...' : 'Kirim Setoran Progres'}
                                 </button>
                             </div>
                         </form>
@@ -485,20 +561,20 @@ export default function DeveloperTasksIndex() {
 
 function StatCard({ title, value, icon: Icon, color }) {
     const colors = {
-        purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-        emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-        blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-        amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        purple: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+        blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+        emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20'
     };
 
     return (
-        <div className="bg-brand-secondary border border-brand-border rounded-xl p-4 shadow-sm flex items-center gap-4 hover:shadow-md transition">
-            <div className={`p-3 rounded-lg border ${colors[color]}`}>
-                <Icon size={22} />
-            </div>
+        <div className="bg-brand-secondary border border-brand-border p-5 rounded-xl shadow-sm flex items-center justify-between">
             <div>
-                <p className="text-xs font-medium text-brand-text-muted mb-0.5">{title}</p>
-                <h3 className="text-2xl font-bold text-brand-text">{value}</h3>
+                <p className="text-xs font-semibold text-brand-text-muted uppercase tracking-wider">{title}</p>
+                <p className="text-2xl font-bold text-brand-text mt-1">{value}</p>
+            </div>
+            <div className={`p-3 rounded-xl border ${colors[color] || colors.blue}`}>
+                <Icon size={22} />
             </div>
         </div>
     );

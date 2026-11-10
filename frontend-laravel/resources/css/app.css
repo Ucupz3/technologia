@@ -6,6 +6,7 @@
   /* ============ LIGHT THEME (default) ============ */
   :root,
   .light {
+    color-scheme: light;
     --brand-primary:      255 255 255;    /* #FFFFFF  - bg utama */
     --brand-secondary:    244 244 245;    /* #F4F4F5  - card/sidebar */
     --brand-tertiary:     240 240 242;    /* #F0F0F2  - card alt */
@@ -20,6 +21,7 @@
 
   /* ============ DARK THEME (existing) ============ */
   .dark {
+    color-scheme: dark;
     --brand-primary:      17 23 23;       /* #111717 */
     --brand-secondary:    22 29 29;       /* #161D1D */
     --brand-tertiary:     24 36 37;       /* #182425 */
@@ -36,5 +38,20 @@
     background-color: rgb(var(--brand-primary));
     color: rgb(var(--brand-text));
     transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Pastikan icon picker kalender/tanggal putih bersih di dark mode */
+  .dark input[type="date"],
+  .dark input[type="time"],
+  .dark input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator,
+  .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 1;
+    filter: brightness(1.3);
   }
 }

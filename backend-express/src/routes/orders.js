@@ -100,7 +100,9 @@ ordersRouter.get('/:id', async (req, res, next) => {
           include: {
             team_members: { include: { users: true } },
             jobs: true,
-            progress_order: true,
+            progress_order: {
+              orderBy: { created_at: 'desc' },
+            },
           },
           orderBy: { phase_order: 'asc' },
         },

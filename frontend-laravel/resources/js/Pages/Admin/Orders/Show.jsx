@@ -3,11 +3,13 @@ import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link } from '@inertiajs/react';
 import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertCircle,
-  MapPin, Star, ChevronDown, Check, AlertTriangle, Users, X
+  MapPin, Star, ChevronDown, Check, AlertTriangle, Users, X,
+  Clock, Eye, FileText
 } from 'lucide-react';
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+const formatDateTime = (d) => d ? new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
 const STATUS_OPTIONS = [
   { value: 'draft',       label: 'Draft' },
@@ -78,6 +80,9 @@ export default function AdminOrderShow({ orderId }) {
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [updatingTeam, setUpdatingTeam] = useState(false);
+
+  // State Modal Detail Setoran Progres Developer
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -210,6 +215,11 @@ export default function AdminOrderShow({ orderId }) {
   const services = order.order_services || [];
   const assignments = order.order_assignments || [];
   const invoice = order.invoices?.[0];
+
+  const allTasksFinished = assignments.length > 0 && assignments.every((a) => {
+    const latestProgress = a.progress_order?.[0];
+    return latestProgress && (latestProgress.status === 'completed' || Number(latestProgress.progress_percentage) === 100);
+  });
 
   return (
     <RoleLayout>
@@ -477,6 +487,31 @@ export default function AdminOrderShow({ orderId }) {
               </div>
             </div>
 
+            {/* Banner Khusus: Jika seluruh tugas developer selesai 100% */}
+            {allTasksFinished && order.status !== 'completed' && (
+              <div className="mb-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-emerald-200 text-sm">
+                      Seluruh Tugas Developer Telah Selesai 100%
+                    </h4>
+                    <p className="text-xs text-emerald-300/80 mt-0.5 leading-relaxed">
+                      Semua anggota tim telah menyetorkan progresnya hingga tuntas. Anda dapat memverifikasi laporan mereka di tabel bawah, lalu mengesahkan status order menjadi <strong>Completed</strong>.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('completed')}
+                  className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Check size={14} /> Sahkan Order Completed
+                </button>
+              </div>
+            )}
+
             {/* Tabel Anggota Tim */}
             {assignments.length === 0 ? (
               <p className="text-sm text-brand-text-muted italic text-center py-4">Belum ada anggota tim yang ditugaskan ke order ini.</p>
@@ -485,50 +520,97 @@ export default function AdminOrderShow({ orderId }) {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-brand-muted/30 border-b border-brand-border">
                     <tr>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted">Fase</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted">Nama Anggota</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted">Job / Posisi</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted">Jadwal (Mulai - Selesai)</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted">Progress</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted text-center">Lead</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Fase</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Developer & Posisi</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Status Tugas Developer</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Progres</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Catatan Setoran Terakhir</th>
+                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-brand-border/50">
                     {assignments.map((a) => {
-                      const progress = a.progress_order?.[0]?.progress_percentage ?? 0;
+                      const latestProgress = a.progress_order?.[0];
+                      const progress = latestProgress?.progress_percentage ?? 0;
+                      const taskStatus = latestProgress?.status ?? (progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending');
+                      const notes = latestProgress?.notes;
+
                       return (
-                        <tr key={a.id} className="hover:bg-brand-muted/20">
-                          <td className="px-3 py-2">
-                            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 border border-purple-500/30">
+                        <tr key={a.id} className="hover:bg-brand-muted/20 transition">
+                          <td className="px-3 py-3 align-top">
+                            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/30">
                               Fase {a.phase_order || 1}
                             </span>
                           </td>
-                          <td className="px-3 py-2 font-medium text-brand-text">{a.team_members?.users?.name || '—'}</td>
-                          <td className="px-3 py-2">
-                            <span className="inline-block text-xs px-2 py-0.5 rounded bg-brand-muted border border-brand-border">
-                              {a.jobs?.name || '—'}
-                            </span>
+                          <td className="px-3 py-3 align-top">
+                            <div className="flex items-center gap-1.5 font-medium text-brand-text">
+                              <span>{a.team_members?.users?.name || '—'}</span>
+                              {a.is_lead && (
+                                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">
+                                  <Star size={10} className="fill-amber-400" /> Lead
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1">
+                              <span className="inline-block text-[11px] px-2 py-0.5 rounded bg-brand-muted text-brand-text-muted border border-brand-border">
+                                {a.jobs?.name || '—'}
+                              </span>
+                            </div>
+                            {a.start_date && a.end_date && (
+                              <div className="text-[11px] text-brand-text-muted/70 mt-1">
+                                {formatDate(a.start_date)} - {formatDate(a.end_date)}
+                              </div>
+                            )}
                           </td>
-                          <td className="px-3 py-2 text-xs text-brand-text-muted">
-                            {a.start_date && a.end_date
-                              ? `${formatDate(a.start_date)} s/d ${formatDate(a.end_date)}`
-                              : a.end_date
-                              ? `Deadline: ${formatDate(a.end_date)}`
-                              : '—'}
+                          <td className="px-3 py-3 align-top">
+                            {taskStatus === 'completed' || progress === 100 ? (
+                              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                <CheckCircle2 size={12} /> Tugas Selesai
+                              </span>
+                            ) : taskStatus === 'in_progress' || progress > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                <Clock size={12} /> Sedang Dikerjakan
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-gray-500/15 text-gray-400 border border-gray-500/30">
+                                Belum Dimulai
+                              </span>
+                            )}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-3 align-top">
                             <div className="flex items-center gap-2">
-                              <div className="w-16 bg-brand-muted rounded-full h-1.5 overflow-hidden">
+                              <div className="w-16 bg-brand-muted rounded-full h-1.5 overflow-hidden border border-brand-border/40">
                                 <div
-                                  className={`h-full ${progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}
+                                  className={`h-full transition-all duration-300 ${progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}
                                   style={{ width: `${progress}%` }}
                                 />
                               </div>
                               <span className="text-xs font-semibold text-brand-text">{progress}%</span>
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-center">
-                            {a.is_lead ? <Star size={14} className="fill-amber-500 text-amber-500 inline" /> : '—'}
+                          <td className="px-3 py-3 align-top max-w-xs">
+                            {notes ? (
+                              <div>
+                                <p className="text-xs text-brand-text line-clamp-2 leading-relaxed">
+                                  {notes}
+                                </p>
+                                <span className="text-[10px] text-brand-text-muted mt-1 block">
+                                  Diupdate: {formatDateTime(latestProgress?.updated_at || latestProgress?.created_at)}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-brand-text-muted italic">Belum ada catatan setoran</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 align-top text-center">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAssignment(a)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-primary border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent transition shadow-sm"
+                            >
+                              <Eye size={13} />
+                              Detail
+                            </button>
                           </td>
                         </tr>
                       );
@@ -615,6 +697,167 @@ export default function AdminOrderShow({ orderId }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          MODAL DETAIL SETORAN PROGRES DEVELOPER
+         ========================================================= */}
+      {selectedAssignment && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header Modal */}
+            <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-brand-primary/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-accent/15 border border-brand-accent/40 flex items-center justify-center text-brand-accent font-bold">
+                  {selectedAssignment.team_members?.users?.name?.substring(0, 2).toUpperCase() || 'DV'}
+                </div>
+                <div>
+                  <h3 className="font-bold text-brand-text text-base flex items-center gap-2">
+                    {selectedAssignment.team_members?.users?.name || 'Developer'}
+                    {selectedAssignment.is_lead && (
+                      <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">
+                        <Star size={11} className="fill-amber-400" /> Lead
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-brand-text-muted">
+                    Posisi: {selectedAssignment.jobs?.name || '—'} &bull; Fase {selectedAssignment.phase_order || 1}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAssignment(null)}
+                className="text-brand-text-muted hover:text-brand-text p-1 rounded-lg hover:bg-brand-primary transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body Modal (Scrollable) */}
+            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              {/* Ringkasan Status & Progres */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="bg-brand-primary/60 border border-brand-border rounded-xl p-3.5">
+                  <div className="text-[11px] font-medium text-brand-text-muted uppercase">Status Tugas</div>
+                  <div className="mt-1">
+                    {(() => {
+                      const latest = selectedAssignment.progress_order?.[0];
+                      const p = latest?.progress_percentage ?? 0;
+                      const s = latest?.status ?? (p === 100 ? 'completed' : p > 0 ? 'in_progress' : 'pending');
+                      if (s === 'completed' || p === 100) {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                            <CheckCircle2 size={13} /> Selesai 100%
+                          </span>
+                        );
+                      }
+                      if (s === 'in_progress' || p > 0) {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400">
+                            <Clock size={13} /> Sedang Dikerjakan
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="text-xs font-semibold text-amber-400">
+                          Belum Dimulai
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <div className="bg-brand-primary/60 border border-brand-border rounded-xl p-3.5">
+                  <div className="text-[11px] font-medium text-brand-text-muted uppercase">Progres Setoran</div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-lg font-bold text-brand-text">
+                      {selectedAssignment.progress_order?.[0]?.progress_percentage ?? 0}%
+                    </span>
+                    <div className="flex-1 bg-brand-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-brand-accent h-full transition-all"
+                        style={{ width: `${selectedAssignment.progress_order?.[0]?.progress_percentage ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-brand-primary/60 border border-brand-border rounded-xl p-3.5 col-span-2 sm:col-span-1">
+                  <div className="text-[11px] font-medium text-brand-text-muted uppercase">Jadwal Target</div>
+                  <div className="text-xs font-semibold text-brand-text mt-1">
+                    {selectedAssignment.start_date && selectedAssignment.end_date
+                      ? `${formatDate(selectedAssignment.start_date)} - ${formatDate(selectedAssignment.end_date)}`
+                      : selectedAssignment.end_date
+                      ? `Deadline: ${formatDate(selectedAssignment.end_date)}`
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Catatan / Laporan Setoran Developer Terkini */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-muted mb-2 flex items-center gap-2">
+                  <FileText size={14} className="text-brand-accent" />
+                  Laporan / Catatan Setoran Developer Terkini
+                </h4>
+                <div className="bg-brand-primary border border-brand-border rounded-xl p-4 text-sm text-brand-text leading-relaxed whitespace-pre-wrap">
+                  {selectedAssignment.progress_order?.[0]?.notes || (
+                    <span className="text-brand-text-muted italic">Developer belum mengisi catatan laporan setoran.</span>
+                  )}
+                </div>
+                {selectedAssignment.progress_order?.[0]?.updated_at && (
+                  <p className="text-[11px] text-brand-text-muted mt-1.5">
+                    Waktu Setoran Terakhir: {formatDateTime(selectedAssignment.progress_order[0].updated_at)}
+                  </p>
+                )}
+              </div>
+
+              {/* Riwayat Log Setoran (Jika ada beberapa kali update) */}
+              {selectedAssignment.progress_order && selectedAssignment.progress_order.length > 1 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-muted mb-2 flex items-center gap-2">
+                    <Clock size={14} className="text-purple-400" />
+                    Riwayat Log Setoran ({selectedAssignment.progress_order.length} riwayat)
+                  </h4>
+                  <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                    {selectedAssignment.progress_order.map((log, idx) => (
+                      <div key={log.id || idx} className="p-3 rounded-xl bg-brand-primary/40 border border-brand-border/60 text-xs space-y-1">
+                        <div className="flex items-center justify-between text-brand-text-muted">
+                          <span className="font-semibold text-brand-text">Progres: {log.progress_percentage}% &bull; Status: {log.status}</span>
+                          <span>{formatDateTime(log.created_at || log.updated_at)}</span>
+                        </div>
+                        {log.notes && (
+                          <p className="text-brand-text/90 whitespace-pre-wrap">{log.notes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Info Hak Otoritas Admin / Super Admin */}
+              <div className="p-3.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-xs text-blue-300 flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong>Otoritas Pusat:</strong> Progres dan status di atas adalah laporan pengerjaan teknis dari developer. Pengesahan status order di sistem pusat tetap di bawah kendali manajemen melalui dropdown status di halaman ini.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="px-6 py-3.5 border-t border-brand-border flex items-center justify-between bg-brand-primary/30">
+              <span className="text-xs text-brand-text-muted">ID Assignment: #{selectedAssignment.id}</span>
+              <button
+                type="button"
+                onClick={() => setSelectedAssignment(null)}
+                className="px-4 py-2 bg-brand-primary border border-brand-border rounded-xl text-xs font-semibold text-brand-text hover:bg-brand-muted transition"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

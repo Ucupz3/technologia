@@ -4,7 +4,7 @@ import {
   Home, Users, Shield, Package,
   Calendar, LogOut, Menu,
   Sun, Moon, Contact, Database, Newspaper, ClipboardClock,
-  Code, Check, Briefcase, Headset, Sparkles,
+  Code, Check, Briefcase, Headset,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -19,6 +19,7 @@ const menuByRole = {
     { label: 'Management', href: '/super-admin/master-data', icon: Database },
     { label: 'Customers', href: '/super-admin/customers', icon: Contact },
     { label: 'Orders', href: '/super-admin/orders', icon: Package },
+    { label: 'Maintenance', href: '/super-admin/maintenance', icon: ClipboardClock },
     { label: 'Invoices', href: '/super-admin/invoices', icon: Newspaper },
     { label: 'Schedules', href: '/super-admin/schedules', icon: Calendar },
     { label: 'Audit Logs', href: '/super-admin/audit-logs', icon: ClipboardClock },
@@ -190,7 +191,6 @@ export default function RoleLayout({ children }) {
     .join('')
     .toUpperCase();
 
-  const isDeveloperMode = activeMode === 'developer';
   const roleMeta = MODE_META[role] || MODE_META.super_admin;
 
   return (
@@ -256,13 +256,6 @@ export default function RoleLayout({ children }) {
               <ModeIcon size={13} />
               <span className="uppercase tracking-wide">{meta.label}</span>
             </div>
-
-            {isDeveloperMode && role !== 'developer' && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-brand-border bg-brand-muted/50 text-[11px] text-brand-text-muted">
-                <Sparkles size={11} className="text-purple-500" />
-                Session as <strong className="text-brand-text">{roleMeta.label}</strong>
-              </span>
-            )}
           </div>
 
           <div className="relative">

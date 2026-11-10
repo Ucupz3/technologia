@@ -37,7 +37,10 @@ router.get('/', async (req, res, next) => {
           orderBy: { created_at: 'desc' }
         }
       },
-      orderBy: { assigned_at: 'desc' }
+      orderBy: [
+        { assigned_at: 'desc' },
+        { id: 'desc' }
+      ]
     });
 
     const orderIds = [...new Set(assignments.map(a => a.order_id))];
@@ -78,6 +81,8 @@ router.get('/', async (req, res, next) => {
           status: order.status,
           start_date_project: order.start_date_project ? new Date(order.start_date_project).toISOString().split('T')[0] : null,
           end_date_project: order.end_date_project ? new Date(order.end_date_project).toISOString().split('T')[0] : null,
+          assigned_at: assignment.assigned_at,
+          created_at: order.created_at,
           jobs: []
         });
       }
@@ -155,19 +160,100 @@ router.get('/', async (req, res, next) => {
       if (isOverdue) stats.total_overdue++;
     });
 
-    const projects = Array.from(projectsMap.values()).map(proj => ({
-      ...proj,
-      jobs: proj.jobs.sort((a, b) => a.phase_order - b.phase_order)
-    }));
+    const projects = Array.from(projectsMap.values())
+      .sort((a, b) => {
+        const dateA = new Date(a.assigned_at || a.created_at || 0).getTime();
+        const dateB = new Date(b.assigned_at || b.created_at || 0).getTime();
+        return dateB - dateA;
+      })
+      .map(proj => ({
+        ...proj,
+        jobs: proj.jobs.sort((a, b) => a.phase_order - b.phase_order)
+      }));
 
     stats.total_projects = projects.length;
+
+    // 1. Chart Aktivitas Setoran 30 Hari Terakhir
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const assignmentIds = assignments.map(a => a.id);
+    const progressLogs = await prisma.progress_order.findMany({
+      where: {
+        assignment_id: { in: assignmentIds },
+        deleted_at: null,
+        created_at: { gte: thirtyDaysAgo }
+      },
+      select: {
+        id: true,
+        progress_percentage: true,
+        created_at: true,
+        updated_at: true
+      }
+    });
+
+    const dailyMap = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      dailyMap[key] = 0;
+    }
+
+    progressLogs.forEach(p => {
+      const d = p.updated_at || p.created_at;
+      if (d) {
+        const key = new Date(d).toISOString().slice(0, 10);
+        if (dailyMap[key] !== undefined) {
+          dailyMap[key] += 1;
+        }
+      }
+    });
+
+    const activity_chart = Object.entries(dailyMap).map(([date, count]) => ({
+      date,
+      count
+    }));
+
+    // 2. Daftar Tiket Kendala Maintenance Terkini
+    const maintenanceTickets = await prisma.maintenances.findMany({
+      where: {
+        deleted_at: null,
+        orders: {
+          deleted_at: null,
+          order_assignments: {
+            some: { team_members: { user_id: userId } }
+          }
+        }
+      },
+      include: {
+        orders: {
+          include: {
+            parent_order: { select: { order_number: true } }
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      take: 4
+    });
+
+    const recent_maintenance = maintenanceTickets.map(m => ({
+      id: m.id.toString(),
+      title: m.title,
+      status: m.status,
+      order_number: m.orders?.order_number,
+      parent_order_number: m.orders?.parent_order?.order_number || null,
+      created_at: m.created_at ? new Date(m.created_at).toISOString().split('T')[0] : '-'
+    }));
 
     res.json({
       success: true,
       data: {
         stats,
         projects,
-        tasks: allTasks
+        tasks: allTasks,
+        activity_chart,
+        recent_maintenance
       }
     });
   } catch (err) {

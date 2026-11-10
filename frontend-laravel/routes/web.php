@@ -46,6 +46,10 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::get('/orders/create', fn() => Inertia::render('SuperAdmin/Orders/Create'))->name('orders.create');
     Route::get('/orders/{id}', fn($id) => Inertia::render('SuperAdmin/Orders/Show', ['orderId' => (int) $id]))->name('orders.show'); 
 
+    // Maintenance
+    Route::get('/maintenance', fn() => Inertia::render('SuperAdmin/Maintenance/Index'))->name('maintenance.index');
+    Route::get('/maintenance/{id}', fn($id) => Inertia::render('SuperAdmin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
+
     Route::get('/invoices', fn() => Inertia::render('SuperAdmin/Invoices/Index'))->name('invoices.index');
     Route::get('/invoices/{id}', fn($id) => Inertia::render('SuperAdmin/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 
@@ -80,6 +84,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/orders/create', fn() => Inertia::render('Admin/Orders/Create'))->name('orders.create');
     Route::get('/orders/{id}', fn($id) => Inertia::render('Admin/Orders/Show', ['orderId' => (int) $id]))->name('orders.show');
     Route::get('/maintenance', fn() => Inertia::render('Admin/Maintenance/Index'))->name('maintenance.index');
+    Route::get('/maintenance/{id}', fn($id) => Inertia::render('SuperAdmin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
     Route::get('/schedules', fn() => Inertia::render('Admin/Schedules/Index'))->name('schedules.index');
 
     Route::get('/invoices', fn() => Inertia::render('Admin/Invoices/Index'))->name('invoices.index');

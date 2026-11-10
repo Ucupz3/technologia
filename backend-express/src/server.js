@@ -104,6 +104,7 @@ app.use(errorHandler);
 
 // ============ START ============
 app.listen(PORT, () => {
-  console.log(`✅ Express API jalan di http://localhost:${PORT}`);
+  console.log(` Express API jalan di http://localhost:${PORT}`);
   console.log(`   Health: http://localhost:${PORT}/health`);
 });
+

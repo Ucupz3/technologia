@@ -234,50 +234,7 @@ router.put('/:id', async (req, res, next) => {
       });
     }
 
-    const isCompleted = status === 'completed' || Number(progress_percentage) === 100;
-
-    if (isCompleted && assignmentId) {
-      const assignData = await prisma.order_assignments.findUnique({
-        where: { id: assignmentId },
-        include: { jobs: true, orders: true },
-      });
-
-      if (assignData) {
-        const allAssignments = await prisma.order_assignments.findMany({
-          where: { order_id: assignData.order_id },
-          include: {
-            progress_order: {
-              orderBy: { created_at: 'desc' },
-              take: 1,
-            },
-          },
-        });
-
-        const allFinished = allAssignments.length > 0 && allAssignments.every((a) => {
-          if (a.id === assignmentId) return true;
-          const p = a.progress_order?.[0];
-          return p && (p.status === 'completed' || p.progress_percentage === 100);
-        });
-
-        if (allFinished && assignData.orders?.status !== 'completed') {
-          await prisma.orders.update({
-            where: { id: assignData.order_id },
-            data: { status: 'completed' },
-          });
-
-          await prisma.order_status_history.create({
-            data: {
-              order_id: assignData.order_id,
-              from_status: assignData.orders?.status || 'in_progress',
-              to_status: 'completed',
-              notes: 'Seluruh fase dan tugas pengerjaan developer telah selesai 100%. Status order menjadi selesai.',
-            },
-          });
-        }
-      }
-    }
-
-    res.json({ success: true, message: 'Progress berhasil diupdate', new_id: targetId });
+    res.json({ success: true, message: 'Progress tugas berhasil diupdate', new_id: targetId });
   } catch (err) { next(err); }
 });
 

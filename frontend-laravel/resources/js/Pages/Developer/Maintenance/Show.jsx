@@ -4,7 +4,7 @@ import { Head, Link } from '@inertiajs/react';
 import {
     ChevronLeft, ClipboardClock, CheckCircle2, AlertCircle,
     Wrench, Clock, Calendar, User, FileText, Save,
-    Building2, Mail, Phone, MapPin, Sparkles, Layers,
+    Building2, Mail, Phone, MapPin, Layers,
     ShieldAlert, Users, ArrowRight
 } from 'lucide-react';
 
@@ -64,8 +64,8 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
                 if (res.success && res.data) {
                     setData(res.data);
                     setForm({
-                        status: res.data.status || 'in_progress',
-                        notes: res.data.notes || ''
+                        status: res.data.developer_progress?.status || (res.data.developer_progress?.progress_percentage === 100 ? 'completed' : 'in_progress'),
+                        notes: res.data.developer_progress?.notes || ''
                     });
                 } else {
                     setError(res.message || 'Gagal memuat detail maintenance');
@@ -235,35 +235,42 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
                         </h2>
 
                         {saveSuccess && (
-                            <div className="p-3.5 mb-4 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
-                                <CheckCircle2 size={16} className="text-emerald-400" />
+                            <div className="p-3.5 mb-4 bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
+                                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
                                 Laporan perbaikan berhasil disimpan ke server!
                             </div>
                         )}
 
                         <form onSubmit={handleSave} className="space-y-4">
+                            <div className="p-3 bg-blue-500/10 dark:bg-blue-500/15 border border-blue-500/30 rounded-xl text-xs text-blue-900 dark:text-blue-300 flex items-start gap-2.5">
+                                <AlertCircle size={16} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                <p className="leading-relaxed text-[11px] text-blue-800 dark:text-blue-200/90">
+                                    <strong className="text-blue-950 dark:text-blue-100 font-semibold">Perhatian Hak Akses:</strong> Anda hanya menyetorkan laporan progres perbaikan tugas (apakah sudah dikerjakan atau belum). <strong className="text-blue-950 dark:text-blue-100 font-semibold">Status order pusat</strong> tetap berada di bawah wewenang Super Admin.
+                                </p>
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                    Status Penanganan Maintenance
+                                    Status Pengerjaan Perbaikan (Setoran Progres)
                                 </label>
                                 <select
                                     value={form.status}
                                     onChange={(e) => setForm({ ...form, status: e.target.value })}
                                     className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                 >
-                                    <option value="scheduled">Scheduled (Terjadwal / Menunggu Pengerjaan)</option>
-                                    <option value="in_progress">In Progress (Sedang Dikerjakan / Debugging)</option>
-                                    <option value="completed">Completed (Kendala Telah Selesai Diperbaiki)</option>
+                                    <option value="scheduled">Belum Dikerjakan (Terjadwal / Menunggu)</option>
+                                    <option value="in_progress">Sedang Dikerjakan (Proses Perbaikan)</option>
+                                    <option value="completed">Sudah Dikerjakan (Perbaikan Selesai 100%)</option>
                                 </select>
                             </div>
 
                             {form.status === 'completed' && (
-                                <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-start gap-2.5">
-                                    <Sparkles size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                                <div className="p-3.5 bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-900 dark:text-emerald-300 flex items-start gap-2.5">
+                                    <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="font-semibold text-emerald-200">Perbaikan Selesai Penuh</p>
-                                        <p className="text-[11px] text-emerald-300/80 mt-0.5">
-                                            Menyimpan status Completed akan otomatis mengesahkan order pemeliharaan turunan ini selesai dan mencatat riwayat resolusi masalah.
+                                        <p className="font-semibold text-emerald-950 dark:text-emerald-100">Tugas Perbaikan Selesai 100%</p>
+                                        <p className="text-[11px] text-emerald-800 dark:text-emerald-200/90 mt-0.5">
+                                            Laporan perbaikan Anda akan disetorkan ke Super Admin untuk ditinjau dan disahkan ke sistem pusat.
                                         </p>
                                     </div>
                                 </div>
