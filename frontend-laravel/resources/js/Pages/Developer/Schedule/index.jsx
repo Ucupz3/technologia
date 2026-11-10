@@ -5,7 +5,8 @@ import {
   Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle,
   AlertTriangle, Users, Search, ChevronLeft, ChevronRight,
   Plus, TrendingUp, Briefcase, Layers, Eye, X, Check,
-  Crown, RefreshCw, ArrowRight, ListFilter, UserCheck, Activity
+  Crown, RefreshCw, ArrowRight, ListFilter, UserCheck, Activity,
+  ChevronDown, ChevronUp, FileText
 } from 'lucide-react';
 
 const MONTHS = [
@@ -22,21 +23,24 @@ const getStatusBadge = (status) => {
         label: 'Sedang Dikerjakan',
         color: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
         barColor: 'bg-blue-500',
-        calendarBg: 'bg-blue-600 text-white border-blue-700 hover:bg-blue-500'
+        calendarBg: 'bg-blue-600/95 hover:bg-blue-600 text-white border-blue-400/60 shadow-sm',
+        dotColor: 'bg-blue-300',
       };
     case 'completed':
       return {
         label: 'Selesai',
         color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
         barColor: 'bg-emerald-500',
-        calendarBg: 'bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-500'
+        calendarBg: 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-400/60 shadow-sm',
+        dotColor: 'bg-emerald-300',
       };
     case 'cancelled':
       return {
         label: 'Dibatalkan',
         color: 'bg-red-500/15 text-red-400 border-red-500/40',
         barColor: 'bg-red-500',
-        calendarBg: 'bg-red-600 text-white border-red-700 hover:bg-red-500'
+        calendarBg: 'bg-red-600/95 hover:bg-red-600 text-white border-red-400/60 shadow-sm',
+        dotColor: 'bg-red-300',
       };
     case 'pending':
     default:
@@ -44,7 +48,8 @@ const getStatusBadge = (status) => {
         label: 'Menunggu',
         color: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
         barColor: 'bg-amber-500',
-        calendarBg: 'bg-amber-600 text-white border-amber-700 hover:bg-amber-500'
+        calendarBg: 'bg-amber-600/95 hover:bg-amber-600 text-white border-amber-400/60 shadow-sm',
+        dotColor: 'bg-amber-300',
       };
   }
 };
@@ -84,17 +89,25 @@ export default function DeveloperSchedule() {
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' | 'cards' | 'tasks'
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showAllCards, setShowAllCards] = useState(false);
 
   // Kalender
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [calendarDensity, setCalendarDensity] = useState('expanded'); // 'compact' | 'expanded'
+  const [expandedWeeks, setExpandedWeeks] = useState({});
+
+  const toggleWeekExpand = (wIdx) => {
+    setExpandedWeeks((prev) => ({ ...prev, [wIdx]: !prev[wIdx] }));
+  };
 
   // Modal Detail Proyek
   const [selectedProject, setSelectedProject] = useState(null);
 
-  // Modal Update Progres
+  // Modal Update Progres / Log Aktivitas
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const [modalType, setModalType] = useState('progress'); // 'progress' | 'activity'
   const [progressProject, setProgressProject] = useState(null);
   const [progressForm, setProgressForm] = useState({
     title: '',
@@ -235,7 +248,10 @@ export default function DeveloperSchedule() {
 
     return weeks.map((week) => {
       const validDates = week.filter((d) => d !== null);
-      if (validDates.length === 0) return { week, events: [] };
+      if (validDates.length === 0) return { week, events: [], maxTrack: -1 };
+
+      const firstValidCol = week.findIndex((d) => d !== null);
+      const lastValidCol = 6 - [...week].reverse().findIndex((d) => d !== null);
 
       const weekStartDate = new Date(currentYear, currentMonth, validDates[0]);
       weekStartDate.setHours(0, 0, 0, 0);
@@ -254,31 +270,35 @@ export default function DeveloperSchedule() {
           const orderStart = new Date(order.start_date_project);
           const orderEnd = order.end_date_project ? new Date(order.end_date_project) : new Date(orderStart);
 
-          let startCol = 0;
-          if (orderStart > weekStartDate) {
-            for (let i = 0; i < 7; i++) {
-              if (week[i] !== null) {
-                const d = new Date(currentYear, currentMonth, week[i]);
-                if (d >= new Date(orderStart.getFullYear(), orderStart.getMonth(), orderStart.getDate())) {
-                  startCol = i;
-                  break;
-                }
+          // Cari kolom mulai di minggu ini (dibatasi firstValidCol)
+          let startCol = firstValidCol;
+          for (let i = firstValidCol; i <= lastValidCol; i++) {
+            if (week[i] !== null) {
+              const d = new Date(currentYear, currentMonth, week[i], 0, 0, 0);
+              const os = new Date(orderStart);
+              os.setHours(0, 0, 0, 0);
+              if (d >= os) {
+                startCol = i;
+                break;
               }
             }
           }
 
-          let endCol = 6;
-          if (orderEnd < weekEndDate) {
-            for (let i = 6; i >= 0; i--) {
-              if (week[i] !== null) {
-                const d = new Date(currentYear, currentMonth, week[i]);
-                if (d <= new Date(orderEnd.getFullYear(), orderEnd.getMonth(), orderEnd.getDate())) {
-                  endCol = i;
-                  break;
-                }
+          // Cari kolom selesai di minggu ini (dibatasi lastValidCol)
+          let endCol = lastValidCol;
+          for (let i = lastValidCol; i >= firstValidCol; i--) {
+            if (week[i] !== null) {
+              const d = new Date(currentYear, currentMonth, week[i], 23, 59, 59);
+              const oe = new Date(orderEnd);
+              oe.setHours(23, 59, 59);
+              if (d <= oe) {
+                endCol = i;
+                break;
               }
             }
           }
+
+          if (startCol > endCol) startCol = endCol;
 
           return { ...order, startCol, endCol };
         });
@@ -303,13 +323,37 @@ export default function DeveloperSchedule() {
         }
       });
 
-      return { week, events: weekEvents };
+      const maxTrack = weekEvents.reduce((max, e) => Math.max(max, e.track || 0), -1);
+
+      return { week, events: weekEvents, maxTrack };
     });
   }, [currentYear, currentMonth, filteredProjects]);
 
-  // Handler Buka Modal Update Progres
-  const openProgressModal = (project) => {
+  // Handler Buka Modal Log Aktivitas Harian (Tambah Update)
+  const openActivityModal = (project) => {
+    if (!project.my_assignment) {
+      showToast('error', 'Hanya anggota tim yang ditugaskan pada proyek ini yang dapat mencatat aktivitas.');
+      return;
+    }
     setProgressProject(project);
+    setModalType('activity');
+    setProgressForm({
+      title: '',
+      description: '',
+      progress_percentage: project.progress_percentage || 0,
+      notes: '',
+    });
+    setIsProgressModalOpen(true);
+  };
+
+  // Handler Buka Modal Update Persentase Progres Proyek (Catat Progres)
+  const openProgressModal = (project) => {
+    if (!project.my_assignment) {
+      showToast('error', 'Hanya anggota tim yang ditugaskan pada proyek ini yang dapat mengubah progres.');
+      return;
+    }
+    setProgressProject(project);
+    setModalType('progress');
     setProgressForm({
       title: `Update Progres ${project.order_number}`,
       description: '',
@@ -323,6 +367,16 @@ export default function DeveloperSchedule() {
   const handleSaveProgress = async (e) => {
     e.preventDefault();
     if (!progressProject) return;
+
+    if (!progressProject.my_assignment) {
+      showToast('error', 'Hanya anggota tim yang ditugaskan pada proyek ini yang dapat mengubah progres.');
+      return;
+    }
+
+    if (!progressProject.assignments || progressProject.assignments.length === 0) {
+      showToast('error', 'Proyek ini belum memiliki penugasan tim. Harap tugaskan tim terlebih dahulu.');
+      return;
+    }
 
     if (!progressForm.title.trim()) {
       showToast('error', 'Judul progres wajib diisi');
@@ -348,7 +402,12 @@ export default function DeveloperSchedule() {
 
       const resJson = await res.json();
       if (res.ok && resJson.success) {
-        showToast('success', 'Progres pengerjaan berhasil dicatat!');
+        showToast(
+          'success',
+          modalType === 'activity'
+            ? 'Catatan aktivitas berhasil ditambahkan!'
+            : 'Progres proyek berhasil diperbarui!'
+        );
         setIsProgressModalOpen(false);
         loadData();
         if (selectedProject && selectedProject.id === progressProject.id) {
@@ -584,65 +643,108 @@ export default function DeveloperSchedule() {
              ======================================================== */}
           {viewMode === 'calendar' && (
             <div className="bg-brand-secondary border border-brand-border rounded-xl shadow-sm overflow-hidden mb-6">
-              {/* Header Bulan Kalender */}
-              <div className="p-4 border-b border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon size={20} className="text-brand-accent" />
-                  <h2 className="text-lg font-bold text-brand-text">
-                    {MONTHS[currentMonth]} {currentYear}
-                  </h2>
+              {/* Header Bulan Kalender & Kontrol Tampilan */}
+              <div className="p-4 border-b border-brand-border flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-brand-accent/15 text-brand-accent rounded-lg border border-brand-accent/20">
+                    <CalendarIcon size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-brand-text">
+                        {MONTHS[currentMonth]} {currentYear}
+                      </h2>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-brand-primary text-brand-text-muted border border-brand-border">
+                        {filteredProjects.length} Proyek
+                      </span>
+                    </div>
+                    <p className="text-xs text-brand-text-muted">
+                      {scope === 'mine' ? 'Jadwal proyek yang ditugaskan ke Anda' : 'Jadwal seluruh proyek tim'}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={goToToday}
-                    className="px-3 py-1.5 bg-brand-primary border border-brand-border text-brand-text rounded-lg text-xs font-semibold hover:bg-brand-muted transition"
-                  >
-                    Hari Ini
-                  </button>
-                  <div className="flex items-center border border-brand-border rounded-lg overflow-hidden">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Mode Kerapatan Bar Kalender (Density) */}
+                  <div className="inline-flex rounded-lg border border-brand-border bg-brand-primary p-0.5 text-xs">
                     <button
-                      onClick={prevMonth}
-                      className="p-1.5 bg-brand-primary hover:bg-brand-muted text-brand-text transition"
-                      title="Bulan Sebelumnya"
+                      onClick={() => setCalendarDensity('expanded')}
+                      className={`px-2.5 py-1 rounded-md transition font-medium ${
+                        calendarDensity === 'expanded'
+                          ? 'bg-brand-accent text-brand-primary font-bold shadow-sm'
+                          : 'text-brand-text-muted hover:text-brand-text'
+                      }`}
+                      title="Tampilkan seluruh bar proyek secara detail"
                     >
-                      <ChevronLeft size={16} />
+                      Tampilkan Semua Bar
                     </button>
                     <button
-                      onClick={nextMonth}
-                      className="p-1.5 bg-brand-primary hover:bg-brand-muted text-brand-text transition border-l border-brand-border"
-                      title="Bulan Berikutnya"
+                      onClick={() => setCalendarDensity('compact')}
+                      className={`px-2.5 py-1 rounded-md transition font-medium ${
+                        calendarDensity === 'compact'
+                          ? 'bg-brand-accent text-brand-primary font-bold shadow-sm'
+                          : 'text-brand-text-muted hover:text-brand-text'
+                      }`}
+                      title="Tampilkan maksimal 3 bar per minggu (lebih ringkas)"
                     >
-                      <ChevronRight size={16} />
+                      Ringkas (Maks. 3)
                     </button>
+                  </div>
+
+                  {/* Navigasi Bulan */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={goToToday}
+                      className="px-3 py-1.5 bg-brand-primary border border-brand-border text-brand-text rounded-lg text-xs font-semibold hover:bg-brand-muted transition shadow-sm"
+                    >
+                      Hari Ini
+                    </button>
+                    <div className="flex items-center border border-brand-border rounded-lg overflow-hidden bg-brand-primary shadow-sm">
+                      <button
+                        onClick={prevMonth}
+                        className="p-1.5 hover:bg-brand-muted text-brand-text transition"
+                        title="Bulan Sebelumnya"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        onClick={nextMonth}
+                        className="p-1.5 hover:bg-brand-muted text-brand-text transition border-l border-brand-border"
+                        title="Bulan Berikutnya"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Legend Status */}
-              <div className="px-4 py-2.5 bg-brand-primary/50 border-b border-brand-border flex flex-wrap items-center gap-4 text-xs">
-                <span className="text-brand-text-muted font-medium">Keterangan:</span>
-                <span className="flex items-center gap-1.5 text-brand-text">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> In Progress
-                </span>
-                <span className="flex items-center gap-1.5 text-brand-text">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Pending
-                </span>
-                <span className="flex items-center gap-1.5 text-brand-text">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Completed
-                </span>
-                <span className="flex items-center gap-1.5 text-brand-text">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Cancelled
-                </span>
-                <span className="flex items-center gap-1.5 text-brand-text ml-auto text-[11px] text-brand-text-muted">
+              <div className="px-4 py-2.5 bg-brand-primary/50 border-b border-brand-border flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-4">
+                  <span className="text-brand-text-muted font-medium">Status:</span>
+                  <span className="flex items-center gap-1.5 text-brand-text">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span> In Progress
+                  </span>
+                  <span className="flex items-center gap-1.5 text-brand-text">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm"></span> Pending
+                  </span>
+                  <span className="flex items-center gap-1.5 text-brand-text">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Completed
+                  </span>
+                  <span className="flex items-center gap-1.5 text-brand-text">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></span> Cancelled
+                  </span>
+                </div>
+                <span className="text-[11px] text-brand-text-muted">
                   💡 Klik pada bar proyek untuk melihat rincian & tugas
                 </span>
               </div>
 
               {/* Grid Hari Min-Sab */}
-              <div className="grid grid-cols-7 border-b border-brand-border text-center text-xs font-semibold py-2.5 text-brand-text-muted bg-brand-primary/30">
+              <div className="grid grid-cols-7 border-b border-brand-border text-center text-xs font-bold py-2.5 text-brand-text-muted bg-brand-primary/40 uppercase tracking-wider">
                 {DAYS.map((day, idx) => (
-                  <div key={day} className={idx === 0 || idx === 6 ? 'text-red-400' : ''}>
+                  <div key={day} className={idx === 0 || idx === 6 ? 'text-red-400/90' : ''}>
                     {day}
                   </div>
                 ))}
@@ -651,57 +753,114 @@ export default function DeveloperSchedule() {
               {/* Grid Tanggal & Gantt Bars */}
               <div className="divide-y divide-brand-border">
                 {calendarData.map((weekData, wIdx) => {
-                  const maxTrack = weekData.events.reduce((max, e) => Math.max(max, e.track || 0), -1);
-                  const trackHeight = 34;
-                  const containerHeight = Math.max(90, (maxTrack + 1) * trackHeight + 42);
+                  const barHeight = 25;
+                  const barGap = 4;
+                  const trackStep = barHeight + barGap; // 29px
+                  const paddingTop = 6;
+                  const paddingBottom = 8;
+                  const maxVisibleTracks = 3;
+
+                  const isWeekExpanded = calendarDensity === 'expanded' || Boolean(expandedWeeks[wIdx]);
+                  const hasHiddenEvents = weekData.events.some((e) => (e.track || 0) >= maxVisibleTracks);
+                  const hiddenCount = weekData.events.filter((e) => (e.track || 0) >= maxVisibleTracks).length;
+
+                  const visibleEvents = isWeekExpanded
+                    ? weekData.events
+                    : weekData.events.filter((e) => (e.track || 0) < maxVisibleTracks);
+
+                  const currentVisibleTracks = isWeekExpanded
+                    ? (weekData.maxTrack + 1)
+                    : Math.min(weekData.maxTrack + 1, maxVisibleTracks);
+
+                  let eventAreaHeight = paddingTop + currentVisibleTracks * trackStep + paddingBottom;
+                  if (hasHiddenEvents && !isWeekExpanded) {
+                    eventAreaHeight += 26; // ruang untuk tombol +X lainnya
+                  } else if (hasHiddenEvents && isWeekExpanded && calendarDensity === 'compact') {
+                    eventAreaHeight += 24; // ruang untuk tombol sembunyikan
+                  }
+                  if (eventAreaHeight < 52) eventAreaHeight = 52; // min height jika kosong
 
                   return (
-                    <div key={wIdx} className="relative min-h-[90px]" style={{ height: `${containerHeight}px` }}>
-                      {/* Grid 7 Kolom Tanggal */}
-                      <div className="absolute inset-0 grid grid-cols-7 divide-x divide-brand-border">
+                    <div key={wIdx} className="bg-brand-secondary transition">
+                      {/* 1. ROW TANGGAL: Selalu Berada di Paling Atas (TIDAK AKAN PERNAH TERTUTUP) */}
+                      <div className="grid grid-cols-7 divide-x divide-brand-border/40 bg-brand-primary/25 border-b border-brand-border/30 h-9">
                         {weekData.week.map((day, dIdx) => {
                           const isToday =
                             day !== null &&
                             day === today.getDate() &&
                             currentMonth === today.getMonth() &&
                             currentYear === today.getFullYear();
+                          const isWeekend = dIdx === 0 || dIdx === 6;
 
                           return (
                             <div
                               key={dIdx}
-                              className={`p-1.5 transition ${
+                              className={`px-2 py-1 flex items-center justify-between text-xs transition ${
                                 day === null
                                   ? 'bg-brand-primary/20'
                                   : isToday
-                                  ? 'bg-brand-accent/5'
-                                  : 'hover:bg-brand-primary/30'
+                                  ? 'bg-brand-accent/15'
+                                  : isWeekend
+                                  ? 'bg-brand-muted/10'
+                                  : ''
                               }`}
                             >
-                              {day !== null && (
-                                <span
-                                  className={`inline-block text-xs font-bold w-6 h-6 leading-6 text-center rounded-full ${
-                                    isToday
-                                      ? 'bg-brand-accent text-brand-primary shadow'
-                                      : dIdx === 0 || dIdx === 6
-                                      ? 'text-red-400'
-                                      : 'text-brand-text-muted'
-                                  }`}
-                                >
-                                  {day}
-                                </span>
+                              {day !== null ? (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className={`inline-flex items-center justify-center font-bold text-xs rounded-full transition-all ${
+                                        isToday
+                                          ? 'bg-brand-accent text-brand-primary w-6 h-6 shadow'
+                                          : isWeekend
+                                          ? 'text-red-400 font-bold w-6 h-6'
+                                          : 'text-brand-text w-6 h-6'
+                                      }`}
+                                    >
+                                      {day}
+                                    </span>
+                                    {isToday && (
+                                      <span className="text-[10px] font-bold text-brand-accent hidden sm:inline px-1.5 py-0.2 rounded bg-brand-accent/10 border border-brand-accent/30">
+                                        Hari Ini
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-brand-text-muted/60 hidden md:inline">
+                                    {DAYS[dIdx]}
+                                  </span>
+                                </>
+                              ) : (
+                                <span />
                               )}
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* Baris Event Proyek (Gantt Chart Bars) */}
-                      <div className="absolute inset-0 pointer-events-none pt-8">
-                        {weekData.events.map((event) => {
+                      {/* 2. ROW GANTT EVENTS: Berada di Bawah Tanggal (Dedicated Container) */}
+                      <div className="relative" style={{ height: `${eventAreaHeight}px` }}>
+                        {/* Grid Kolom Background */}
+                        <div className="absolute inset-0 grid grid-cols-7 divide-x divide-brand-border/30 pointer-events-none">
+                          {weekData.week.map((day, dIdx) => (
+                            <div
+                              key={dIdx}
+                              className={`h-full ${
+                                day === null
+                                  ? 'bg-brand-primary/10'
+                                  : dIdx === 0 || dIdx === 6
+                                  ? 'bg-brand-muted/5'
+                                  : ''
+                              }`}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Baris Event Proyek */}
+                        {visibleEvents.map((event) => {
                           const badge = getStatusBadge(event.status);
                           const leftPct = (event.startCol / 7) * 100;
                           const widthPct = ((event.endCol - event.startCol + 1) / 7) * 100;
-                          const topPx = (event.track || 0) * trackHeight;
+                          const topPx = paddingTop + (event.track || 0) * trackStep;
 
                           return (
                             <div
@@ -712,20 +871,57 @@ export default function DeveloperSchedule() {
                                 width: `calc(${widthPct}% - 8px)`,
                                 top: `${topPx}px`,
                               }}
-                              className={`absolute h-7 rounded-md px-2 flex items-center justify-between text-xs font-medium cursor-pointer transition shadow-sm pointer-events-auto border truncate ${badge.calendarBg}`}
+                              className={`absolute h-[25px] rounded-md px-2 flex items-center justify-between text-xs cursor-pointer transition shadow-sm border truncate z-10 hover:brightness-110 ${badge.calendarBg}`}
                               title={`${event.order_number} - ${event.customer_name} (${formatDateShort(event.start_date_project)} s/d ${formatDateShort(event.end_date_project)})`}
                             >
-                              <div className="flex items-center gap-1.5 truncate">
-                                {event.my_assignment?.is_lead && <Crown size={12} className="text-amber-200 shrink-0" />}
-                                <span className="font-bold truncate">{event.order_number}</span>
-                                <span className="opacity-90 truncate hidden sm:inline">• {event.customer_name}</span>
+                              <div className="flex items-center gap-1.5 truncate mr-2">
+                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dotColor} shrink-0`} />
+                                {event.my_assignment?.is_lead && (
+                                  <Crown size={11} className="text-amber-300 shrink-0" title="Project Lead" />
+                                )}
+                                <span className="font-mono font-bold text-[11px] shrink-0 tracking-tight">
+                                  {event.order_number}
+                                </span>
+                                <span className="opacity-90 text-[11px] truncate hidden sm:inline">
+                                  • {event.customer_name}
+                                </span>
                               </div>
-                              <span className="text-[10px] opacity-90 pl-1 shrink-0 font-semibold">
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-black/40 border border-white/10 shrink-0">
                                 {event.progress_percentage}%
                               </span>
                             </div>
                           );
                         })}
+
+                        {/* Tombol "+X Proyek Lainnya" jika Mode Compact */}
+                        {hasHiddenEvents && !isWeekExpanded && (
+                          <div
+                            style={{ top: `${paddingTop + maxVisibleTracks * trackStep}px` }}
+                            className="absolute left-2 right-2 flex items-center justify-center z-10"
+                          >
+                            <button
+                              onClick={() => toggleWeekExpand(wIdx)}
+                              className="text-[11px] font-semibold text-brand-accent hover:text-brand-accent2 bg-brand-primary/95 border border-brand-accent/30 hover:border-brand-accent px-3 py-0.5 rounded-full shadow-sm transition flex items-center gap-1"
+                            >
+                              + {hiddenCount} proyek lainnya di minggu ini <ChevronDown size={13} />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Tombol "Sembunyikan" jika Week ini di-expand secara manual di Mode Compact */}
+                        {hasHiddenEvents && isWeekExpanded && calendarDensity === 'compact' && (
+                          <div
+                            style={{ top: `${paddingTop + (weekData.maxTrack + 1) * trackStep}px` }}
+                            className="absolute left-2 right-2 flex items-center justify-center z-10"
+                          >
+                            <button
+                              onClick={() => toggleWeekExpand(wIdx)}
+                              className="text-[10px] font-semibold text-brand-text-muted hover:text-brand-text bg-brand-primary/80 border border-brand-border px-2.5 py-0.5 rounded-full transition flex items-center gap-1"
+                            >
+                              Sembunyikan sebagian <ChevronUp size={12} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -737,161 +933,202 @@ export default function DeveloperSchedule() {
           {/* ========================================================
               VIEW 2: KARTU PROYEK (CARD LIST VIEW)
              ======================================================== */}
-          {viewMode === 'cards' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {filteredProjects.length === 0 ? (
-                <div className="col-span-full py-16 text-center bg-brand-secondary border border-brand-border rounded-xl">
-                  <Briefcase size={36} className="mx-auto text-brand-text-muted mb-3 opacity-60" />
-                  <p className="text-base font-medium text-brand-text">Tidak ada proyek yang cocok</p>
-                  <p className="text-xs text-brand-text-muted mt-1">Coba ganti filter status atau kata kunci pencarian Anda</p>
-                </div>
-              ) : (
-                filteredProjects.map((project) => {
-                  const badge = getStatusBadge(project.status);
+          {viewMode === 'cards' && (() => {
+            const displayedProjects = showAllCards ? filteredProjects : filteredProjects.slice(0, 6);
 
-                  return (
-                    <div
-                      key={project.id}
-                      className="bg-brand-secondary border border-brand-border hover:border-brand-accent/50 rounded-xl p-5 shadow-sm transition flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Header Card: Order No & Status */}
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div>
-                            <span className="text-xs font-mono font-bold text-brand-accent">
-                              {project.order_number}
-                            </span>
-                            <h3 className="text-base font-bold text-brand-text leading-tight mt-0.5">
-                              {project.customer_name}
-                            </h3>
-                          </div>
-                          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${badge.color}`}>
-                            {badge.label}
-                          </span>
-                        </div>
-
-                        {/* Layanan & Role Developer */}
-                        <div className="space-y-2 mb-4 text-xs">
-                          {project.services && project.services.length > 0 && (
-                            <div className="text-brand-text-muted flex items-start gap-1.5">
-                              <Layers size={14} className="text-brand-accent shrink-0 mt-0.5" />
-                              <span className="line-clamp-1">
-                                {project.services.map((s) => s.name).join(', ')}
-                              </span>
-                            </div>
-                          )}
-
-                          {project.my_assignment && (
-                            <div className="flex items-center gap-1.5 bg-brand-primary/60 border border-brand-border rounded-md px-2.5 py-1 text-brand-text">
-                              {project.my_assignment.is_lead ? (
-                                <Crown size={13} className="text-amber-400 shrink-0" />
-                              ) : (
-                                <Briefcase size={13} className="text-blue-400 shrink-0" />
-                              )}
-                              <span className="font-semibold text-brand-text">
-                                {project.my_assignment.job_name || 'Developer'}
-                              </span>
-                              {project.my_assignment.is_lead && (
-                                <span className="ml-auto text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.2 rounded">
-                                  Lead
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="mb-4">
-                          <div className="flex justify-between items-center text-xs mb-1.5">
-                            <span className="text-brand-text-muted font-medium">Progres Pengerjaan</span>
-                            <span className="font-bold text-brand-text">{project.progress_percentage}%</span>
-                          </div>
-                          <div className="w-full bg-brand-primary h-2 rounded-full overflow-hidden border border-brand-border">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${badge.barColor}`}
-                              style={{ width: `${project.progress_percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        {/* Jadwal Tanggal & Sisa Hari */}
-                        <div className="bg-brand-primary/40 rounded-lg p-3 text-xs space-y-1.5 border border-brand-border/60 mb-4">
-                          <div className="flex items-center justify-between text-brand-text-muted">
-                            <span className="flex items-center gap-1">
-                              <CalendarIcon size={12} /> Mulai:
-                            </span>
-                            <span className="font-medium text-brand-text">{formatDateShort(project.start_date_project)}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-brand-text-muted">
-                            <span className="flex items-center gap-1">
-                              <Clock size={12} /> Deadline:
-                            </span>
-                            <span className="font-medium text-brand-text">{formatDateShort(project.end_date_project)}</span>
-                          </div>
-                          {project.days_remaining !== null && (
-                            <div className="pt-1 border-t border-brand-border/40 flex items-center justify-between font-semibold">
-                              <span className="text-brand-text-muted text-[11px]">Sisa Waktu:</span>
-                              {project.is_overdue ? (
-                                <span className="text-rose-400 flex items-center gap-1">
-                                  <AlertTriangle size={12} /> Terlambat {Math.abs(project.days_remaining)} hari
-                                </span>
-                              ) : project.days_remaining === 0 ? (
-                                <span className="text-amber-400">Hari ini terakhir!</span>
-                              ) : (
-                                <span className="text-emerald-400">{project.days_remaining} hari tersisa</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Anggota Tim Lainnya */}
-                        {project.assignments && project.assignments.length > 0 && (
-                          <div className="mb-4">
-                            <div className="text-[11px] text-brand-text-muted mb-1.5 font-medium flex items-center gap-1">
-                              <Users size={12} /> Tim Proyek ({project.assignments.length}):
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {project.assignments.slice(0, 4).map((m, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-[11px] px-2 py-0.5 rounded bg-brand-primary border border-brand-border text-brand-text-muted flex items-center gap-1"
-                                  title={`${m.user_name} (${m.job_name})`}
-                                >
-                                  {m.is_lead && <Crown size={10} className="text-amber-400" />}
-                                  {m.user_name?.split(' ')[0]}
-                                </span>
-                              ))}
-                              {project.assignments.length > 4 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-primary text-brand-text-muted">
-                                  +{project.assignments.length - 4} lainnya
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="pt-3 border-t border-brand-border flex items-center gap-2">
-                        <button
-                          onClick={() => setSelectedProject(project)}
-                          className="flex-1 py-1.5 px-3 bg-brand-primary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
-                        >
-                          <Eye size={13} /> Rincian
-                        </button>
-                        <button
-                          onClick={() => openProgressModal(project)}
-                          className="flex-1 py-1.5 px-3 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm"
-                        >
-                          <Plus size={13} /> Catat Progres
-                        </button>
-                      </div>
+            return (
+              <div className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredProjects.length === 0 ? (
+                    <div className="col-span-full py-16 text-center bg-brand-secondary border border-brand-border rounded-xl">
+                      <Briefcase size={36} className="mx-auto text-brand-text-muted mb-3 opacity-60" />
+                      <p className="text-base font-medium text-brand-text">Tidak ada proyek yang cocok</p>
+                      <p className="text-xs text-brand-text-muted mt-1">Coba ganti filter status atau kata kunci pencarian Anda</p>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          )}
+                  ) : (
+                    displayedProjects.map((project) => {
+                      const badge = getStatusBadge(project.status);
+
+                      return (
+                        <div
+                          key={project.id}
+                          className="bg-brand-secondary border border-brand-border hover:border-brand-accent/50 rounded-xl p-5 shadow-sm transition flex flex-col justify-between"
+                        >
+                          <div>
+                            {/* Header Card: Order No & Status */}
+                            <div className="flex items-start justify-between gap-2 mb-3">
+                              <div>
+                                <span className="text-xs font-mono font-bold text-brand-accent">
+                                  {project.order_number}
+                                </span>
+                                <h3 className="text-base font-bold text-brand-text leading-tight mt-0.5">
+                                  {project.customer_name}
+                                </h3>
+                              </div>
+                              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${badge.color}`}>
+                                {badge.label}
+                              </span>
+                            </div>
+
+                            {/* Layanan & Role Developer */}
+                            <div className="space-y-2 mb-4 text-xs">
+                              {project.services && project.services.length > 0 && (
+                                <div className="text-brand-text-muted flex items-start gap-1.5">
+                                  <Layers size={14} className="text-brand-accent shrink-0 mt-0.5" />
+                                  <span className="line-clamp-1">
+                                    {project.services.map((s) => s.name).join(', ')}
+                                  </span>
+                                </div>
+                              )}
+
+                              {project.my_assignment && (
+                                <div className="flex items-center gap-1.5 bg-brand-primary/60 border border-brand-border rounded-md px-2.5 py-1 text-brand-text">
+                                  {project.my_assignment.is_lead ? (
+                                    <Crown size={13} className="text-amber-400 shrink-0" />
+                                  ) : (
+                                    <Briefcase size={13} className="text-blue-400 shrink-0" />
+                                  )}
+                                  <span className="font-semibold text-brand-text">
+                                    {project.my_assignment.job_name || 'Developer'}
+                                  </span>
+                                  {project.my_assignment.is_lead && (
+                                    <span className="ml-auto text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.2 rounded">
+                                      Lead
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="mb-4">
+                              <div className="flex justify-between items-center text-xs mb-1.5">
+                                <span className="text-brand-text-muted font-medium">Progres Pengerjaan</span>
+                                <span className="font-bold text-brand-text">{project.progress_percentage}%</span>
+                              </div>
+                              <div className="w-full bg-brand-primary h-2 rounded-full overflow-hidden border border-brand-border">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${badge.barColor}`}
+                                  style={{ width: `${project.progress_percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+
+                            {/* Jadwal Tanggal & Sisa Hari */}
+                            <div className="bg-brand-primary/40 rounded-lg p-3 text-xs space-y-1.5 border border-brand-border/60 mb-4">
+                              <div className="flex items-center justify-between text-brand-text-muted">
+                                <span className="flex items-center gap-1">
+                                  <CalendarIcon size={12} /> Mulai:
+                                </span>
+                                <span className="font-medium text-brand-text">{formatDateShort(project.start_date_project)}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-brand-text-muted">
+                                <span className="flex items-center gap-1">
+                                  <Clock size={12} /> Deadline:
+                                </span>
+                                <span className="font-medium text-brand-text">{formatDateShort(project.end_date_project)}</span>
+                              </div>
+                              {project.days_remaining !== null && (
+                                <div className="pt-1 border-t border-brand-border/40 flex items-center justify-between font-semibold">
+                                  <span className="text-brand-text-muted text-[11px]">Sisa Waktu:</span>
+                                  {project.is_overdue ? (
+                                    <span className="text-rose-400 flex items-center gap-1">
+                                      <AlertTriangle size={12} /> Terlambat {Math.abs(project.days_remaining)} hari
+                                    </span>
+                                  ) : project.days_remaining === 0 ? (
+                                    <span className="text-amber-400">Hari ini terakhir!</span>
+                                  ) : (
+                                    <span className="text-emerald-400">{project.days_remaining} hari tersisa</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Anggota Tim Lainnya */}
+                            {project.assignments && project.assignments.length > 0 && (
+                              <div className="mb-4">
+                                <div className="text-[11px] text-brand-text-muted mb-1.5 font-medium flex items-center gap-1">
+                                  <Users size={12} /> Tim Proyek ({project.assignments.length}):
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {project.assignments.slice(0, 4).map((m, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="text-[11px] px-2 py-0.5 rounded bg-brand-primary border border-brand-border text-brand-text-muted flex items-center gap-1"
+                                      title={`${m.user_name} (${m.job_name})`}
+                                    >
+                                      {m.is_lead && <Crown size={10} className="text-amber-400" />}
+                                      {m.user_name?.split(' ')[0]}
+                                    </span>
+                                  ))}
+                                  {project.assignments.length > 4 && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-primary text-brand-text-muted">
+                                      +{project.assignments.length - 4} lainnya
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="pt-3 border-t border-brand-border flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedProject(project)}
+                              className="flex-1 py-1.5 px-3 bg-brand-primary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
+                            >
+                              <Eye size={13} /> Rincian
+                            </button>
+                            {project.my_assignment ? (
+                              <button
+                                onClick={() => openProgressModal(project)}
+                                className="flex-1 py-1.5 px-3 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm"
+                              >
+                                <Plus size={13} /> Catat Progres
+                              </button>
+                            ) : (
+                              <span
+                                className="flex-1 py-1.5 px-2 bg-brand-secondary border border-brand-border/60 text-brand-text-muted text-[11px] font-medium rounded-lg text-center select-none"
+                                title="Hanya tim yang ditugaskan yang dapat mencatat progres"
+                              >
+                                Bukan Tim Anda
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Tombol Tampilkan Semua Kartu jika proyek > 6 */}
+                {filteredProjects.length > 6 && (
+                  <div className="mt-6 pt-2 flex flex-col items-center justify-center gap-2">
+                    <button
+                      onClick={() => setShowAllCards(!showAllCards)}
+                      className="px-6 py-2.5 bg-brand-secondary border border-brand-border hover:border-brand-accent/50 text-brand-text hover:text-brand-accent text-xs font-bold rounded-xl shadow-sm transition-all duration-200 flex items-center gap-2 group hover:bg-brand-muted"
+                    >
+                      <span>
+                        {showAllCards
+                          ? 'Tampilkan Lebih Sedikit (6 Kartu)'
+                          : `Tampilkan Semua Kartu (${filteredProjects.length} Proyek)`}
+                      </span>
+                      {showAllCards ? (
+                        <ChevronUp size={16} className="text-brand-accent transition-transform group-hover:-translate-y-0.5" />
+                      ) : (
+                        <ChevronDown size={16} className="text-brand-accent transition-transform group-hover:translate-y-0.5" />
+                      )}
+                    </button>
+                    <span className="text-[11px] text-brand-text-muted font-medium">
+                      {showAllCards
+                        ? `Menampilkan seluruh ${filteredProjects.length} proyek`
+                        : `Menampilkan 6 dari ${filteredProjects.length} proyek`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ========================================================
               VIEW 3: AGENDA TUGAS & DEADLINE MENDATANG
@@ -1099,28 +1336,58 @@ export default function DeveloperSchedule() {
               {/* Riwayat Progres Pengerjaan */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">Riwayat Update Progres</h4>
-                  <button
-                    onClick={() => {
-                      openProgressModal(selectedProject);
-                    }}
-                    className="text-xs text-brand-accent hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <Plus size={12} /> Tambah Update
-                  </button>
+                  <div>
+                    <h4 className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">Riwayat Update Progres</h4>
+                    <p className="text-[11px] text-brand-text-muted mt-0.5">Catatan aktivitas dan log kemajuan dari tim developer</p>
+                  </div>
+                  {selectedProject.my_assignment ? (
+                    <button
+                      onClick={() => openActivityModal(selectedProject)}
+                      className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1.5 font-semibold px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition"
+                    >
+                      <FileText size={12} /> Tambah Aktivitas
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-brand-text-muted px-2.5 py-1 rounded bg-brand-primary border border-brand-border select-none">
+                      Hanya Tim Proyek
+                    </span>
+                  )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {selectedProject.recent_progress && selectedProject.recent_progress.length > 0 ? (
                     selectedProject.recent_progress.map((prog, idx) => (
-                      <div key={idx} className="p-3 bg-brand-primary border border-brand-border rounded-lg text-xs space-y-1">
+                      <div key={idx} className="p-3.5 bg-brand-primary border border-brand-border rounded-xl text-xs space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-brand-text">{prog.title}</span>
-                          <span className="font-mono text-brand-accent font-semibold">{prog.progress_percentage}%</span>
+                          <span className="font-bold text-brand-text text-sm">{prog.title}</span>
+                          <span className="font-mono text-brand-accent font-bold px-2 py-0.5 rounded bg-brand-accent/10 border border-brand-accent/20">
+                            {prog.progress_percentage}%
+                          </span>
                         </div>
-                        {prog.description && <p className="text-brand-text-muted">{prog.description}</p>}
-                        <div className="text-[10px] text-brand-text-muted pt-1 flex items-center justify-between border-t border-brand-border/40">
-                          <span>Oleh: {prog.author_name} ({prog.author_job || 'Dev'})</span>
+
+                        {prog.description && (
+                          <div className="text-brand-text-muted leading-relaxed">
+                            <span className="text-[11px] font-semibold text-brand-text block mb-0.5">Deskripsi Pekerjaan:</span>
+                            <p className="bg-brand-secondary/60 p-2 rounded-lg border border-brand-border/40 text-[11px] text-brand-text-muted whitespace-pre-line">
+                              {prog.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {prog.notes && (
+                          <div className="text-brand-text-muted leading-relaxed">
+                            <span className="text-[11px] font-semibold text-amber-400 block mb-0.5">Catatan Tambahan (Lead/PM):</span>
+                            <p className="bg-amber-500/10 p-2 rounded-lg border border-amber-500/20 text-amber-200 text-[11px] whitespace-pre-line">
+                              {prog.notes}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="text-[10px] text-brand-text-muted pt-1.5 flex items-center justify-between border-t border-brand-border/40">
+                          <span className="flex items-center gap-1">
+                            {prog.is_lead && <Crown size={11} className="text-amber-400" />}
+                            Oleh: <strong className="text-brand-text">{prog.author_name}</strong> ({prog.author_job || 'Developer'})
+                          </span>
                           <span>{formatDateShort(prog.created_at)}</span>
                         </div>
                       </div>
@@ -1135,106 +1402,239 @@ export default function DeveloperSchedule() {
             </div>
 
             {/* Footer Modal */}
-            <div className="p-4 border-t border-brand-border bg-brand-primary/40 flex items-center justify-end gap-2.5 rounded-b-2xl">
-              <button
-                onClick={() => setSelectedProject(null)}
-                className="px-4 py-2 bg-brand-secondary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-lg transition"
-              >
-                Tutup
-              </button>
-              <button
-                onClick={() => openProgressModal(selectedProject)}
-                className="px-4 py-2 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm"
-              >
-                <Plus size={14} /> Catat Progres Kerja
-              </button>
+            <div className="p-4 border-t border-brand-border bg-brand-primary/40 flex items-center justify-between gap-2.5 rounded-b-2xl">
+              <div>
+                {!selectedProject.my_assignment && (
+                  <span className="text-xs text-brand-text-muted flex items-center gap-1.5">
+                    <Users size={13} className="text-brand-text-muted" /> Mode Baca (Bukan Tim Ditugaskan)
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedProject(null)}
+                  className="px-4 py-2 bg-brand-secondary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-lg transition"
+                >
+                  Tutup
+                </button>
+                {selectedProject.my_assignment && (
+                  <button
+                    onClick={() => openProgressModal(selectedProject)}
+                    className="px-4 py-2 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm"
+                  >
+                    <TrendingUp size={14} /> Update Progres Proyek (%)
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* ========================================================
-          MODAL FORM UPDATE PROGRES KERJA CEPAT
+          MODAL FORM: CATAT AKTIVITAS vs UPDATE PROGRES PROYEK
          ======================================================== */}
       {isProgressModalOpen && progressProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            {/* Modal Header */}
             <div className="p-5 border-b border-brand-border flex items-center justify-between bg-brand-secondary">
-              <div className="flex items-center gap-2">
-                <TrendingUp size={20} className="text-brand-accent" />
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${
+                  modalType === 'activity'
+                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                    : 'bg-brand-accent/15 text-brand-accent border border-brand-accent/30'
+                }`}>
+                  {modalType === 'activity' ? <FileText size={20} /> : <TrendingUp size={20} />}
+                </div>
                 <div>
-                  <h3 className="text-base font-bold text-brand-text">Catat Progres Pengerjaan</h3>
-                  <p className="text-xs text-brand-text-muted">{progressProject.order_number} • {progressProject.customer_name}</p>
+                  <h3 className="text-base font-bold text-brand-text">
+                    {modalType === 'activity' ? 'Tambah Catatan Aktivitas Kerja' : 'Update Progres Proyek (%)'}
+                  </h3>
+                  <p className="text-xs text-brand-text-muted">
+                    {progressProject.order_number} • {progressProject.customer_name || progressProject.customer_name_snapshot}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsProgressModalOpen(false)}
-                className="text-brand-text-muted hover:text-brand-text p-1 rounded-lg hover:bg-brand-primary transition"
+                className="text-brand-text-muted hover:text-brand-text p-1.5 rounded-lg hover:bg-brand-primary transition"
               >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSaveProgress} className="p-6 space-y-4">
-              {/* Judul Aktivitas */}
+              {/* Context Banner */}
+              <div className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                modalType === 'activity'
+                  ? 'bg-amber-500/10 border-amber-500/25 text-amber-200/90'
+                  : 'bg-brand-accent/10 border-brand-accent/25 text-brand-text'
+              }`}>
+                {modalType === 'activity' ? (
+                  <>
+                    <FileText size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                    <div>
+                      <strong className="block text-amber-300 font-semibold mb-0.5">Log Catatan Kerja Harian</strong>
+                      <span>Mencatat tugas, modul yang diselesaikan, atau kendala pengerjaan yang akan masuk ke Riwayat Update Proyek.</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp size={16} className="text-brand-accent mt-0.5 shrink-0" />
+                    <div>
+                      <strong className="block text-brand-accent font-semibold mb-0.5">Pembaruan Milestone & Tingkat Penyelesaian</strong>
+                      <span>Memperbarui persentase progres keseluruhan proyek yang tampil di kalender, kartu proyek, dan laporan klien.</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Peringatan Jika Proyek Belum Memiliki Penugasan Tim */}
+              {(!progressProject.assignments || progressProject.assignments.length === 0) && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2.5">
+                  <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+                  <div>
+                    <strong className="block text-red-200 font-semibold mb-0.5">Penugasan Tim Belum Ada</strong>
+                    <span>Proyek ini belum memiliki anggota tim/developer yang ditugaskan. Admin atau Team Lead harus menugaskan anggota tim terlebih dahulu sebelum progres dapat disimpan.</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Info jika user mencatat untuk proyek anggota tim lain */}
+              {progressProject.assignments && progressProject.assignments.length > 0 && !progressProject.my_assignment && (
+                <div className="p-2.5 bg-blue-500/10 border border-blue-500/25 rounded-xl text-xs text-blue-300 flex items-center gap-2">
+                  <Users size={14} className="text-blue-400 shrink-0" />
+                  <span>
+                    Anda sedang memperbarui progres untuk tim proyek: <strong>{progressProject.assignments.map(a => a.user_name?.split(' ')[0]).join(', ')}</strong>
+                  </span>
+                </div>
+              )}
+
+              {/* JIKA UPDATE PROGRES PROYEK: Slider Persentase di Atas dengan Quick Chips */}
+              {modalType === 'progress' && (
+                <div className="p-4 bg-brand-primary/60 border border-brand-border rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-brand-text">Persentase Penyelesaian Proyek</label>
+                      <p className="text-[11px] text-brand-text-muted">Tentukan progres keseluruhan milestone saat ini</p>
+                    </div>
+                    <span className="text-lg font-black font-mono px-3 py-1 rounded-lg bg-brand-accent/15 text-brand-accent border border-brand-accent/30">
+                      {progressForm.progress_percentage}%
+                    </span>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={progressForm.progress_percentage}
+                    onChange={(e) => setProgressForm({ ...progressForm, progress_percentage: Number(e.target.value) })}
+                    className="w-full accent-brand-accent cursor-pointer h-2.5 bg-brand-secondary rounded-lg"
+                  />
+
+                  {/* Quick Preset Buttons */}
+                  <div className="flex items-center justify-between gap-1.5 pt-1">
+                    {[0, 25, 50, 75, 90, 100].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setProgressForm({ ...progressForm, progress_percentage: val })}
+                        className={`flex-1 py-1 text-xs font-mono font-bold rounded border transition ${
+                          progressForm.progress_percentage === val
+                            ? 'bg-brand-accent text-brand-primary border-brand-accent'
+                            : 'bg-brand-secondary border-brand-border text-brand-text-muted hover:text-brand-text hover:border-brand-accent/40'
+                        }`}
+                      >
+                        {val}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Judul Aktivitas / Milestone */}
               <div>
                 <label className="block text-xs font-semibold text-brand-text mb-1.5">
-                  Aktivitas / Milestone Yang Dikerjakan <span className="text-red-400">*</span>
+                  {modalType === 'activity' ? (
+                    <>Tugas / Aktivitas Yang Dikerjakan <span className="text-red-400">*</span></>
+                  ) : (
+                    <>Nama Milestone / Fase Pembaruan <span className="text-red-400">*</span></>
+                  )}
                 </label>
                 <input
                   type="text"
                   required
                   value={progressForm.title}
                   onChange={(e) => setProgressForm({ ...progressForm, title: e.target.value })}
-                  placeholder="Misal: Menyelesaikan slicing UI & integrasi API login"
-                  className="w-full px-3.5 py-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent"
+                  placeholder={
+                    modalType === 'activity'
+                      ? 'Contoh: Slicing UI dashboard & integrasi endpoint auth'
+                      : 'Contoh: Milestone Tahap 2 Selesai / Siap UAT'
+                  }
+                  className="w-full px-3.5 py-2.5 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent"
                 />
               </div>
 
-              {/* Slider Persentase */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-brand-text">Tingkat Penyelesaian (Progres)</label>
-                  <span className="text-sm font-bold font-mono text-brand-accent">
-                    {progressForm.progress_percentage}%
-                  </span>
+              {/* JIKA TAMBAH AKTIVITAS: Slider Progres ditaruh di bawah judul aktivitas (opsional/ringkas) */}
+              {modalType === 'activity' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-brand-text">Tingkat Penyelesaian Tugas Ini / Proyek</label>
+                    <span className="text-sm font-bold font-mono text-brand-accent">
+                      {progressForm.progress_percentage}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={progressForm.progress_percentage}
+                    onChange={(e) => setProgressForm({ ...progressForm, progress_percentage: Number(e.target.value) })}
+                    className="w-full accent-brand-accent cursor-pointer h-2 bg-brand-primary rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-brand-text-muted mt-1 font-mono">
+                    <span>0% (Mulai)</span>
+                    <span>50% (Dalam Pengerjaan)</span>
+                    <span>100% (Selesai Penuh)</span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={progressForm.progress_percentage}
-                  onChange={(e) => setProgressForm({ ...progressForm, progress_percentage: Number(e.target.value) })}
-                  className="w-full accent-brand-accent cursor-pointer h-2 bg-brand-primary rounded-lg"
-                />
-                <div className="flex justify-between text-[10px] text-brand-text-muted mt-1 font-mono">
-                  <span>0% (Belum)</span>
-                  <span>50% (Separuh)</span>
-                  <span>100% (Selesai)</span>
-                </div>
-              </div>
+              )}
 
-              {/* Deskripsi */}
+              {/* Deskripsi Pekerjaan */}
               <div>
-                <label className="block text-xs font-semibold text-brand-text mb-1.5">Deskripsi Pekerjaan (Opsional)</label>
+                <label className="block text-xs font-semibold text-brand-text mb-1.5">
+                  {modalType === 'activity' ? 'Deskripsi Detail Pekerjaan' : 'Rangkuman Kemajuan (Opsional)'}
+                </label>
                 <textarea
                   rows="3"
                   value={progressForm.description}
                   onChange={(e) => setProgressForm({ ...progressForm, description: e.target.value })}
-                  placeholder="Jelaskan modul yang sudah selesai atau kendala yang dihadapi..."
+                  placeholder={
+                    modalType === 'activity'
+                      ? 'Jelaskan apa saja yang telah dikerjakan, file/modul yang dimodifikasi, atau hasil pengetesan...'
+                      : 'Rangkuman singkat modul atau pencapaian yang sudah dirampungkan dalam pembaruan ini...'
+                  }
                   className="w-full px-3.5 py-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent resize-none"
                 ></textarea>
               </div>
 
               {/* Catatan Tambahan */}
               <div>
-                <label className="block text-xs font-semibold text-brand-text mb-1.5">Catatan Tambahan (Opsional)</label>
+                <label className="block text-xs font-semibold text-brand-text mb-1.5">
+                  {modalType === 'activity' ? 'Catatan Kendala / Blocker (Opsional)' : 'Catatan untuk Lead / PM (Opsional)'}
+                </label>
                 <input
                   type="text"
                   value={progressForm.notes}
                   onChange={(e) => setProgressForm({ ...progressForm, notes: e.target.value })}
-                  placeholder="Catatan untuk Lead / PM..."
+                  placeholder={
+                    modalType === 'activity'
+                      ? 'Misal: Menunggu aset gambar dari desainer atau akses API staging...'
+                      : 'Catatan penting mengenai target deadline atau review lead...'
+                  }
                   className="w-full px-3.5 py-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent"
                 />
               </div>
@@ -1251,18 +1651,27 @@ export default function DeveloperSchedule() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingProgress}
-                  className="px-4 py-2 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                  disabled={submittingProgress || (!progressProject.assignments || progressProject.assignments.length === 0)}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 ${
+                    modalType === 'activity'
+                      ? 'bg-amber-500 text-black hover:bg-amber-400'
+                      : 'bg-brand-accent text-brand-primary hover:bg-brand-accent2'
+                  }`}
                 >
                   {submittingProgress ? (
                     <>
                       <RefreshCw size={14} className="animate-spin" />
                       <span>Menyimpan...</span>
                     </>
+                  ) : modalType === 'activity' ? (
+                    <>
+                      <FileText size={14} />
+                      <span>Simpan Catatan Aktivitas</span>
+                    </>
                   ) : (
                     <>
                       <Check size={14} />
-                      <span>Simpan Progres</span>
+                      <span>Perbarui Progres Proyek</span>
                     </>
                   )}
                 </button>

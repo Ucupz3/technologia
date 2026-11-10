@@ -136,9 +136,35 @@ orderProgressRouter.post('/', async (req, res, next) => {
         },
         include: { team_members: { include: { users: true } }, jobs: true },
       });
+
+      // Jika user yang mencatat bukan anggota tim order ini:
+      if (!targetAssignment) {
+        // Periksa apakah user memiliki peran super_admin atau admin
+        const requestingUser = await prisma.users.findUnique({
+          where: { id: BigInt(user_id) },
+          select: { role: true },
+        });
+
+        const isSuperOrAdmin = requestingUser?.role === 'super_admin' || requestingUser?.role === 'admin';
+
+        if (isSuperOrAdmin) {
+          // Admin/SuperAdmin diperbolehkan mengupdate progres atas nama tim
+          targetAssignment = await prisma.order_assignments.findFirst({
+            where: { order_id: orderId },
+            orderBy: [{ is_lead: 'desc' }, { id: 'asc' }],
+            include: { team_members: { include: { users: true } }, jobs: true },
+          });
+        } else {
+          return res.status(403).json({
+            success: false,
+            message: 'Hanya anggota tim yang ditugaskan pada proyek ini yang dapat mencatat atau mengubah progres.',
+          });
+        }
+      }
     } else {
       targetAssignment = await prisma.order_assignments.findFirst({
         where: { order_id: orderId },
+        orderBy: [{ is_lead: 'desc' }, { id: 'asc' }],
         include: { team_members: { include: { users: true } }, jobs: true },
       });
     }
@@ -146,7 +172,7 @@ orderProgressRouter.post('/', async (req, res, next) => {
     if (!targetAssignment) {
       return res.status(404).json({
         success: false,
-        message: 'Penugasan tim tidak ditemukan untuk order ini. Pastikan tim sudah ditugaskan ke order terlebih dahulu.',
+        message: 'Penugasan tim belum dibuat untuk order ini. Pastikan order sudah memiliki anggota tim (Lead/Developer) yang ditugaskan terlebih dahulu.',
       });
     }
 
@@ -175,6 +201,21 @@ orderProgressRouter.post('/', async (req, res, next) => {
             file_name: path.basename(attachment_file),
             file_type: path.extname(attachment_file).replace('.', '') || 'unknown',
           },
+        });
+      }
+
+      // Perbarui status order jika sesuai progres
+      let nextOrderStatus = null;
+      if (progress_percentage === 100) {
+        nextOrderStatus = 'completed';
+      } else if (progress_percentage > 0) {
+        nextOrderStatus = 'in_progress';
+      }
+
+      if (nextOrderStatus && order.status !== nextOrderStatus && order.status !== 'cancelled') {
+        await tx.orders.update({
+          where: { id: orderId },
+          data: { status: nextOrderStatus, updated_at: new Date() },
         });
       }
 

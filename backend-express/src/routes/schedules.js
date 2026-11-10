@@ -39,15 +39,18 @@ function formatScheduleOrder(order, currentUserId = null) {
       author_job: oa.jobs?.name || null,
       is_lead: oa.is_lead,
     })))
-    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    .sort((a, b) => {
+      const timeDiff = new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
 
-  // Hitung persentase progres terbaru atau rata-rata
+  // Hitung persentase progres terbaru (ambil dari entri paling mutakhir)
   let progressPercentage = 0;
-  if (order.status === 'completed') {
+  if (allProgress.length > 0) {
+    progressPercentage = allProgress[0].progress_percentage ?? 0;
+  } else if (order.status === 'completed') {
     progressPercentage = 100;
-  } else if (allProgress.length > 0) {
-    // Ambil persentase progres paling mutakhir
-    progressPercentage = Math.max(...allProgress.map((p) => p.progress_percentage || 0));
   }
 
   // Hitung sisa hari menuju deadline
