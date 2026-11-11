@@ -146,6 +146,9 @@ export default function OrderCreate() {
   const addServiceRow = () => {
     setForm({
       ...form,
+      service_id: val,
+      price_deal: selectedService ? selectedService.default_price : ''
+
       services: [...form.services, { service_id: '', price_deal: '', quantity: 1 }]
     });
   };

@@ -1,12 +1,14 @@
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head } from '@inertiajs/react';
 
-export default function Page() {
+export default function OrdersIndex() {
   return (
     <RoleLayout>
-      <Head title="Orders Saya" />
-      <h1 className="text-2xl font-bold mb-2">Orders Saya</h1>
-      <p className="text-slate-500">Halaman Orders Saya — segera diisi.</p>
+      <Head title="Orders" />
+      <div className="p-12 text-center">
+        <h1 className="text-2xl font-bold text-brand-text mb-2">Orders</h1>
+        <p className="text-brand-text-muted">Halaman dalam pengembangan</p>
+      </div>
     </RoleLayout>
   );
 }
