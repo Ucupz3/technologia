@@ -14,6 +14,7 @@ function PaymentStatusBadge({ status }) {
     unpaid: 'bg-red-500/15 text-red-600 border-red-500/40',
     partial: 'bg-amber-500/15 text-amber-600 border-amber-500/40',
     paid: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/40',
+    overdue: 'bg-orange-500/15 text-orange-600 border-orange-500/40',
     cancelled: 'bg-gray-500/15 text-gray-600 border-gray-500/40',
   };
   return <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium border ${colors[status] || colors.unpaid}`}>{status}</span>;
@@ -55,7 +56,7 @@ export default function InvoicesIndex() {
 
       <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
         {loading && <div className="p-12 text-center"><RefreshCw size={24} className="animate-spin mx-auto text-brand-accent" /></div>}
-        
+
         {error && <div className="p-8 text-center"><p className="text-red-500 mb-3">{error}</p><button onClick={load} className="text-brand-accent underline">Coba lagi</button></div>}
 
         {!loading && !error && invoices.length === 0 && (
@@ -89,6 +90,7 @@ export default function InvoicesIndex() {
                     <td className="px-4 py-3 text-sm text-red-500">{formatRupiah(inv.remaining)}</td>
                     <td className="px-4 py-3"><PaymentStatusBadge status={inv.status} /></td>
                     <td className="px-4 py-3 text-right">
+
                       {/* ✅ Mengarah ke halaman Show Admin */}
                       <Link
                         href={`${basePath}/invoices/${inv.id}`}
@@ -96,14 +98,15 @@ export default function InvoicesIndex() {
                       >
                         Detail
                       </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </td >
+                  </tr >
+                ))
+                }
+              </tbody >
+            </table >
+          </div >
         )}
-      </div>
-    </RoleLayout>
+      </div >
+    </RoleLayout >
   );
 }

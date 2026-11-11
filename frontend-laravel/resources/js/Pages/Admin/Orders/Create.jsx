@@ -8,6 +8,11 @@ import {
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 
+function getBasePath() {
+  return window.location.pathname.replace(/\/orders.*$/, '');
+}
+
+// ============ CUSTOM SELECT COMPONENT ============
 function CustomSelect({ label, value, options, onChange, placeholder, disabled, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(o => String(o.value) === String(value));
@@ -42,36 +47,15 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
               <span>{placeholder}</span>
               {!value && <Check size={14} className="text-brand-accent" />}
             </button>
-            {options.map((opt) => (
+            {options.map(opt => (
               <button
                 key={opt.value}
                 type="button"
-                disabled={opt.disabled}
-                onClick={() => {
-                  if (opt.disabled) return;
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
-                  opt.disabled
-                    ? 'opacity-40 cursor-not-allowed bg-transparent text-brand-text-muted'
-                    : String(value) === String(opt.value)
-                    ? 'bg-brand-accent/15 text-brand-accent font-medium'
-                    : 'text-brand-text hover:bg-brand-border/40'
-                }`}
+                onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${String(value) === String(opt.value) ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
               >
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="truncate">{opt.label}</span>
-                  {opt.subtext && <span className="text-[10px] text-brand-text-muted truncate">{opt.subtext}</span>}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                  {opt.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${opt.badgeClassName || 'bg-brand-accent/10 text-brand-accent'}`}>
-                      {opt.badge}
-                    </span>
-                  )}
-                  {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent shrink-0" />}
-                </div>
+                <span className="truncate">{opt.label}</span>
+                {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent" />}
               </button>
             ))}
           </div>
@@ -81,84 +65,9 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
   );
 }
 
-const getRequiredJobKeywords = (svcNames) => {
-  if (!svcNames || svcNames.length === 0) return [];
-  const text = svcNames.join(' ').toLowerCase();
-  const keywords = [];
-
-  if (text.includes('ui/ux') || text.includes('ui') || text.includes('ux')) {
-    keywords.push('ui/ux', 'ui', 'ux');
-  }
-  if (text.includes('logo') || text.includes('branding') || text.includes('grafis') || text.includes('graphic')) {
-    keywords.push('graphic', 'grafis', 'desain', 'designer', 'logo');
-  }
-  if (text.includes('website') || text.includes('web') || text.includes('landing') || text.includes('company profile') || text.includes('commerce')) {
-    keywords.push('frontend', 'backend', 'full-stack', 'web');
-  }
-  if (text.includes('aplikasi') || text.includes('android') || text.includes('ios') || text.includes('mobile')) {
-    keywords.push('frontend', 'backend', 'full-stack', 'mobile');
-  }
-  if (text.includes('maintenance') || text.includes('pemeliharaan')) {
-    keywords.push('devops', 'backend', 'frontend', 'full-stack', 'qa');
-  }
-  if (keywords.length === 0 && (text.includes('desain') || text.includes('design'))) {
-    keywords.push('design', 'desain', 'ui', 'ux', 'graphic');
-  }
-  return [...new Set(keywords)];
-};
-
-const computeDefaultAssignments = (team, keywords) => {
-  if (!team || !team.team_members) return {};
-  const assignments = {};
-
-  const hasPrimaryMatch = keywords.length > 0 && team.team_members.some(tm => {
-    const primary = tm.users?.user_jobs?.find(uj => uj.is_primary) || tm.users?.user_jobs?.[0];
-    return primary && keywords.some(k => (primary.jobs?.name || '').toLowerCase().includes(k));
-  });
-
-  team.team_members.forEach(tm => {
-    const userJobs = tm.users?.user_jobs || [];
-    const primaryJob = userJobs.find(uj => uj.is_primary) || userJobs[0];
-    const primaryMatches = primaryJob && keywords.some(k => (primaryJob.jobs?.name || '').toLowerCase().includes(k));
-    const secondaryMatch = userJobs.find(uj => keywords.some(k => (uj.jobs?.name || '').toLowerCase().includes(k)));
-
-    let isAssigned = true;
-    let chosenJobId = primaryJob ? String(primaryJob.job_id) : '';
-
-    if (keywords.length > 0) {
-      if (primaryMatches) {
-        isAssigned = true;
-        chosenJobId = String(primaryJob.job_id);
-      } else if (!hasPrimaryMatch && secondaryMatch) {
-        isAssigned = true;
-        chosenJobId = String(secondaryMatch.job_id);
-      } else {
-        isAssigned = false;
-        chosenJobId = secondaryMatch ? String(secondaryMatch.job_id) : (primaryJob ? String(primaryJob.job_id) : '');
-      }
-    }
-
-    assignments[tm.id] = {
-      team_member_id: tm.id,
-      job_id: chosenJobId,
-      is_assigned: isAssigned,
-      is_lead: false,
-      phase_order: 1,
-      start_date: '',
-      end_date: ''
-    };
-  });
-
-  return assignments;
-};
-
-export default function AdminOrderCreate() {
-  const [options, setOptions] = useState({
-    customers: [],
-    services: [],
-    sales: [],
-    teams: [],
-  });
+// ============ MAIN COMPONENT ============
+export default function OrderCreate() {
+  const [options, setOptions] = useState({ customers: [], services: [], sales: [], teams: [] });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -177,28 +86,31 @@ export default function AdminOrderCreate() {
     start_date_project: '',
     end_date_project: '',
     notes: '',
-    assignments: {},
+    assignments: {}
   });
+
+  const basePath = getBasePath();
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/v1/orders/options/customers').then(r => r.json()),
-      fetch('/api/v1/orders/options/services').then(r => r.json()),
-      fetch('/api/v1/orders/options/sales').then(r => r.json()),
-      fetch('/api/v1/orders/options/teams').then(r => r.json()),
+      fetch('/api/v1/orders/options/customers').then((r) => r.json()),
+      fetch('/api/v1/orders/options/services').then((r) => r.json()),
+      fetch('/api/v1/orders/options/sales').then((r) => r.json()),
+      fetch('/api/v1/orders/options/teams').then((r) => r.json()),
     ])
-      .then(([customers, services, sales, teams]) => {
+      .then(([c, s, sa, t]) => {
         setOptions({
-          customers: customers.data || [],
-          services: services.data || [],
-          sales: sales.data || [],
-          teams: teams.data || [],
+          customers: c.success ? c.data : [],
+          services: s.success ? s.data : [],
+          sales: sa.success ? sa.data : [],
+          teams: t.success ? t.data : [],
         });
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
+  // Hitung total secara real-time
   const price = Number(form.price_deal) || 0;
   const subtotal = price * form.quantity;
   const discountAmount = form.discount_type === 'percent' ? (subtotal * form.discount) / 100 : Number(form.discount);
@@ -211,83 +123,33 @@ export default function AdminOrderCreate() {
 
   const handleServiceChange = (val) => {
     const selectedService = options.services.find(s => String(s.id) === String(val));
-    const svcNames = selectedService ? [selectedService.name] : [];
-    const newKeywords = getRequiredJobKeywords(svcNames);
-
-    setForm(prev => {
-      let nextTeamId = prev.team_id;
-      let nextAssignments = prev.assignments;
-
-      if (nextTeamId) {
-        const currentTeam = options.teams.find(t => String(t.id) === String(nextTeamId));
-        const memberJobs = currentTeam?.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
-        const isTeamValid = newKeywords.length === 0 || memberJobs.some((jn) => newKeywords.some((k) => jn.toLowerCase().includes(k)));
-
-        if (!isTeamValid) {
-          nextTeamId = '';
-          nextAssignments = {};
-        } else if (currentTeam) {
-          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords);
-        }
-      }
-
-      return {
-        ...prev,
-        service_id: val,
-        price_deal: selectedService ? selectedService.default_price : prev.price_deal,
-        team_id: nextTeamId,
-        assignments: nextAssignments
-      };
+    setForm({
+      ...form,
+      service_id: val,
+      price_deal: selectedService ? selectedService.default_price : ''
     });
   };
 
   const currentCustomer = options.customers.find(c => String(c.id) === String(form.customer_id));
   const customerPics = currentCustomer?.customer_pics || [];
 
-  const selectedService = options.services.find(s => String(s.id) === String(form.service_id));
-  const requiredKeywords = getRequiredJobKeywords(selectedService ? [selectedService.name] : []);
-
-  const teamOptions = options.teams.map((t) => {
-    const memberJobs = t.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
-    const uniqueJobs = [...new Set(memberJobs)];
-
-    let hasMatch = true;
-    let badge = null;
-    let badgeClassName = '';
-
-    if (requiredKeywords.length > 0) {
-      hasMatch = memberJobs.some((jn) => requiredKeywords.some((k) => jn.toLowerCase().includes(k)));
-      if (hasMatch) {
-        badge = 'Cocok';
-        badgeClassName = 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30';
-      } else {
-        badge = 'Keahlian Tidak Ada';
-        badgeClassName = 'bg-red-500/15 text-red-400 border border-red-500/30';
-      }
-    }
-
-    return {
-      value: t.id,
-      label: t.name,
-      subtext: uniqueJobs.length > 0 ? `Keahlian: ${uniqueJobs.join(', ')}` : 'Belum ada anggota',
-      disabled: requiredKeywords.length > 0 && !hasMatch,
-      badge: badge,
-      badgeClassName: badgeClassName,
-    };
-  });
-
   const handleTeamChange = (val) => {
     setForm(prev => {
-      const selectedTeam = options.teams.find(t => String(t.id) === String(val));
-      const curService = options.services.find(s => String(s.id) === String(prev.service_id));
-      const svcNames = curService ? [curService.name] : [];
-      const keywords = getRequiredJobKeywords(svcNames);
-
-      return {
-        ...prev,
-        team_id: val,
-        assignments: selectedTeam ? computeDefaultAssignments(selectedTeam, keywords) : {}
-      };
+      const newForm = { ...prev, team_id: val, assignments: {} };
+      if (val) {
+        const team = options.teams.find(t => String(t.id) === String(val));
+        if (team && team.team_members) {
+          team.team_members.forEach(tm => {
+            const primaryJob = tm.users?.user_jobs?.find(uj => uj.is_primary) || tm.users?.user_jobs?.[0];
+            newForm.assignments[tm.id] = {
+              team_member_id: tm.id,
+              job_id: primaryJob ? String(primaryJob.job_id) : '',
+              is_lead: false
+            };
+          });
+        }
+      }
+      return newForm;
     });
   };
 
@@ -310,24 +172,10 @@ export default function AdminOrderCreate() {
     if (!form.service_id) return setErrors({ service_id: ['Layanan wajib dipilih'] });
     if (!form.price_deal) return setErrors({ price_deal: ['Harga deal wajib diisi'] });
 
-    const assignmentsArray = Object.values(form.assignments)
-      .filter(a => a.is_assigned && a.job_id)
-      .map(a => ({
-        team_member_id: Number(a.team_member_id),
-        job_id: Number(a.job_id),
-        is_lead: Boolean(a.is_lead),
-        phase_order: Number(a.phase_order || 1),
-        start_date: a.start_date || null,
-        end_date: a.end_date || null,
-      }));
-
-    if (form.team_id && assignmentsArray.length === 0) {
-      alert('Pilih minimal satu anggota tim untuk ditugaskan pada proyek ini.');
-      return;
-    }
-
     setSubmitting(true);
     setErrors({});
+
+    const assignmentsArray = Object.values(form.assignments).filter(a => a.job_id !== '');
 
     const payload = {
       customer_id: form.customer_id,
@@ -335,11 +183,6 @@ export default function AdminOrderCreate() {
       sales_id: form.sales_id || null,
       team_id: form.team_id || null,
       service_id: form.service_id,
-      services: [{
-        service_id: Number(form.service_id),
-        price_deal: Number(form.price_deal),
-        quantity: Number(form.quantity)
-      }],
       price_deal: Number(form.price_deal),
       quantity: Number(form.quantity),
       discount_type: form.discount_type,
@@ -363,7 +206,7 @@ export default function AdminOrderCreate() {
         if (data.errors) setErrors(data.errors);
         alert(data.message || 'Gagal menyimpan order');
       } else {
-        router.visit('/admin/orders');
+        router.visit(`${basePath}/orders`);
       }
     } catch {
       alert('Gagal menghubungi server');
@@ -375,10 +218,10 @@ export default function AdminOrderCreate() {
   if (loading) {
     return (
       <RoleLayout>
-        <Head title="Buat Order — Admin" />
+        <Head title="Buat Order" />
         <div className="p-12 text-center text-brand-text-muted">
           <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-          Memuat formulir...
+          Memuat form...
         </div>
       </RoleLayout>
     );
@@ -386,19 +229,21 @@ export default function AdminOrderCreate() {
 
   return (
     <RoleLayout>
-      <Head title="Buat Order Baru — Admin" />
+      <Head title="Buat Order Baru" />
 
       <div className="mb-6">
-        <Link href="/admin/orders" className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3">
+        <Link href={`${basePath}/orders`} className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3">
           <ArrowLeft size={16} /> Kembali ke Orders
         </Link>
         <h1 className="text-2xl font-bold text-brand-text">Buat Order Baru</h1>
         <p className="text-sm text-brand-text-muted mt-1">Invoice akan otomatis dibuat setelah order tersimpan.</p>
       </div>
 
+      {/* ✅ FULL WIDTH: max-w-4xl dihilangkan */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border p-6 w-full">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* CUSTOMER & PIC */}
+
+          {/* BARIS 1: CUSTOMER & PIC */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CustomSelect
               label="Customer *"
@@ -419,7 +264,7 @@ export default function AdminOrderCreate() {
             />
           </div>
 
-          {/* SALES & TIM */}
+          {/* BARIS 2: SALES & TIM */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CustomSelect
               label="Sales PIC"
@@ -433,13 +278,13 @@ export default function AdminOrderCreate() {
               label="Tim Pengerjaan"
               placeholder="— Pilih Tim —"
               value={form.team_id}
-              options={teamOptions}
+              options={options.teams.map(t => ({ value: t.id, label: t.name }))}
               onChange={handleTeamChange}
               icon={Users}
             />
           </div>
 
-          {/* LAYANAN, HARGA DEAL, & QTY */}
+          {/* BARIS 3: LAYANAN, HARGA DEAL, & QTY */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-2">
               <CustomSelect
@@ -467,17 +312,11 @@ export default function AdminOrderCreate() {
 
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Quantity</label>
-              <input
-                type="number"
-                min="1"
-                value={form.quantity}
-                onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
-              />
+              <input type="number" min="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
             </div>
           </div>
 
-          {/* DISKON & PAJAK */}
+          {/* BARIS 4: DISKON & PAJAK */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-brand-primary/20 p-5 rounded-xl border border-brand-border">
             <CustomSelect
               label="Tipe Diskon"
@@ -492,184 +331,58 @@ export default function AdminOrderCreate() {
             />
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Nilai Diskon</label>
-              <input
-                type="number"
-                min="0"
-                value={form.discount}
-                onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
-              />
+              <input type="number" min="0" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Pajak / PPN (%)</label>
-              <input
-                type="number"
-                min="0"
-                value={form.tax_rate}
-                onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
-              />
+              <input type="number" min="0" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
             </div>
           </div>
 
-          {/* TANGGAL PROYEK */}
+          {/* BARIS 5: TANGGAL PROYEK */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Mulai Proyek</label>
-              <input
-                type="date"
-                value={form.start_date_project}
-                onChange={(e) => setForm({ ...form, start_date_project: e.target.value })}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
-              />
+              <input type="date" value={form.start_date_project} onChange={(e) => setForm({ ...form, start_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Selesai Proyek</label>
-              <input
-                type="date"
-                value={form.end_date_project}
-                onChange={(e) => setForm({ ...form, end_date_project: e.target.value })}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
-              />
+              <input type="date" value={form.end_date_project} onChange={(e) => setForm({ ...form, end_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" />
             </div>
           </div>
 
-          {/* ATUR POSISI & FASE ANGGOTA TIM */}
+          {/* LIST ANGGOTA TIM & JOB */}
           {form.team_id && Object.keys(form.assignments).length > 0 && (
             <div className="pt-4 border-t border-brand-border">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                <div>
-                  <label className="block text-xs font-semibold text-brand-text-muted uppercase">
-                    Atur Posisi & Fase Anggota Tim
-                  </label>
-                  <p className="text-xs text-brand-text-muted mt-0.5">
-                    Pilih anggota tim yang ditugaskan untuk pengerjaan proyek ini.
-                  </p>
-                </div>
-                <div className="text-xs text-brand-text-muted">
-                  Ditugaskan: <span className="font-semibold text-brand-accent">
-                    {Object.values(form.assignments).filter(a => a.is_assigned).length}
-                  </span> dari {Object.keys(form.assignments).length} anggota
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {options.teams
-                  .find((t) => String(t.id) === String(form.team_id))
-                  ?.team_members?.map((tm) => {
-                    const assign = form.assignments[tm.id] || {};
-                    const userJobs = tm.users?.user_jobs || [];
-                    const isAssigned = Boolean(assign.is_assigned);
-
-                    return (
-                      <div
-                        key={tm.id}
-                        className={`border p-4 rounded-xl space-y-3 transition-all ${
-                          isAssigned
-                            ? 'bg-brand-primary/40 border-brand-border'
-                            : 'bg-brand-primary/10 border-dashed border-brand-border/40 opacity-60'
-                        }`}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/40 pb-2">
-                          <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={isAssigned}
-                                onChange={(e) => handleAssignmentChange(tm.id, 'is_assigned', e.target.checked)}
-                                className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer"
-                              />
-                              <span className={`text-sm font-semibold flex items-center gap-2 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
-                                <User size={16} className={isAssigned ? 'text-brand-accent' : 'text-brand-text-muted'} />
-                                {tm.users?.name}
-                              </span>
-                            </label>
-                            <span
-                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                isAssigned
-                                  ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
-                                  : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
-                              }`}
-                            >
-                              {isAssigned ? 'Ditugaskan' : 'Tidak Ditugaskan'}
-                            </span>
-                          </div>
-
-                          {isAssigned && (
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={assign.is_lead || false}
-                                onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
-                                className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer"
-                              />
-                              <span className="text-xs font-semibold text-brand-text-muted">Lead Tim</span>
-                            </label>
-                          )}
-                        </div>
-
-                        {isAssigned ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                            <div>
-                              <CustomSelect
-                                label="Posisi / Job *"
-                                placeholder="— Pilih Job —"
-                                value={assign.job_id || ''}
-                                options={userJobs.map((uj) => ({ value: uj.job_id, label: uj.jobs?.name }))}
-                                onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                Urutan Pengerjaan
-                              </label>
-                              <select
-                                value={assign.phase_order || 1}
-                                onChange={(e) => handleAssignmentChange(tm.id, 'phase_order', Number(e.target.value))}
-                                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                              >
-                                <option value={1}>Fase 1 (Mulai Pertama)</option>
-                                <option value={2}>Fase 2 (Setelah Fase 1 Selesai)</option>
-                                <option value={3}>Fase 3 (Setelah Fase 2 Selesai)</option>
-                                <option value={4}>Fase 4 (Setelah Fase 3 Selesai)</option>
-                                <option value={5}>Fase 5 (Setelah Fase 4 Selesai)</option>
-                              </select>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                  Tgl Mulai
-                                </label>
-                                <input
-                                  type="date"
-                                  value={assign.start_date || ''}
-                                  onChange={(e) => handleAssignmentChange(tm.id, 'start_date', e.target.value)}
-                                  className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                  Deadline
-                                </label>
-                                <input
-                                  type="date"
-                                  value={assign.end_date || ''}
-                                  onChange={(e) => handleAssignmentChange(tm.id, 'end_date', e.target.value)}
-                                  className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-brand-text-muted italic py-1">
-                            Anggota ini tidak diikutsertakan dalam pengerjaan order ini. Centang "Tugaskan" di atas jika ingin menyertakannya.
-                          </p>
-                        )}
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-3">Atur Posisi Anggota Tim</label>
+              <div className="space-y-3">
+                {options.teams.find(t => String(t.id) === String(form.team_id))?.team_members?.map((tm) => {
+                  const assign = form.assignments[tm.id] || {};
+                  const userJobs = tm.users?.user_jobs || [];
+                  return (
+                    <div key={tm.id} className="flex flex-col sm:flex-row sm:items-center gap-4 bg-brand-primary/40 border border-brand-border p-4 rounded-xl">
+                      <div className="flex-1 min-w-0 font-medium text-brand-text">{tm.users?.name}</div>
+                      <div className="w-full sm:w-64">
+                        <CustomSelect
+                          label="Posisi / Job"
+                          placeholder="— Pilih Job —"
+                          value={assign.job_id || ''}
+                          options={userJobs.map(uj => ({ value: uj.job_id, label: uj.jobs?.name }))}
+                          onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
+                        />
                       </div>
-                    );
-                  })}
+                      <label className="flex items-center gap-2 cursor-pointer sm:w-24 mt-4 sm:mt-0">
+                        <input
+                          type="checkbox"
+                          checked={assign.is_lead || false}
+                          onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
+                          className="w-5 h-5 rounded border-brand-border text-amber-500 focus:ring-amber-500"
+                        />
+                        <span className="text-sm font-semibold text-brand-text-muted">Lead</span>
+                      </label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -678,13 +391,7 @@ export default function AdminOrderCreate() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-brand-border">
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Catatan Tambahan</label>
-              <textarea
-                rows={5}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Catatan..."
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none"
-              />
+              <textarea rows={5} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Catatan..." className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none" />
             </div>
             <div className="bg-brand-primary/40 p-6 rounded-xl border border-brand-border space-y-3 flex flex-col justify-center">
               <div className="flex justify-between text-sm text-brand-text-muted">
@@ -707,14 +414,8 @@ export default function AdminOrderCreate() {
           </div>
 
           <div className="flex justify-end gap-3 pt-6 border-t border-brand-border">
-            <Link href="/admin/orders" className="bg-brand-muted text-brand-text px-6 py-2.5 rounded-xl text-sm font-medium transition">
-              Batal
-            </Link>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="bg-brand-accent text-brand-primary px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition disabled:opacity-50"
-            >
+            <Link href={`${basePath}/orders`} className="bg-brand-muted text-brand-text px-6 py-2.5 rounded-xl text-sm font-medium transition">Batal</Link>
+            <button type="submit" disabled={submitting} className="bg-brand-accent text-brand-primary px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition disabled:opacity-50">
               {submitting ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
               {submitting ? 'Menyimpan...' : 'Simpan & Buat Invoice'}
             </button>

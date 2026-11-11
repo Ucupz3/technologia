@@ -118,7 +118,8 @@ class ExpressService
             'Super Admin' => 'super_admin',
             'Admin'       => 'admin',
             'CS'          => 'cs',
-            default       => null,
+            'Developer'   => 'developer',
+            default       => 'cs',
         };
     }
 

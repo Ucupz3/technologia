@@ -13,6 +13,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { internalAuth } from './middlewares/internalAuth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { auditLog } from './middlewares/auditLog.js';
 import { usersRouter } from './routes/users.js';
 import { servicesRouter } from './routes/services.js';
 import { ordersRouter } from './routes/orders.js';
@@ -28,10 +29,12 @@ import { invoicesRouter, paymentsRouter } from './routes/invoices.js';
 import { assignmentsRouter, orderAssignmentsRouter } from './routes/assignments.js';
 import { schedulesRouter } from './routes/schedules.js';
 import { progressRouter, orderProgressRouter } from './routes/progress.js';
+import { auditLogsRouter } from './routes/audit-logs.js';
 import { developerDashboardRouter } from './routes/developer-dashboard.js';
 import { developerTasksRouter } from './routes/developer-tasks.js';
 import { developerMaintenanceRouter } from './routes/developer-maintenance.js';
 import { maintenancesRouter } from './routes/maintenances.js';
+
 import swaggerUi from 'swagger-ui-express';
 import { openapiSpecification } from './docs/swagger.js';
 
@@ -70,6 +73,10 @@ app.use(
 // ============ AUTH INTERNAL ============
 app.use('/api', internalAuth);
 
+// ============ AUDIT LOG ============
+// DISABLED: Menggunakan custom audit log manual di setiap route untuk detail lebih lengkap
+// app.use('/api', auditLog);
+
 // ============ ROUTES ============
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', usersRouter);
@@ -89,6 +96,7 @@ app.use('/api/v1/orders/:orderId/assignments', orderAssignmentsRouter);
 app.use('/api/v1/progress', progressRouter);
 app.use('/api/v1/schedules', schedulesRouter);
 app.use('/api/v1/orders/:orderId/progress', orderProgressRouter);
+app.use('/api/v1/audit-logs', auditLogsRouter);
 app.use('/api/v1/developer/dashboard', developerDashboardRouter);
 app.use('/api/v1/developer/tasks', developerTasksRouter);
 app.use('/api/v1/developer/maintenance', developerMaintenanceRouter);

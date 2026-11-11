@@ -59,7 +59,7 @@ class OtpLoginController extends Controller
             default       => 'CS',
         };
 
-        $role = Role::where('name', $roleName)->first();
+        $role = Role::whereIn('name', $roleNames)->first();
 
         if (!$role) {
             throw ValidationException::withMessages([

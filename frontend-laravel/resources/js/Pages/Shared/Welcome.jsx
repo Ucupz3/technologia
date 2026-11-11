@@ -1,41 +1,57 @@
-import { Head, Link } from '@inertiajs/react';
+import { useTheme } from '@/hooks/useTheme';
+import GlobeBackground from '@/Components/Globe/GlobeBackground';
+import GlobeHero from '@/Components/Globe/GlobeHero';
+import TeknaNavbar from './Tekna/TeknaNavbar';
+import AboutSection from './Tekna/AboutSection';
+import ProjectsSection from './Tekna/ProjectsSection';
+import TestimonialsSection from './Tekna/TestimonialsSection';
+import ContactCta from './Tekna/ContactCta';
+import TeknaFooter from './Tekna/TeknaFooter';
 
-export default function Welcome({ auth, laravelVersion, phpVersion }) {
-    const handleImageError = () => {
-        document
-            .getElementById('screenshot-container')
-            ?.classList.add('!hidden');
-        document.getElementById('docs-card')?.classList.add('!row-span-1');
-        document
-            .getElementById('docs-card-content')
-            ?.classList.add('!flex-row');
-        document.getElementById('background')?.classList.add('!hidden');
-    };
+export default function Welcome() {
+    const { theme, toggle } = useTheme();
 
     return (
-        <>
-            <Head title="Welcome" />
-            <div className="bg-gray-50 text-black/50 dark:bg-black dark:text-white/50">
-                                        <nav className="-mx-3 flex flex-1 justify-end">
-                                {auth.user ? (
-                                    <Link
-                                        href={route('dashboard')}
-                                        className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={route('login')}
-                                            className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                                        >
-                                            Log in
-                                        </Link>
-                                    </>
-                                )}
-                            </nav>
+        <div
+            id="top"
+            className="relative min-h-screen w-full overflow-x-hidden bg-brand-primary text-brand-text transition-colors duration-500"
+        >
+            {/* GLOBE: fixed di belakang semua konten */}
+            <div className="fixed inset-0 z-0">
+                <GlobeBackground theme={theme} />
             </div>
-        </>
+
+            <TeknaNavbar theme={theme} onToggleTheme={toggle} />
+
+            {/*
+             * KUNCI PERBAIKAN:
+             * main diberi pointer-events-none → seluruh area hero "tembus" ke globe di belakang.
+             * Hero buttons tetap bisa diklik karena di HeroOverlay sudah ada pointer-events-auto.
+             * Konten di bawah hero dibungkus pointer-events-auto agar link/tombol tetap normal.
+             */}
+            <main className="pointer-events-none relative z-10">
+                <GlobeHero
+                    badge="Software House • IoT • Mobile • Web"
+                    title="With Tekna Serving The Universe"
+                    description="Building scalable websites, mobile apps, and IoT solutions for the future."
+                    primary={{ label: 'Reach Us', href: '#contact' }}
+                    secondary={{ label: 'Our Projects', href: '#projects' }}
+                    stage2={{
+                        title: 'Innovation Meets Excellence',
+                        description:
+                            'From concept to deployment, we deliver cutting-edge technology solutions that transform your business.',
+                    }}
+                />
+
+                <div className="pointer-events-auto">
+                    <AboutSection />
+                    <ProjectsSection />
+                    <TestimonialsSection />
+                    <ContactCta />
+                </div>
+            </main>
+
+            <TeknaFooter />
+        </div>
     );
 }
