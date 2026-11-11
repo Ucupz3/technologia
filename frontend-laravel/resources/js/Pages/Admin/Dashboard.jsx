@@ -251,20 +251,6 @@ function StatCard({ title, value, icon: Icon, color }) {
 }
 
 // ============ SUB COMPONENTS ============
-function StatCard({ icon: Icon, label, value, color, bg }) {
-  return (
-    <div className="bg-brand-secondary rounded-lg border border-brand-border p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${bg}`}>
-          <Icon size={20} className={color} />
-        </div>
-      </div>
-      <div className="text-2xl font-bold text-brand-text">{value}</div>
-      <div className="text-xs text-brand-text-muted mt-1">{label}</div>
-    </div>
-  );
-}
-
 function RevenueChart({ data }) {
   if (data.length === 0) return <EmptyState label="Belum ada revenue 30 hari terakhir" />;
 
