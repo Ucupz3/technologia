@@ -23,6 +23,13 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "lucide-react": "^1.47.0"
+        "@react-three/drei": "^9.122.0",
+        "@react-three/fiber": "^8.18.0",
+        "cobe": "^2.0.1",
+        "framer-motion": "^14.9.0",
+        "lucide-react": "^1.47.0",
+        "react-globe.gl": "^2.38.0",
+        "three": "^0.187.0",
+        "three-globe": "^2.45.6"
     }
 }

@@ -5,7 +5,8 @@ import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 import CategoriesTab from './Categories/Index';
 import ServicesTab from './Services/Index';
-import TeamsTab from './Teams/Index'; // ✅ Pastikan import TeamsTab
+import TeamsTab from './Teams/Index';
+import JobsTab from './Jobs/Index';
 
 export default function MasterDataIndex() {
   const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -75,11 +76,20 @@ export default function MasterDataIndex() {
         >
           Teams
         </button>
+        <button
+          onClick={() => handleTabChange('jobs')}
+          className={`pb-3 text-sm px-8 font-semibold transition relative ${
+            activeTab === 'jobs' ? 'text-brand-accent border-b-2 border-brand-accent' : 'text-brand-text-muted hover:text-brand-text'
+          }`}
+        >
+          Jobs
+        </button>
       </div>
 
       {activeTab === 'categories' && <CategoriesTab showToast={showToast} />}
       {activeTab === 'services' && <ServicesTab showToast={showToast} />}
-      {activeTab === 'teams' && <TeamsTab showToast={showToast} />} 
+      {activeTab === 'teams' && <TeamsTab showToast={showToast} />}
+      {activeTab === 'jobs' && <JobsTab showToast={showToast} />} 
     </RoleLayout>
   );
 }
