@@ -51,12 +51,11 @@ class OtpLoginController extends Controller
         }
 
         // Mapping role_slug dari Express ke name di tabel `roles`
-        $roleName = match ($expressUser['role_slug'] ?? null) {
-            'super_admin' => 'Super Admin',
-            'admin'       => 'Admin',
-            'cs'          => 'CS',
-            'sales'       => 'CS',
-            default       => 'CS',
+        $roleNames = match ($expressUser['role_slug'] ?? null) {
+            'super_admin' => ['Super Admin'],
+            'admin'       => ['Admin'],
+            'cs', 'sales' => ['CS', 'Sales'],
+            default       => ['CS', 'Sales'],
         };
 
         $role = Role::whereIn('name', $roleNames)->first();
