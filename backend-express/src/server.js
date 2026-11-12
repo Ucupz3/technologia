@@ -4,8 +4,7 @@ BigInt.prototype.toJSON = function () {
 };
 
 // ============ LOAD ENV PALING AWAL ============
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 // ============ BARU IMPORT LAINNYA ============
 import express from 'express';
@@ -13,7 +12,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { internalAuth } from './middlewares/internalAuth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
-import { auditLog } from './middlewares/auditLog.js';
 import { usersRouter } from './routes/users.js';
 import { servicesRouter } from './routes/services.js';
 import { ordersRouter } from './routes/orders.js';
@@ -23,18 +21,11 @@ import { rolesRouter } from './routes/roles.js';
 import { categoriesRouter } from './routes/categories.js';
 import { teamsRouter } from './routes/teams.js';
 import { teamMembersRouter } from './routes/team-members.js';
-import { jobsRouter } from './routes/jobs.js';
 import { customersRouter } from './routes/customers.js';
 import { invoicesRouter, paymentsRouter } from './routes/invoices.js';
 import { assignmentsRouter, orderAssignmentsRouter } from './routes/assignments.js';
 import { schedulesRouter } from './routes/schedules.js';
 import { progressRouter, orderProgressRouter } from './routes/progress.js';
-import { auditLogsRouter } from './routes/audit-logs.js';
-import { developerDashboardRouter } from './routes/developer-dashboard.js';
-import { developerTasksRouter } from './routes/developer-tasks.js';
-import { developerMaintenanceRouter } from './routes/developer-maintenance.js';
-import { maintenancesRouter } from './routes/maintenances.js';
-
 import swaggerUi from 'swagger-ui-express';
 import { openapiSpecification } from './docs/swagger.js';
 
@@ -73,10 +64,6 @@ app.use(
 // ============ AUTH INTERNAL ============
 app.use('/api', internalAuth);
 
-// ============ AUDIT LOG ============
-// DISABLED: Menggunakan custom audit log manual di setiap route untuk detail lebih lengkap
-// app.use('/api', auditLog);
-
 // ============ ROUTES ============
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', usersRouter);
@@ -87,7 +74,6 @@ app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/service-categories', categoriesRouter);
 app.use('/api/v1/teams', teamsRouter);
 app.use('/api/v1/team-members', teamMembersRouter);
-app.use('/api/v1/jobs', jobsRouter);
 app.use('/api/v1/customers', customersRouter);
 app.use('/api/v1/invoices', invoicesRouter);
 app.use('/api/v1/payments', invoicesRouter);
@@ -96,11 +82,6 @@ app.use('/api/v1/orders/:orderId/assignments', orderAssignmentsRouter);
 app.use('/api/v1/progress', progressRouter);
 app.use('/api/v1/schedules', schedulesRouter);
 app.use('/api/v1/orders/:orderId/progress', orderProgressRouter);
-app.use('/api/v1/audit-logs', auditLogsRouter);
-app.use('/api/v1/developer/dashboard', developerDashboardRouter);
-app.use('/api/v1/developer/tasks', developerTasksRouter);
-app.use('/api/v1/developer/maintenance', developerMaintenanceRouter);
-app.use('/api/v1/maintenances', maintenancesRouter);
 
 // ============ 404 ============
 app.use((_req, res) => {
@@ -112,7 +93,7 @@ app.use(errorHandler);
 
 // ============ START ============
 app.listen(PORT, () => {
-  console.log(` Express API jalan di http://localhost:${PORT}`);
+  console.log(`✅ Express API jalan di http://localhost:${PORT}`);
   console.log(`   Health: http://localhost:${PORT}/health`);
 });
 

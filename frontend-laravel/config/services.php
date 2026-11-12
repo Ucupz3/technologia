@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'express' => [
+        'url' => env('EXPRESS_API_URL', env('BACKEND_URL', 'http://localhost:4000')),
+        'token' => env('EXPRESS_INTERNAL_TOKEN', env('INTERNAL_TOKEN', 'tekna-internal-secret-2026')),
+    ],
+
+    'backend' => [
+        'url' => env('BACKEND_URL', env('EXPRESS_API_URL', 'http://localhost:4000')),
+        'token' => env('INTERNAL_TOKEN', env('EXPRESS_INTERNAL_TOKEN', 'tekna-internal-secret-2026')),
+    ],
 ];

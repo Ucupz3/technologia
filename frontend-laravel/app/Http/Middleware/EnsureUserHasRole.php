@@ -25,7 +25,9 @@ class EnsureUserHasRole
             abort(403, 'Akun Anda tidak terdaftar di sistem ERP. Hubungi admin.');
         }
 
-        if ($userRole !== $role) {
+        $allowedRoles = array_map('trim', explode(',', $role));
+
+        if (!in_array($userRole, $allowedRoles, true) && $userRole !== 'super_admin') {
             abort(403, 'Akses ditolak. Role Anda: ' . $userRole);
         }
 

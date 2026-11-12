@@ -125,4 +125,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/developer/logs', fn() => Inertia::render('Developer/Logs'))->name('developer.logs');
 });
 
+// ========================================
+// DEVELOPER
+// ========================================
+Route::middleware(['auth', 'role:developer'])->prefix('developer')->name('developer.')->group(function () {
+    Route::get('/schedule', fn() => Inertia::render('Developer/Schedule/index'))->name('schedule.index');
+    Route::get('/schedules', fn() => Inertia::render('Developer/Schedule/index'))->name('schedules.index');
+});
+
 require __DIR__.'/auth.php';
