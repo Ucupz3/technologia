@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::any('{path}', function ($path) {
-    $express = rtrim(env('EXPRESS_API_URL', 'http://localhost:4000'), '/');
-    $token   = env('EXPRESS_INTERNAL_TOKEN', '');
+    $express = rtrim(config('services.express.url', env('EXPRESS_API_URL', env('BACKEND_URL', 'http://localhost:4000'))), '/');
+    $token   = config('services.express.token', env('EXPRESS_INTERNAL_TOKEN', env('INTERNAL_TOKEN', 'tekna-internal-secret-2026')));
 
     // Bangun URL + query string asli
     $queryString = request()->getQueryString();
@@ -34,6 +34,12 @@ Route::any('{path}', function ($path) {
     // Teruskan Authorization dari client (kalau ada)
     if ($auth = request()->header('Authorization')) {
         $headers['Authorization'] = $auth;
+    }
+
+    // Kirim user context untuk filtering (Sales hanya lihat data mereka)
+    if (auth()->check()) {
+        $headers['X-User-Id'] = auth()->id();
+        $headers['X-User-Role'] = auth()->user()->role?->name ?? '';
     }
 
     // Tentukan payload

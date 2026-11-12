@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const teamMembersRouter = Router();
 
@@ -38,8 +39,24 @@ teamMembersRouter.post('/', async (req, res, next) => {
       data: { team_id: BigInt(team_id), user_id: BigInt(user_id), status: 'active' },
       include: {
         users: { select: { id: true, name: true, email: true } },
+        teams: { select: { id: true, name: true } },
       },
     });
+
+    const detailText = `Menambahkan anggota ke manajemen ${member.teams?.name || 'Tim'}.
+Nama Anggota: ${member.users?.name || 'User'}
+Email: ${member.users?.email || '-'}`;
+
+    await createAuditLog({
+      action: 'CREATE',
+      entityType: 'TeamMember',
+      entityId: member.id,
+      module: 'Management',
+      details: detailText,
+      data: { team: member.teams?.name, user: member.users?.name },
+      req,
+    });
+
     res.status(201).json({ success: true, data: member, message: 'Anggota berhasil ditambahkan' });
   } catch (err) { next(err); }
 });
@@ -73,7 +90,32 @@ teamMembersRouter.put('/:id', async (req, res, next) => {
 teamMembersRouter.delete('/:id', async (req, res, next) => {
   try {
     const id = BigInt(req.params.id);
+    const existing = await prisma.team_members.findFirst({
+      where: { id },
+      include: {
+        users: { select: { id: true, name: true, email: true } },
+        teams: { select: { id: true, name: true } },
+      },
+    });
+
     await prisma.team_members.update({ where: { id }, data: { status: 'inactive' } });
+
+    if (existing) {
+      const detailText = `Menghapus anggota dari manajemen ${existing.teams?.name || 'Tim'}.
+Nama Anggota: ${existing.users?.name || 'User'}
+Email: ${existing.users?.email || '-'}`;
+
+      await createAuditLog({
+        action: 'DELETE',
+        entityType: 'TeamMember',
+        entityId: id,
+        module: 'Management',
+        details: detailText,
+        data: { team: existing.teams?.name, user: existing.users?.name },
+        req,
+      });
+    }
+
     res.json({ success: true, message: 'Anggota berhasil dikeluarkan' });
   } catch (err) { next(err); }
 });

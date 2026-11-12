@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { generateOrderNumber } from '../lib/orderHelpers.js';
+
+import { generateOrderNumber, generateInvoiceNumber } from '../lib/orderHelpers.js';
+import { createAuditLog } from '../lib/auditHelper.js';
+
 
 export const ordersRouter = Router();
 
@@ -37,7 +40,7 @@ ordersRouter.get('/options/services', async (_req, res, next) => {
 ordersRouter.get('/options/sales', async (_req, res, next) => {
   try {
     const data = await prisma.users.findMany({
-      where: { deleted_at: null, status: 'active', roles: { name: { in: ['CS', 'Sales'] } } },
+      where: { deleted_at: null, status: 'active', roles: { name: { in: ['CS'] } } },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
@@ -52,7 +55,6 @@ ordersRouter.get('/options/teams', async (_req, res, next) => {
       select: {
         id: true, name: true,
         team_members: {
-          where: { status: 'active' },
           select: {
             id: true,
             users: {
@@ -95,10 +97,17 @@ ordersRouter.get('/:id', async (req, res, next) => {
         customer_pics: true,
         sales_user: true,
         teams: true,
-        order_services: true, // ✅ WAJIB DITAMBAHKAN AGAR LAYANAN TERBACA
-        invoices: true,       // ✅ WAJIB DITAMBAHKAN
+        order_services: true,
+        invoices: true,
         order_assignments: {
-          include: { team_members: { include: { users: true } }, jobs: true },
+          include: {
+            team_members: { include: { users: true } },
+            jobs: true,
+            progress_order: {
+              orderBy: { created_at: 'desc' },
+            },
+          },
+          orderBy: { phase_order: 'asc' },
         },
       },
     });
@@ -113,9 +122,14 @@ const createSchema = z.object({
   pic_id: z.coerce.number().int().positive().optional().nullable(),
   sales_id: z.coerce.number().int().positive().optional().nullable(),
   team_id: z.coerce.number().int().positive().optional().nullable(),
-  service_id: z.coerce.number().int().positive(),
-  price_deal: z.coerce.number().min(0).optional().nullable(), // ✅ Custom Harga
-  quantity: z.coerce.number().int().min(1).default(1),
+
+  // ✅ VALIDASI MULTIPLE SERVICES
+  services: z.array(z.object({
+    service_id: z.coerce.number().int().positive(),
+    price_deal: z.coerce.number().min(0),
+    quantity: z.coerce.number().int().min(1).default(1)
+  })).min(1, 'Minimal pilih 1 layanan'),
+
   discount_type: z.enum(['fixed', 'percent']).default('fixed'),
   discount: z.coerce.number().min(0).default(0),
   tax_rate: z.coerce.number().min(0).default(0),
@@ -125,47 +139,79 @@ const createSchema = z.object({
   assignments: z.array(z.object({
     team_member_id: z.coerce.number().int().positive(),
     job_id: z.coerce.number().int().positive(),
-    is_lead: z.boolean().optional().default(false)
+    is_lead: z.boolean().optional().default(false),
+    phase_order: z.coerce.number().int().min(1).default(1),
+    start_date: z.string().optional().nullable(),
+    end_date: z.string().optional().nullable(),
   })).optional()
 });
 
 ordersRouter.post('/', async (req, res, next) => {
   try {
+    console.log("=== PAYLOAD MASUK ===");
+    console.log("Services:", req.body.services);
+    console.log("Assignments:", req.body.assignments);
+    console.log("=====================");
+
+    if (!req.body.services && req.body.service_id) {
+      req.body.services = [{
+        service_id: req.body.service_id,
+        price_deal: req.body.price_deal ?? 0,
+        quantity: req.body.quantity ?? 1
+      }];
+    }
+
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return res.status(422).json({ success: false, message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors });
 
-    const { 
-      customer_id, pic_id, sales_id, team_id, service_id, price_deal, 
-      quantity, discount_type, discount, tax_rate, 
-      start_date_project, end_date_project, notes, assignments 
+    const {
+      customer_id, pic_id, sales_id, team_id, services,
+      discount_type, discount, tax_rate,
+      start_date_project, end_date_project, notes, assignments
     } = parsed.data;
+
+    if (team_id && (!assignments || assignments.length === 0)) {
+      return res.status(422).json({ success: false, message: 'Harap pilih minimal satu anggota tim yang ditugaskan untuk proyek ini.' });
+    }
 
     const customer = await prisma.customers.findFirst({ where: { id: BigInt(customer_id), deleted_at: null } });
     if (!customer) return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
 
-    const service = await prisma.services.findFirst({ 
-      where: { id: BigInt(service_id), deleted_at: null },
-      include: { service_categories: true }
-    });
-    if (!service) return res.status(404).json({ success: false, message: 'Service tidak ditemukan' });
-
     const pic = pic_id ? await prisma.customer_pics.findFirst({ where: { id: BigInt(pic_id) } }) : null;
 
-    // Kalkulasi Harga
-    let price = Number(service.default_price);
-    if (price_deal !== undefined && price_deal !== null) {
-      price = Number(price_deal);
+    // ✅ HITUNG TOTAL DARI BANYAK LAYANAN
+    let subtotal = 0;
+    const servicesData = [];
+
+    for (const s of services) {
+      const service = await prisma.services.findFirst({
+        where: { id: BigInt(s.service_id), deleted_at: null },
+        include: { service_categories: true }
+      });
+      if (!service) throw new Error(`Service dengan ID ${s.service_id} tidak ditemukan`);
+
+      const price = Number(s.price_deal ?? service.default_price);
+      const sSubtotal = price * s.quantity;
+      subtotal += sSubtotal;
+
+      servicesData.push({
+        service_id: service.id,
+        service_name_snapshot: service.name,
+        category_name_snapshot: service.service_categories?.name || null,
+        price_deal: price,
+        quantity: s.quantity,
+        subtotal: sSubtotal
+      });
     }
 
-    const subtotal = price * quantity;
     const discountAmount = discount_type === 'percent' ? (subtotal * discount) / 100 : discount;
     const taxAmount = ((subtotal - discountAmount) * tax_rate) / 100;
     const grandTotal = subtotal - discountAmount + taxAmount;
 
     const order = await prisma.$transaction(async (tx) => {
       const orderNum = await generateOrderNumber(tx);
-      
-      // 1. Buat Order
+
+      // 1. Buat Order Utama
       const newOrder = await tx.orders.create({
         data: {
           order_number: orderNum,
@@ -191,43 +237,48 @@ ordersRouter.post('/', async (req, res, next) => {
         },
       });
 
-      // 2. ✅ BUAT ORDER SERVICE (Menyimpan rincian layanan)
-      await tx.order_services.create({
-        data: {
-          order_id: newOrder.id,
-          service_id: service.id,
-          service_name_snapshot: service.name,
-          category_name_snapshot: service.service_categories?.name || null,
-          is_custom: false,
-          price_deal: price, 
-          quantity,
-          subtotal,
-          status: 'active',
-          notes: null,
-        },
-      });
+      // 2. ✅ INSERT BANYAK LAYANAN KE ORDER_SERVICES
+      for (const sd of servicesData) {
+        await tx.order_services.create({
+          data: {
+            order_id: newOrder.id,
+            ...sd,
+            is_custom: false,
+            status: 'active',
+            notes: null,
+          },
+        });
+      }
 
       // 3. Simpan Order Assignments (Tim)
       if (assignments && assignments.length > 0) {
         for (const a of assignments) {
-          await tx.order_assignments.create({
+          const newAssignment = await tx.order_assignments.create({
             data: {
               order_id: newOrder.id,
               team_member_id: BigInt(a.team_member_id),
               job_id: BigInt(a.job_id),
               is_lead: a.is_lead,
+              phase_order: a.phase_order || 1,
+              start_date: a.start_date ? new Date(a.start_date) : null,
+              end_date: a.end_date ? new Date(a.end_date) : null,
               assigned_at: new Date(),
+            }
+          });
+
+          await tx.progress_order.create({
+            data: {
+              assignment_id: newAssignment.id,
+              title: `Pengerjaan Modul Fase ${a.phase_order || 1}`,
+              status: 'pending',
+              progress_percentage: 0,
             }
           });
         }
       }
 
-      // 4. ✅ OTOMATIS BUAT INVOICE
-      const today = new Date();
-      const ym = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-      const prefix = `INV-${ym}-`;
-      const countInv = await tx.invoices.count({ where: { invoice_number: { startsWith: prefix } } });
-      const invoiceNum = `${prefix}${String(countInv + 1).padStart(3, '0')}`;
+      // 4. OTOMATIS BUAT INVOICE
+      const invoiceNum = await generateInvoiceNumber(tx);
 
       await tx.invoices.create({
         data: {
@@ -254,36 +305,100 @@ ordersRouter.post('/', async (req, res, next) => {
       return newOrder;
     });
 
+    // Audit log dengan detail lengkap
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menambahkan order baru.
+Order Number: ${order.order_number}
+Customer: ${customer.name}${pic ? '\nPIC: ' + pic.name : ''}
+Service: ${service.name}
+Quantity: ${quantity}
+Grand Total: Rp ${grandTotal.toLocaleString('id-ID')}`;
+
+    await createAuditLog({
+      userId,
+      action: 'CREATE',
+      entityType: 'Order',
+      entityId: order.id,
+      module: 'Orders',
+      details: detailText,
+      data: {
+        order_number: order.order_number,
+        customer: customer.name,
+        service: service.name,
+        quantity,
+        grand_total: grandTotal
+      },
+      req,
+    });
+
     res.status(201).json({ success: true, data: order, message: 'Order berhasil dibuat & Invoice otomatis terbuat' });
   } catch (err) { next(err); }
 });
 
-// Tambahkan endpoint ini di file orders.js (di atas DELETE)
 ordersRouter.patch('/:id/status', async (req, res, next) => {
   try {
     const { status } = req.body;
     const validStatuses = ['draft', 'pending', 'in_progress', 'completed', 'cancelled'];
-    
+
     if (!validStatuses.includes(status)) {
       return res.status(422).json({ success: false, message: 'Status tidak valid' });
     }
 
     const id = BigInt(req.params.id);
-    
-    // Update status di tabel orders
+    const existing = await prisma.orders.findFirst({ where: { id, deleted_at: null } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
+
     const updatedOrder = await prisma.orders.update({
       where: { id },
       data: { status },
     });
 
-    // Catat ke history
     await prisma.order_status_history.create({
       data: {
         order_id: id,
-        from_status: null, // Bisa disesuaikan jika ingin menyimpan status sebelumnya
+        from_status: existing.status,
         to_status: status,
         notes: `Status pengerjaan diubah menjadi ${status}`,
       }
+    });
+
+    if (status === 'completed') {
+      const existingCentral = await prisma.maintenances.findFirst({
+        where: {
+          order_id: id,
+          title: { contains: 'Pasca Rilis' },
+          deleted_at: null,
+        },
+      });
+
+      if (!existingCentral) {
+        const orderData = await prisma.orders.findUnique({ where: { id } });
+        await prisma.maintenances.create({
+          data: {
+            order_id: id,
+            title: 'Garansi Sistem Pasca Rilis (Pusat)',
+            description: 'Proyek telah disahkan selesai (Completed) dan resmi masuk masa garansi dan pemeliharaan sistem pusat.',
+            status: 'scheduled',
+            start_datetime: new Date(),
+            end_datetime: orderData?.end_date_project
+              ? new Date(new Date(orderData.end_date_project).getTime() + 30 * 24 * 60 * 60 * 1000)
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        });
+      }
+    }
+
+    const detailText = `Mengedit status order ${existing.order_number}.
+Status: "${existing.status}" → "${status}"`;
+
+    await createAuditLog({
+      action: 'UPDATE',
+      entityType: 'Order',
+      entityId: id,
+      module: 'Orders',
+      details: detailText,
+      data: { order_number: existing.order_number, from: existing.status, to: status },
+      req,
     });
 
     res.json({ success: true, data: updatedOrder, message: 'Status pengerjaan berhasil diupdate' });
@@ -292,11 +407,29 @@ ordersRouter.patch('/:id/status', async (req, res, next) => {
   }
 });
 
-// ============ DELETE ORDER ============
 ordersRouter.delete('/:id', async (req, res, next) => {
   try {
     const id = BigInt(req.params.id);
+    const existing = await prisma.orders.findFirst({ where: { id, deleted_at: null } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
+
     await prisma.orders.update({ where: { id }, data: { deleted_at: new Date() } });
+
+    const detailText = `Menghapus order ${existing.order_number}.
+Customer: ${existing.customer_name_snapshot || '-'}
+Grand Total: Rp ${Number(existing.grand_total || 0).toLocaleString('id-ID')}
+Status: ${existing.status}`;
+
+    await createAuditLog({
+      action: 'DELETE',
+      entityType: 'Order',
+      entityId: id,
+      module: 'Orders',
+      details: detailText,
+      data: { order_number: existing.order_number },
+      req,
+    });
+
     res.json({ success: true, message: 'Order berhasil dihapus' });
   } catch (err) { next(err); }
 });

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const rolesRouter = Router();
 
@@ -110,6 +111,22 @@ rolesRouter.post('/', async (req, res, next) => {
         },
         select: { id: true, name: true, description: true, is_default: true },
       });
+
+      // Audit log
+      const userId = req.headers['x-user-id'];
+      const detailText = `Menambahkan role baru.
+Nama: ${name}${description ? '\nDeskripsi: ' + description : ''}`;
+      await createAuditLog({
+        userId,
+        action: 'CREATE',
+        entityType: 'Role',
+        entityId: role.id,
+        module: 'Roles',
+        details: detailText,
+        data: { name, description },
+        req,
+      });
+
       return res.status(201).json({
         success: true,
         data: role,
@@ -121,6 +138,21 @@ rolesRouter.post('/', async (req, res, next) => {
     const role = await prisma.roles.create({
       data: { name, description: description || null, is_default: false },
       select: { id: true, name: true, description: true, is_default: true },
+    });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menambahkan role baru.
+Nama: ${name}${description ? '\nDeskripsi: ' + description : ''}`;
+    await createAuditLog({
+      userId,
+      action: 'CREATE',
+      entityType: 'Role',
+      entityId: role.id,
+      module: 'Roles',
+      details: detailText,
+      data: { name, description },
+      req,
     });
 
     res.status(201).json({ success: true, data: role, message: 'Role berhasil dibuat' });
@@ -173,6 +205,29 @@ rolesRouter.put('/:id', async (req, res, next) => {
       select: { id: true, name: true, description: true, is_default: true },
     });
 
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const changes = [];
+    if (parsed.data.name && parsed.data.name !== existing.name) changes.push(`Nama: "${existing.name}" → "${parsed.data.name}"`);
+    if (parsed.data.description !== undefined && parsed.data.description !== existing.description) {
+      changes.push(`Deskripsi: "${existing.description || '-'}" → "${parsed.data.description || '-'}"`);
+    }
+
+    const detailText = changes.length > 0 
+      ? `Mengedit role ${existing.name}.\n${changes.join('\n')}`
+      : `Mengedit role ${existing.name}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'UPDATE',
+      entityType: 'Role',
+      entityId: id,
+      module: 'Roles',
+      details: detailText,
+      data: { changes },
+      req,
+    });
+
     res.json({ success: true, data: role, message: 'Role berhasil diupdate' });
   } catch (err) {
     next(err);
@@ -203,6 +258,21 @@ rolesRouter.delete('/:id', async (req, res, next) => {
     await prisma.roles.update({
       where: { id },
       data: { deleted_at: new Date() },
+    });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menghapus role ${role.name}.${role.description ? '\nDeskripsi: ' + role.description : ''}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'DELETE',
+      entityType: 'Role',
+      entityId: id,
+      module: 'Roles',
+      details: detailText,
+      data: { name: role.name, description: role.description },
+      req,
     });
 
     res.json({ success: true, message: 'Role berhasil dihapus' });
