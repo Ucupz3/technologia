@@ -28,6 +28,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        // Login diurus oleh Express.js
         $express = app(ExpressService::class);
         $email = trim((string) $this->input('email'));
         $password = (string) $this->input('password');

@@ -17,8 +17,9 @@ class DashboardController extends Controller
         return match ($role) {
             'super_admin' => Inertia::render('SuperAdmin/Dashboard'),
             'admin'       => Inertia::render('Admin/Dashboard'),
-            'cs'          => Inertia::render('Sales/Dashboard'),
-            'developer'   => redirect()->route('developer.schedule.index'),
+            'cs'          => Inertia::render('CS/Dashboard'),
+            // Opsional: Jika nanti ada user yang role aslinya memang developer
+            // 'developer'   => Inertia::render('Developer/Index'), 
             default       => Inertia::render('Shared/Forbidden'),
         };
     }

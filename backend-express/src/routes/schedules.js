@@ -1,117 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { createAuditLog, formatDateIndo } from '../lib/auditHelper.js';
 
 export const schedulesRouter = Router();
 
-// Helper untuk format data order jadwal agar konsisten
-function formatScheduleOrder(order, currentUserId = null) {
-  // Kumpulkan semua penugasan & rekan tim
-  const assignments = (order.order_assignments || []).map((oa) => {
-    const user = oa.team_members?.users || null;
-    const job = oa.jobs || null;
-    return {
-      assignment_id: oa.id,
-      team_member_id: oa.team_member_id,
-      user_id: user?.id || null,
-      user_name: user?.name || 'Unknown',
-      user_email: user?.email || null,
-      user_phone: user?.phone || null,
-      job_id: job?.id || null,
-      job_name: job?.name || 'Developer',
-      is_lead: Boolean(oa.is_lead),
-      assigned_at: oa.assigned_at,
-    };
-  });
-
-  // Cari apakah user yang sedang login ditugaskan di order ini
-  let myAssignment = null;
-  if (currentUserId) {
-    const targetId = BigInt(currentUserId);
-    myAssignment = assignments.find((a) => a.user_id && BigInt(a.user_id) === targetId) || null;
-  }
-
-  // Kumpulkan semua riwayat progres dari setiap penugasan
-  const allProgress = (order.order_assignments || [])
-    .flatMap((oa) => (oa.progress_order || []).map((p) => ({
-      ...p,
-      author_name: oa.team_members?.users?.name || 'Developer',
-      author_job: oa.jobs?.name || null,
-      is_lead: oa.is_lead,
-    })))
-    .sort((a, b) => {
-      const timeDiff = new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-      if (timeDiff !== 0) return timeDiff;
-      return Number(b.id || 0) - Number(a.id || 0);
-    });
-
-  // Hitung persentase progres terbaru (ambil dari entri paling mutakhir)
-  let progressPercentage = 0;
-  if (allProgress.length > 0) {
-    progressPercentage = allProgress[0].progress_percentage ?? 0;
-  } else if (order.status === 'completed') {
-    progressPercentage = 100;
-  }
-
-  // Hitung sisa hari menuju deadline
-  let daysRemaining = null;
-  let isOverdue = false;
-  if (order.end_date_project) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deadline = new Date(order.end_date_project);
-    deadline.setHours(0, 0, 0, 0);
-    const diffTime = deadline.getTime() - today.getTime();
-    daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (daysRemaining < 0 && order.status !== 'completed' && order.status !== 'cancelled') {
-      isOverdue = true;
-    }
-  }
-
-  // Ringkasan layanan/jasa
-  const services = (order.order_services || []).map((s) => ({
-    id: s.id,
-    name: s.service_name_snapshot,
-    category: s.category_name_snapshot,
-    quantity: s.quantity,
-    price: s.price_deal,
-  }));
-
-  return {
-    id: order.id,
-    order_number: order.order_number,
-    customer_id: order.customer_id,
-    customer_name: order.customer_name_snapshot || order.customers?.name || 'Pelanggan',
-    customer_name_snapshot: order.customer_name_snapshot || order.customers?.name || 'Pelanggan',
-    customer_address: order.customer_address_snapshot,
-    pic_name: order.pic_name_snapshot,
-    pic_email: order.pic_email_snapshot,
-    status: order.status,
-    payment_status: order.payment_status,
-    start_date_project: order.start_date_project,
-    end_date_project: order.end_date_project,
-    notes: order.notes,
-    team_id: order.team_id,
-    team_name: order.teams?.name || null,
-    services,
-    assignments,
-    my_assignment: myAssignment,
-    progress_percentage: progressPercentage,
-    recent_progress: allProgress.slice(0, 5),
-    maintenances: order.maintenances || [],
-    days_remaining: daysRemaining,
-    is_overdue: isOverdue,
-    created_at: order.created_at,
-    updated_at: order.updated_at,
-  };
-}
-
-// =========================================================================
-// 1. GET /api/v1/schedules
-// Ambil jadwal proyek (didukung filter: user_id, status, search, month, year)
-// Kompatibel penuh dengan SuperAdmin/Schedules & Developer/Schedule
-// =========================================================================
-schedulesRouter.get('/', async (req, res, next) => {
+// GET /api/v1/schedules (Ambil semua order yang punya tanggal proyek untuk kalender)
+schedulesRouter.get('/', async (_req, res, next) => {
   try {
     const { user_id, status, search, month, year, scope } = req.query;
 
@@ -352,29 +247,13 @@ schedulesRouter.get('/developer', async (req, res, next) => {
   }
 });
 
-// GET /api/v1/schedules/developer/:userId
-schedulesRouter.get('/developer/:userId', async (req, res, next) => {
-  req.query.user_id = req.params.userId;
-  return schedulesRouter.handle(req, res, next);
-});
-
-// =========================================================================
-// 3. GET /api/v1/schedules/maintenances
-// Ambil daftar maintenance terpisah beserta daftar order aktif untuk dropdown
-// =========================================================================
+// GET /api/v1/schedules/maintenances (List Jadwal Pemeliharaan & Maintenance Pusat)
 schedulesRouter.get('/maintenances', async (_req, res, next) => {
   try {
     const schedules = await prisma.maintenances.findMany({
       where: { deleted_at: null },
       include: {
-        orders: {
-          select: {
-            id: true,
-            order_number: true,
-            customer_name_snapshot: true,
-            status: true,
-          },
-        },
+        orders: { select: { id: true, order_number: true, customer_name_snapshot: true, status: true } }
       },
       orderBy: { start_datetime: 'desc' },
     });
@@ -430,6 +309,22 @@ schedulesRouter.post('/', async (req, res, next) => {
       },
     });
 
+    // Audit log dengan format custom
+    const userId = req.headers['x-user-id'];
+    const dateStr = formatDateIndo(start_datetime);
+    const detailText = `Menambahkan jadwal pada hari ${dateStr}. Judul: ${title}${description ? '. Deskripsi: ' + description : ''}`;
+
+    await createAuditLog({
+      userId,
+      action: 'CREATE',
+      entityType: 'Schedule',
+      entityId: schedule.id,
+      module: 'Schedules',
+      details: detailText,
+      data: { title, start_datetime, description, status },
+      req,
+    });
+
     res.status(201).json({ success: true, data: schedule, message: 'Jadwal berhasil dibuat' });
   } catch (err) {
     next(err);
@@ -457,6 +352,9 @@ schedulesRouter.put('/:id', async (req, res, next) => {
     }
 
     const id = BigInt(req.params.id);
+    const existing = await prisma.maintenances.findFirst({ where: { id } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Jadwal tidak ditemukan' });
+
     const data = { ...parsed.data };
     if (data.start_datetime) data.start_datetime = new Date(data.start_datetime);
     if (data.end_datetime !== undefined) {
@@ -466,6 +364,33 @@ schedulesRouter.put('/:id', async (req, res, next) => {
     const schedule = await prisma.maintenances.update({
       where: { id },
       data,
+    });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const changes = [];
+    if (parsed.data.title && parsed.data.title !== existing.title) changes.push(`Judul: "${existing.title}" → "${parsed.data.title}"`);
+    if (parsed.data.description !== undefined && parsed.data.description !== existing.description) {
+      changes.push(`Deskripsi: "${existing.description || '-'}" → "${parsed.data.description || '-'}"`);
+    }
+    if (parsed.data.status && parsed.data.status !== existing.status) changes.push(`Status: "${existing.status}" → "${parsed.data.status}"`);
+    if (parsed.data.start_datetime && new Date(parsed.data.start_datetime).getTime() !== new Date(existing.start_datetime).getTime()) {
+      changes.push(`Tanggal: "${formatDateIndo(existing.start_datetime)}" → "${formatDateIndo(parsed.data.start_datetime)}"`);
+    }
+
+    const detailText = changes.length > 0
+      ? `Mengedit jadwal ${existing.title}.\n${changes.join('\n')}`
+      : `Mengedit jadwal ${existing.title}`;
+
+    await createAuditLog({
+      userId,
+      action: 'UPDATE',
+      entityType: 'Schedule',
+      entityId: id,
+      module: 'Schedules',
+      details: detailText,
+      data: { changes },
+      req,
     });
 
     res.json({ success: true, data: schedule, message: 'Jadwal berhasil diupdate' });
@@ -489,4 +414,28 @@ schedulesRouter.delete('/:id', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+    const existing = await prisma.maintenances.findFirst({ where: { id } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Jadwal tidak ditemukan' });
+
+    await prisma.maintenances.update({ where: { id }, data: { deleted_at: new Date() } });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const dateStr = formatDateIndo(existing.start_datetime);
+    const detailText = `Menghapus jadwal ${existing.title}.
+Tanggal: ${dateStr}${existing.description ? '\nDeskripsi: ' + existing.description : ''}`;
+
+    await createAuditLog({
+      userId,
+      action: 'DELETE',
+      entityType: 'Schedule',
+      entityId: id,
+      module: 'Schedules',
+      details: detailText,
+      data: { title: existing.title, start_datetime: existing.start_datetime },
+      req,
+    });
+
+    res.json({ success: true, message: 'Jadwal berhasil dihapus' });
+  } catch (err) { next(err); }
 });

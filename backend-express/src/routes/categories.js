@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { createAuditLog } from '../lib/auditHelper.js';
 
 export const categoriesRouter = Router();
 
@@ -97,6 +98,24 @@ categoriesRouter.post('/', async (req, res, next) => {
         },
         select: { id: true, name: true, description: true, status: true },
       });
+
+      // Audit log
+      const userId = req.headers['x-user-id'];
+      const detailText = `Menambahkan kategori baru.
+Nama: ${name}${description ? '\nDeskripsi: ' + description : ''}
+Status: ${status}`;
+      
+      await createAuditLog({
+        userId,
+        action: 'CREATE',
+        entityType: 'Category',
+        entityId: category.id,
+        module: 'Management',
+        details: detailText,
+        data: { name, description, status },
+        req,
+      });
+
       return res.status(201).json({
         success: true,
         data: category,
@@ -107,6 +126,23 @@ categoriesRouter.post('/', async (req, res, next) => {
     const category = await prisma.service_categories.create({
       data: { name, description: description || null, status },
       select: { id: true, name: true, description: true, status: true },
+    });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menambahkan kategori baru.
+Nama: ${name}${description ? '\nDeskripsi: ' + description : ''}
+Status: ${status}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'CREATE',
+      entityType: 'Category',
+      entityId: category.id,
+      module: 'Management',
+      details: detailText,
+      data: { name, description, status },
+      req,
     });
 
     res.status(201).json({
@@ -163,6 +199,30 @@ categoriesRouter.put('/:id', async (req, res, next) => {
       select: { id: true, name: true, description: true, status: true },
     });
 
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const changes = [];
+    if (parsed.data.name && parsed.data.name !== existing.name) changes.push(`Nama: "${existing.name}" → "${parsed.data.name}"`);
+    if (parsed.data.description !== undefined && parsed.data.description !== existing.description) {
+      changes.push(`Deskripsi: "${existing.description || '-'}" → "${parsed.data.description || '-'}"`);
+    }
+    if (parsed.data.status && parsed.data.status !== existing.status) changes.push(`Status: "${existing.status}" → "${parsed.data.status}"`);
+
+    const detailText = changes.length > 0 
+      ? `Mengedit kategori ${existing.name}.\n${changes.join('\n')}`
+      : `Mengedit kategori ${existing.name}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'UPDATE',
+      entityType: 'Category',
+      entityId: id,
+      module: 'Management',
+      details: detailText,
+      data: { changes },
+      req,
+    });
+
     res.json({ success: true, data: category, message: 'Kategori berhasil diupdate' });
   } catch (err) {
     next(err);
@@ -194,6 +254,22 @@ categoriesRouter.delete('/:id', async (req, res, next) => {
     await prisma.service_categories.update({
       where: { id },
       data: { deleted_at: new Date() },
+    });
+
+    // Audit log
+    const userId = req.headers['x-user-id'];
+    const detailText = `Menghapus kategori ${category.name}.${category.description ? '\nDeskripsi: ' + category.description : ''}
+Status: ${category.status}`;
+    
+    await createAuditLog({
+      userId,
+      action: 'DELETE',
+      entityType: 'Category',
+      entityId: id,
+      module: 'Management',
+      details: detailText,
+      data: { name: category.name, description: category.description, status: category.status },
+      req,
     });
 
     res.json({ success: true, message: 'Kategori berhasil dihapus' });

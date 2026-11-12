@@ -27,8 +27,6 @@ function mapRoleToSlug(roleName) {
     'Super Admin': 'super_admin',
     'Admin': 'admin',
     'CS': 'cs',
-    'Customer Service': 'cs',
-    'Finance': 'finance',
   };
   return map[roleName] || 'cs';
 }

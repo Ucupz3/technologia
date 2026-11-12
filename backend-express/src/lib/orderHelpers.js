@@ -50,28 +50,62 @@ export async function generateOrderNumber(client = defaultPrisma) {
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
   const prefix = `ORD-${dateStr}-`;
 
-  const count = await client.orders.count({
+  const existingOrders = await client.orders.findMany({
     where: { order_number: { startsWith: prefix } },
+    select: { order_number: true },
   });
 
-  return `${prefix}${String(count + 1).padStart(3, '0')}`;
+  let maxNum = 0;
+  for (const ord of existingOrders) {
+    const parts = ord.order_number.split('-');
+    const num = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(num) && num > maxNum) {
+      maxNum = num;
+    }
+  }
+
+  let nextSeq = maxNum + 1;
+  let candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+
+  while (await client.orders.findFirst({ where: { order_number: candidate } })) {
+    nextSeq++;
+    candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+  }
+
+  return candidate;
 }
 
 /**
- * Generates next sequence invoice number: INV-YYYYMMDD-XXX
+ * Generates next sequence invoice number: INV-YYYYMM-XXX
  * @param {object} [client] Prisma client or transaction client
  * @returns {Promise<string>}
  */
 export async function generateInvoiceNumber(client = defaultPrisma) {
   const today = new Date();
-  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-  const prefix = `INV-${dateStr}-`;
+  const ym = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const prefix = `INV-${ym}-`;
 
-  const invoiceModel = client.invoices || client.payments;
-  const count = await invoiceModel.count({
+  const existingInvoices = await client.invoices.findMany({
     where: { invoice_number: { startsWith: prefix } },
+    select: { invoice_number: true },
   });
 
-  return `${prefix}${String(count + 1).padStart(3, '0')}`;
-}
+  let maxNum = 0;
+  for (const inv of existingInvoices) {
+    const parts = inv.invoice_number.split('-');
+    const num = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(num) && num > maxNum) {
+      maxNum = num;
+    }
+  }
 
+  let nextSeq = maxNum + 1;
+  let candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+
+  while (await client.invoices.findFirst({ where: { invoice_number: candidate } })) {
+    nextSeq++;
+    candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+  }
+
+  return candidate;
+}

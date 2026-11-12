@@ -10,18 +10,17 @@ use Illuminate\Validation\Rules\Password;
 
 class PasswordController extends Controller
 {
-    /**
-     * Update the user's password.
-     */
     public function update(Request $request): RedirectResponse
     {
+        // 1. Validasi input (HANYA password baru, current_password DIHAPUS)
         $validated = $request->validate([
-            'current_password' => ['required', 'current_password'],
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
+        // 2. Langsung timpa password lama dengan yang baru
+        // Karena user sudah login (auth), ini aman.
         $request->user()->update([
-            'password' => Hash::make($validated['password']),
+            'password_hash' => Hash::make($validated['password']),
         ]);
 
         return back();
