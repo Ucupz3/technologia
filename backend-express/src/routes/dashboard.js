@@ -3,8 +3,7 @@ import { prisma } from '../lib/prisma.js';
 
 export const dashboardRouter = Router();
 
-// GET /api/v1/dashboard/super-admin
-dashboardRouter.get('/super-admin', async (_req, res, next) => {
+async function handleSuperAdminDashboard(_req, res, next) {
   try {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -187,7 +186,11 @@ dashboardRouter.get('/super-admin', async (_req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+}
+
+// GET /api/v1/dashboard & GET /api/v1/dashboard/super-admin
+dashboardRouter.get('/', handleSuperAdminDashboard);
+dashboardRouter.get('/super-admin', handleSuperAdminDashboard);
 
 // GET /api/v1/dashboard/admin
 dashboardRouter.get('/admin', async (_req, res, next) => {

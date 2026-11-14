@@ -50,26 +50,36 @@ export async function generateOrderNumber(client = defaultPrisma) {
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
   const prefix = `ORD-${dateStr}-`;
 
-  const existingOrders = await client.orders.findMany({
-    where: { order_number: { startsWith: prefix } },
-    select: { order_number: true },
-  });
+  let nextSeq = 1;
+  if (typeof client.orders.findMany === 'function') {
+    const existingOrders = await client.orders.findMany({
+      where: { order_number: { startsWith: prefix } },
+      select: { order_number: true },
+    });
 
-  let maxNum = 0;
-  for (const ord of existingOrders) {
-    const parts = ord.order_number.split('-');
-    const num = parseInt(parts[parts.length - 1], 10);
-    if (!isNaN(num) && num > maxNum) {
-      maxNum = num;
+    let maxNum = 0;
+    for (const ord of existingOrders) {
+      const parts = ord.order_number.split('-');
+      const num = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
     }
+    nextSeq = maxNum + 1;
+  } else if (typeof client.orders.count === 'function') {
+    const count = await client.orders.count({
+      where: { order_number: { startsWith: prefix } },
+    });
+    nextSeq = count + 1;
   }
 
-  let nextSeq = maxNum + 1;
   let candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
 
-  while (await client.orders.findFirst({ where: { order_number: candidate } })) {
-    nextSeq++;
-    candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+  if (typeof client.orders.findFirst === 'function') {
+    while (await client.orders.findFirst({ where: { order_number: candidate } })) {
+      nextSeq++;
+      candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+    }
   }
 
   return candidate;
@@ -82,29 +92,39 @@ export async function generateOrderNumber(client = defaultPrisma) {
  */
 export async function generateInvoiceNumber(client = defaultPrisma) {
   const today = new Date();
-  const ym = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-  const prefix = `INV-${ym}-`;
+  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+  const prefix = `INV-${dateStr}-`;
 
-  const existingInvoices = await client.invoices.findMany({
-    where: { invoice_number: { startsWith: prefix } },
-    select: { invoice_number: true },
-  });
+  let nextSeq = 1;
+  if (typeof client.invoices.findMany === 'function') {
+    const existingInvoices = await client.invoices.findMany({
+      where: { invoice_number: { startsWith: prefix } },
+      select: { invoice_number: true },
+    });
 
-  let maxNum = 0;
-  for (const inv of existingInvoices) {
-    const parts = inv.invoice_number.split('-');
-    const num = parseInt(parts[parts.length - 1], 10);
-    if (!isNaN(num) && num > maxNum) {
-      maxNum = num;
+    let maxNum = 0;
+    for (const inv of existingInvoices) {
+      const parts = inv.invoice_number.split('-');
+      const num = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
     }
+    nextSeq = maxNum + 1;
+  } else if (typeof client.invoices.count === 'function') {
+    const count = await client.invoices.count({
+      where: { invoice_number: { startsWith: prefix } },
+    });
+    nextSeq = count + 1;
   }
 
-  let nextSeq = maxNum + 1;
   let candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
 
-  while (await client.invoices.findFirst({ where: { invoice_number: candidate } })) {
-    nextSeq++;
-    candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+  if (typeof client.invoices.findFirst === 'function') {
+    while (await client.invoices.findFirst({ where: { invoice_number: candidate } })) {
+      nextSeq++;
+      candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+    }
   }
 
   return candidate;

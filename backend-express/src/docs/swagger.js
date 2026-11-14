@@ -690,7 +690,98 @@ export const openapiSpecification = {
         summary: 'Daftar Katalog Layanan Jasa IT',
         tags: ['Services'],
         responses: {
-          200: { description: 'Daftar layanan jasa aktif' },
+          200: { description: 'Daftar layanan jasa aktif beserta kategori' },
+        },
+      },
+      post: {
+        summary: 'Tambah Layanan Jasa Baru',
+        tags: ['Services'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['category_id', 'name'],
+                properties: {
+                  category_id: { type: 'integer', example: 1 },
+                  name: { type: 'string', example: 'Maintenance Jaringan Fiber Optic' },
+                  description: { type: 'string', example: 'Pemeliharaan dan audit berkala jaringan fiber optic' },
+                  default_price: { type: 'number', example: 2500000 },
+                  duration: { type: 'integer', example: 7, description: 'Estimasi durasi pengerjaan dalam hari' },
+                  status: { type: 'string', enum: ['active', 'inactive'], default: 'active' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Layanan jasa berhasil dibuat' },
+          404: { description: 'Kategori layanan tidak ditemukan' },
+          422: { description: 'Validasi form gagal' },
+        },
+      },
+    },
+    '/api/v1/services/categories/options': {
+      get: {
+        summary: 'Daftar Pilihan Kategori Layanan untuk Dropdown',
+        tags: ['Services'],
+        responses: {
+          200: { description: 'Daftar opsi kategori layanan aktif' },
+        },
+      },
+    },
+    '/api/v1/services/{id}': {
+      get: {
+        summary: 'Detail Layanan Jasa IT',
+        tags: ['Services'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Detail lengkap data layanan jasa' },
+          404: { description: 'Service tidak ditemukan' },
+        },
+      },
+      put: {
+        summary: 'Perbarui Data Layanan Jasa IT',
+        tags: ['Services'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  category_id: { type: 'integer' },
+                  name: { type: 'string' },
+                  description: { type: 'string' },
+                  default_price: { type: 'number' },
+                  duration: { type: 'integer' },
+                  status: { type: 'string', enum: ['active', 'inactive'] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Service berhasil diupdate' },
+          404: { description: 'Service atau kategori tidak ditemukan' },
+          422: { description: 'Validasi update gagal' },
+        },
+      },
+      delete: {
+        summary: 'Hapus Layanan Jasa (Soft Delete)',
+        tags: ['Services'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Service berhasil dihapus' },
+          404: { description: 'Service tidak ditemukan' },
         },
       },
     },
@@ -700,8 +791,136 @@ export const openapiSpecification = {
       get: {
         summary: 'Daftar Klien / Customer',
         tags: ['Customers'],
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Cari berdasarkan nama, email, atau telepon' },
+          { name: 'sales_id', in: 'query', schema: { type: 'integer' }, description: 'Filter berdasarkan penanggung jawab sales' },
+        ],
         responses: {
-          200: { description: 'Daftar customer aktif' },
+          200: { description: 'Daftar customer aktif beserta info kontak dan sales terkait' },
+        },
+      },
+      post: {
+        summary: 'Tambah Klien / Customer Baru',
+        tags: ['Customers'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'email'],
+                properties: {
+                  name: { type: 'string', example: 'PT Teknologi Bangsa' },
+                  email: { type: 'string', format: 'email', example: 'contact@teknobangsa.com' },
+                  phone: { type: 'string', example: '081234567890' },
+                  address: { type: 'string', example: 'Gedung Cyber 2 Lt. 10, Jakarta' },
+                  notes: { type: 'string' },
+                  sales_id: { type: 'integer', example: 4 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Customer baru berhasil ditambahkan' },
+          409: { description: 'Email customer sudah terdaftar' },
+          422: { description: 'Validasi form gagal' },
+        },
+      },
+    },
+    '/api/v1/customers/sales/options': {
+      get: {
+        summary: 'Daftar Opsi Staf Sales / Marketing untuk Dropdown',
+        tags: ['Customers'],
+        responses: {
+          200: { description: 'Daftar staf tim sales yang aktif' },
+        },
+      },
+    },
+    '/api/v1/customers/{id}': {
+      get: {
+        summary: 'Detail Customer, Daftar PIC, dan Riwayat Order',
+        tags: ['Customers'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Detail data customer, kontak person (PIC), dan riwayat pesanan' },
+          404: { description: 'Customer tidak ditemukan' },
+        },
+      },
+      put: {
+        summary: 'Perbarui Data Customer',
+        tags: ['Customers'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  email: { type: 'string', format: 'email' },
+                  phone: { type: 'string' },
+                  address: { type: 'string' },
+                  notes: { type: 'string' },
+                  sales_id: { type: 'integer' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Data customer berhasil diperbarui' },
+          404: { description: 'Customer tidak ditemukan' },
+          409: { description: 'Email sudah digunakan customer lain' },
+          422: { description: 'Validasi update gagal' },
+        },
+      },
+      delete: {
+        summary: 'Hapus Customer (Soft Delete)',
+        tags: ['Customers'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Customer berhasil dihapus' },
+          404: { description: 'Customer tidak ditemukan' },
+        },
+      },
+    },
+    '/api/v1/customers/{id}/pics': {
+      post: {
+        summary: 'Tambah Kontak Person (PIC) Baru untuk Customer',
+        tags: ['Customers'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'ID Customer' },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: { type: 'string', example: 'Budi Santoso' },
+                  position: { type: 'string', example: 'IT Manager' },
+                  email: { type: 'string', format: 'email', example: 'budi@teknobangsa.com' },
+                  phone: { type: 'string', example: '081234567891' },
+                  is_primary: { type: 'boolean', default: false },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'PIC customer berhasil ditambahkan' },
+          404: { description: 'Customer tidak ditemukan' },
+          422: { description: 'Validasi gagal' },
         },
       },
     },
@@ -709,10 +928,265 @@ export const openapiSpecification = {
     // ================= DASHBOARD =================
     '/api/v1/dashboard': {
       get: {
-        summary: 'Ringkasan Metrik Dashboard ERP',
+        summary: 'Ringkasan Metrik Dashboard ERP Umum',
         tags: ['Dashboard'],
         responses: {
           200: { description: 'Metrik total order, invoice, revenue, dan status proyek aktif' },
+        },
+      },
+    },
+    '/api/v1/dashboard/super-admin': {
+      get: {
+        summary: 'Metrik Eksekutif Dashboard Super Admin',
+        tags: ['Dashboard'],
+        responses: {
+          200: { description: 'Statistik pengguna, order, revenue 30 hari, outstanding, top 5 services, log aktivitas, dan pesanan terbaru' },
+        },
+      },
+    },
+    '/api/v1/dashboard/admin': {
+      get: {
+        summary: 'Metrik Operasional Dashboard Admin',
+        tags: ['Dashboard'],
+        responses: {
+          200: { description: 'Statistik customer, order, revenue 30 hari, outstanding, status proyek, dan top 5 services' },
+        },
+      },
+    },
+
+    // ================= SCHEDULES =================
+    '/api/v1/schedules': {
+      get: {
+        summary: 'Daftar Kalender Jadwal Proyek & Alokasi Tim',
+        tags: ['Schedules'],
+        parameters: [
+          { name: 'user_id', in: 'query', schema: { type: 'integer' }, description: 'Filter jadwal berdasarkan user ID' },
+          { name: 'scope', in: 'query', schema: { type: 'string', enum: ['mine', 'all'] }, description: 'Cakupan penugasan' },
+          { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Filter status order' },
+          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Cari nomor order atau customer' },
+          { name: 'month', in: 'query', schema: { type: 'integer' }, description: 'Index bulan (0-11)' },
+          { name: 'year', in: 'query', schema: { type: 'integer' }, description: 'Tahun kalender' },
+        ],
+        responses: {
+          200: { description: 'Daftar jadwal proyek, tim, dan deteksi konflik jadwal' },
+        },
+      },
+      post: {
+        summary: 'Buat atau Perbarui Alokasi Jadwal Proyek/Maintenance',
+        tags: ['Schedules'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['order_id'],
+                properties: {
+                  order_id: { type: 'integer', example: 1 },
+                  team_id: { type: 'integer', example: 2 },
+                  start_date_project: { type: 'string', format: 'date' },
+                  end_date_project: { type: 'string', format: 'date' },
+                  start_datetime: { type: 'string', format: 'date-time' },
+                  end_datetime: { type: 'string', format: 'date-time' },
+                  status: { type: 'string', example: 'in_progress' },
+                  title: { type: 'string', example: 'Instalasi Jaringan Cabang' },
+                  description: { type: 'string' },
+                  notes: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Jadwal dan alokasi tim berhasil disimpan' },
+          422: { description: 'Validasi form jadwal gagal' },
+        },
+      },
+    },
+    '/api/v1/schedules/{id}': {
+      put: {
+        summary: 'Update Jadwal Order atau Tiket Maintenance',
+        tags: ['Schedules'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'ID order atau maintenance' },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  team_id: { type: 'integer' },
+                  start_date_project: { type: 'string', format: 'date' },
+                  end_date_project: { type: 'string', format: 'date' },
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  start_datetime: { type: 'string', format: 'date-time' },
+                  end_datetime: { type: 'string', format: 'date-time' },
+                  status: { type: 'string' },
+                  notes: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Jadwal berhasil diperbarui' },
+          404: { description: 'Jadwal tidak ditemukan' },
+        },
+      },
+      delete: {
+        summary: 'Hapus Jadwal Maintenance atau Reset Jadwal Proyek',
+        tags: ['Schedules'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'ID order atau maintenance' },
+        ],
+        responses: {
+          200: { description: 'Jadwal berhasil dihapus atau direset' },
+          404: { description: 'Jadwal tidak ditemukan' },
+        },
+      },
+    },
+    '/api/v1/schedules/maintenances': {
+      get: {
+        summary: 'Daftar Tiket Jadwal Pemeliharaan & Maintenance',
+        tags: ['Schedules'],
+        responses: {
+          200: { description: 'Daftar jadwal maintenance dan referensi order' },
+        },
+      },
+    },
+    '/api/v1/schedules/developer': {
+      get: {
+        summary: 'Jadwal Proyek Khusus Portal Developer',
+        tags: ['Developer', 'Schedules'],
+        parameters: [
+          { name: 'user_id', in: 'query', schema: { type: 'integer' }, description: 'ID Developer aktif' },
+          { name: 'scope', in: 'query', schema: { type: 'string', enum: ['mine', 'all'] }, description: 'Scope penugasan (tugas saya atau semua)' },
+          { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Filter status proyek' },
+        ],
+        responses: {
+          200: { description: 'Ringkasan developer, statistik, daftar proyek tertugaskan, dan upcoming tasks' },
+        },
+      },
+    },
+    '/api/v1/schedules/developer/{userId}': {
+      get: {
+        summary: 'Jadwal Proyek Developer berdasarkan User ID URL Param',
+        tags: ['Developer', 'Schedules'],
+        parameters: [
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' }, description: 'ID Developer' },
+        ],
+        responses: {
+          200: { description: 'Ringkasan jadwal dan proyek developer terkait' },
+        },
+      },
+    },
+
+    // ================= DEVELOPER PORTAL =================
+    '/api/v1/developer/dashboard': {
+      get: {
+        summary: 'Ringkasan Metrik Dashboard Developer',
+        tags: ['Developer'],
+        parameters: [
+          { name: 'user_id', in: 'query', required: true, schema: { type: 'integer' }, description: 'ID Developer aktif' },
+        ],
+        responses: {
+          200: { description: 'Statistik tugas developer, proyek aktif, dan timeline' },
+          401: { description: 'User ID wajib disertakan' },
+        },
+      },
+    },
+    '/api/v1/developer/tasks': {
+      get: {
+        summary: 'Daftar Tugas & Fase Pengerjaan Developer',
+        tags: ['Developer'],
+        parameters: [
+          { name: 'user_id', in: 'query', required: true, schema: { type: 'integer' }, description: 'ID Developer aktif' },
+        ],
+        responses: {
+          200: { description: 'Daftar task berurutan sesuai fase, status lock, dan deadline' },
+          401: { description: 'User ID tidak ditemukan' },
+        },
+      },
+    },
+    '/api/v1/developer/tasks/{id}': {
+      put: {
+        summary: 'Setor Progres atau Update Status Tugas Developer',
+        tags: ['Developer'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'ID task progress atau assignment id' },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
+                  progress_percentage: { type: 'number', minimum: 0, maximum: 100 },
+                  notes: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Progres tugas berhasil disimpan dan status order tersinkronisasi' },
+          403: { description: 'Fase sebelumnya belum selesai 100% atau proyek sudah selesai' },
+          404: { description: 'Tugas penugasan tidak ditemukan' },
+        },
+      },
+    },
+    '/api/v1/developer/maintenance': {
+      get: {
+        summary: 'Daftar Tiket Maintenance yang Ditugaskan ke Developer',
+        tags: ['Developer'],
+        parameters: [
+          { name: 'user_id', in: 'query', schema: { type: 'integer' }, description: 'ID Developer aktif' },
+        ],
+        responses: {
+          200: { description: 'Daftar tiket maintenance terkait order turunan developer' },
+        },
+      },
+    },
+    '/api/v1/developer/maintenance/{id}': {
+      get: {
+        summary: 'Detail Tiket Maintenance untuk Developer',
+        tags: ['Developer'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'ID tiket maintenance' },
+        ],
+        responses: {
+          200: { description: 'Detail lengkap maintenance, riwayat tim awal, dan status progres' },
+          404: { description: 'Tiket maintenance tidak ditemukan' },
+        },
+      },
+      put: {
+        summary: 'Setor Catatan / Update Progres Perbaikan Maintenance oleh Developer',
+        tags: ['Developer'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'ID tiket maintenance' },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string', enum: ['in_progress', 'completed'] },
+                  notes: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Catatan progres pemeliharaan berhasil disimpan' },
+          404: { description: 'Tiket maintenance tidak ditemukan' },
         },
       },
     },

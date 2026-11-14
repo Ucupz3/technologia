@@ -51,4 +51,48 @@ describe('Swagger UI & OpenAPI Documentation Verification', () => {
       );
     }
   });
+
+  test('paths include all Developer portal and Schedules endpoints', () => {
+    const devAndSchedulePaths = [
+      '/api/v1/schedules',
+      '/api/v1/schedules/{id}',
+      '/api/v1/schedules/maintenances',
+      '/api/v1/schedules/developer',
+      '/api/v1/schedules/developer/{userId}',
+      '/api/v1/developer/dashboard',
+      '/api/v1/developer/tasks',
+      '/api/v1/developer/tasks/{id}',
+      '/api/v1/developer/maintenance',
+      '/api/v1/developer/maintenance/{id}',
+    ];
+
+    for (const path of devAndSchedulePaths) {
+      assert.ok(
+        openapiSpecification.paths[path],
+        `Developer/Schedule path ${path} must be documented in OpenAPI specification`
+      );
+    }
+  });
+
+  test('paths include Services, Customers, and Dashboard endpoints', () => {
+    const additionalPaths = [
+      '/api/v1/services',
+      '/api/v1/services/categories/options',
+      '/api/v1/services/{id}',
+      '/api/v1/customers',
+      '/api/v1/customers/sales/options',
+      '/api/v1/customers/{id}',
+      '/api/v1/customers/{id}/pics',
+      '/api/v1/dashboard',
+      '/api/v1/dashboard/super-admin',
+      '/api/v1/dashboard/admin',
+    ];
+
+    for (const path of additionalPaths) {
+      assert.ok(
+        openapiSpecification.paths[path],
+        `Path ${path} must be documented in OpenAPI specification`
+      );
+    }
+  });
 });
