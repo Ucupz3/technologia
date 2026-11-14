@@ -34,58 +34,28 @@ const menuByRole = {
     { label: 'Invoices', href: '/admin/invoices', icon: Newspaper },
   ],
   cs: [
-    { label: 'Dashboard', href: '/dashboard', icon: Home },
-    { label: 'Customers', href: '/cs/customers', icon: Contact },
-    { label: 'Orders', href: '/cs/orders', icon: Package },
-    { label: 'Invoices', href: '/cs/invoices', icon: Newspaper },
+    { label: 'Dashboard', href: '/dashboard',      icon: Home },
+    { label: 'Customers', href: '/cs/customers',    icon: Contact },
+    { label: 'Orders',    href: '/cs/orders',       icon: Package },
+    { label: 'Invoices',  href: '/cs/invoices',     icon: Newspaper },
   ],
   developer: [
-    { label: 'Dashboard', href: '/developer/dashboard', icon: Home },
-    { label: 'Task & Progress', href: '/developer/tasks', icon: Briefcase },
-    { label: 'Jadwal', href: '/developer/schedules', icon: Calendar },
-    { label: 'Maintenance', href: '/developer/maintenance', icon: ClipboardClock },
+    { label: 'Schedule', href: '/developer/schedule', icon: Calendar },
   ],
 };
 
-/* ============================================================
-   META PER MODE (label, deskripsi, icon, warna badge)
-   ============================================================ */
-const MODE_META = {
-  super_admin: {
-    label: 'Super Admin',
-    description: 'Akses penuh ke seluruh sistem',
-    icon: Shield,
-    badge: 'bg-orange-500/10 text-orange-500 border-orange-500/30 dark:text-orange-400',
-    dot: 'bg-orange-500',
-  },
-  admin: {
-    label: 'Admin',
-    description: 'Kelola operasional harian',
-    icon: Shield,
-    badge: 'bg-blue-500/10 text-blue-500 border-blue-500/30 dark:text-blue-400',
-    dot: 'bg-blue-500',
-  },
-  cs: {
-    label: 'Customer Service (CS)',
-    description: 'Kelola customer & order',
-    icon: Briefcase,
-    badge: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30 dark:text-emerald-400',
-    dot: 'bg-emerald-500',
-  },
-  customer_service: {
-    label: 'Customer Service',
-    description: 'Layani customer',
-    icon: Headset,
-    badge: 'bg-teal-500/10 text-teal-500 border-teal-500/30 dark:text-teal-400',
-    dot: 'bg-teal-500',
-  },
-  developer: {
-    label: 'Developer',
-    description: 'Tools untuk development',
-    icon: Code,
-    badge: 'bg-purple-500/10 text-purple-500 border-purple-500/30 dark:text-purple-400',
-    dot: 'bg-purple-500',
-  },
+const roleLabel = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  cs: 'Customer Service',
+  developer: 'Developer',
+};
+
+const roleBadgeColor = {
+  super_admin: 'bg-orange-500/15 text-orange-400 border-orange-500/40',
+  admin:       'bg-blue-500/15 text-blue-400 border-blue-500/40',
+  cs:          'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+  developer:   'bg-purple-500/15 text-purple-400 border-purple-500/40',
 };
 
 const SIDEBAR_STORAGE_KEY = 'erp_sidebar_open';

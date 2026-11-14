@@ -30,9 +30,9 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // Default role = role dengan is_default = 1, fallback ke "Sales"
+        // Default role = role dengan is_default = 1, fallback ke "CS"
         $defaultRole = Role::where('is_default', 1)->first()
-                    ?? Role::where('name', 'Sales')->first();
+                    ?? Role::where('name', 'CS')->first();
 
         if (!$defaultRole) {
             throw ValidationException::withMessages([

@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::any('{path}', function ($path) {
-    $express = rtrim(env('EXPRESS_API_URL', 'http://localhost:4000'), '/');
-    $token   = env('EXPRESS_INTERNAL_TOKEN', '');
+    $express = rtrim(config('services.express.url', env('EXPRESS_API_URL', env('BACKEND_URL', 'http://localhost:4000'))), '/');
+    $token   = config('services.express.token', env('EXPRESS_INTERNAL_TOKEN', env('INTERNAL_TOKEN', 'tekna-internal-secret-2026')));
 
     // Bangun URL + query string asli
     $queryString = request()->getQueryString();

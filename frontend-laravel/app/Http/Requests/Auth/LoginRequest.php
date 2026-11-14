@@ -30,10 +30,10 @@ class LoginRequest extends FormRequest
 
         // Login diurus oleh Express.js
         $express = app(ExpressService::class);
-        $result = $express->requestLogin(
-            $this->string('email'),
-            $this->string('password')
-        );
+        $email = trim((string) $this->input('email'));
+        $password = (string) $this->input('password');
+
+        $result = $express->requestLogin($email, $password);
 
         if (!$result || !($result['success'] ?? false)) {
             RateLimiter::hit($this->throttleKey());
@@ -43,7 +43,12 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        $this->session()->put('otp_email', $this->string('email'));
+        $this->session()->put('otp_email', $email);
+        if (!empty($result['otp_code'])) {
+            $this->session()->put('dev_otp_code', $result['otp_code']);
+        } else {
+            $this->session()->forget('dev_otp_code');
+        }
 
         RateLimiter::clear($this->throttleKey());
     }
