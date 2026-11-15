@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link } from '@inertiajs/react';
+import Toast from '@/Components/Toast';
 import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertCircle,
   UploadCloud, Save, Mail, Receipt, CreditCard, QrCode, Landmark
@@ -254,22 +255,7 @@ export default function InvoiceShow({ invoiceId }) {
       <Head title={`Invoice — ${invoice.invoice_number}`} />
 
       {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${
-            toast.type === 'success'
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600'
-              : 'bg-red-500/15 border-red-500/40 text-red-600'
-          }`}
-        >
-          {toast.type === 'success' ? (
-            <CheckCircle2 size={18} />
-          ) : (
-            <AlertCircle size={18} />
-          )}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       {/* Header */}
       <div className="mb-6">

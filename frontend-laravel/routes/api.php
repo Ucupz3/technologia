@@ -44,18 +44,27 @@ Route::any('{path}', function ($path) {
         $contentType = request()->header('Content-Type', '');
 
         if (str_contains($contentType, 'multipart/form-data')) {
-            // Kirim sebagai multipart (file upload)
-            $payload = ['multipart' => collect(request()->all())->map(function ($value, $key) {
-                if (request()->hasFile($key)) {
-                    $file = request()->file($key);
-                    return [
-                        'name'     => $key,
-                        'contents' => fopen($file->getRealPath(), 'r'),
-                        'filename' => $file->getClientOriginalName(),
-                    ];
+            // Kirim sebagai multipart (file upload) mendukung multi-file
+            $multipart = [];
+            foreach (request()->except(array_keys(request()->allFiles())) as $key => $value) {
+                $multipart[] = [
+                    'name'     => $key,
+                    'contents' => is_scalar($value) ? (string) $value : json_encode($value),
+                ];
+            }
+            foreach (request()->allFiles() as $key => $fileOrFiles) {
+                $files = is_array($fileOrFiles) ? $fileOrFiles : [$fileOrFiles];
+                foreach ($files as $file) {
+                    if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                        $multipart[] = [
+                            'name'     => $key,
+                            'contents' => fopen($file->getRealPath(), 'r'),
+                            'filename' => $file->getClientOriginalName(),
+                        ];
+                    }
                 }
-                return ['name' => $key, 'contents' => is_scalar($value) ? (string) $value : json_encode($value)];
-            })->values()->all()];
+            }
+            $payload = ['multipart' => $multipart];
         } else {
             // Default: JSON
             $headers['Content-Type'] = 'application/json';

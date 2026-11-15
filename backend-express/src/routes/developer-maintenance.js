@@ -51,6 +51,7 @@ router.get('/', async (req, res, next) => {
                             where: { deleted_at: null },
                             orderBy: { created_at: 'desc' },
                             take: 1,
+                            include: { progress_attachments: true },
                         },
                     },
                 },
@@ -71,6 +72,18 @@ router.get('/', async (req, res, next) => {
                         ? o.status || 'in_progress'
                         : m.status;
 
+                let errorImages = [];
+                if (devProgress?.progress_attachments && devProgress.progress_attachments.length > 0) {
+                    errorImages = devProgress.progress_attachments.map((att) => att.file_path);
+                }
+                if (errorImages.length === 0 && m.notes) {
+                    try {
+                        const parsed = JSON.parse(m.notes);
+                        if (Array.isArray(parsed.error_images)) errorImages = parsed.error_images;
+                        else if (parsed.error_image) errorImages = [parsed.error_image];
+                    } catch {}
+                }
+
                 result.push({
                     id: m.id.toString(),
                     order_id: o.id.toString(),
@@ -81,9 +94,11 @@ router.get('/', async (req, res, next) => {
                     title: m.title,
                     description: m.description || '-',
                     status: officialStatus,
-                    developer_progress_status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'in_progress'),
+                    developer_progress_status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'scheduled'),
                     developer_progress_percentage: devProgress?.progress_percentage ?? (officialStatus === 'completed' ? 100 : 0),
                     notes: m.notes || '',
+                    error_image: errorImages[0] || null,
+                    error_images: errorImages,
                     start_datetime: m.start_datetime ? new Date(m.start_datetime).toISOString().split('T')[0] : '-',
                     end_datetime: m.end_datetime ? new Date(m.end_datetime).toISOString().split('T')[0] : '-',
                     created_at: m.created_at ? new Date(m.created_at).toISOString().split('T')[0] : '-',
@@ -102,12 +117,31 @@ router.get('/', async (req, res, next) => {
 
 // GET /api/v1/developer/maintenance/:id
 // Mengambil DETAIL LENGKAP tiket maintenance untuk halaman Detail Maintenance Developer
+// Mendukung pencarian via ID tiket angka maupun string nomor order (misal: ORD-20261106-003)
 router.get('/:id', async (req, res, next) => {
     try {
-        const id = BigInt(req.params.id);
+        const rawParam = req.params.id ? String(req.params.id).trim() : '';
+        const isNumeric = /^\d+$/.test(rawParam);
+
+        let whereClause = null;
+        if (isNumeric) {
+            const numericId = BigInt(rawParam);
+            whereClause = {
+                deleted_at: null,
+                OR: [{ id: numericId }, { order_id: numericId }],
+            };
+        } else {
+            whereClause = {
+                deleted_at: null,
+                OR: [
+                    { orders: { order_number: rawParam } },
+                    { orders: { parent_order: { order_number: rawParam } } },
+                ],
+            };
+        }
 
         const m = await prisma.maintenances.findFirst({
-            where: { id, deleted_at: null },
+            where: whereClause,
             include: {
                 orders: {
                     include: {
@@ -137,6 +171,7 @@ router.get('/:id', async (req, res, next) => {
                                     where: { deleted_at: null },
                                     orderBy: { created_at: 'desc' },
                                     take: 1,
+                                    include: { progress_attachments: true },
                                 },
                             },
                         },
@@ -163,6 +198,22 @@ router.get('/:id', async (req, res, next) => {
             job: a.jobs?.name || '-',
         }));
 
+        let cleanNotes = m.notes || '';
+        let errorImages = [];
+        if (devProgress?.progress_attachments && devProgress.progress_attachments.length > 0) {
+            errorImages = devProgress.progress_attachments.map((att) => att.file_path);
+        }
+        if (m.notes) {
+            try {
+                const parsed = JSON.parse(m.notes);
+                if (typeof parsed === 'object' && parsed !== null) {
+                    if (Array.isArray(parsed.error_images)) errorImages = parsed.error_images;
+                    else if (parsed.error_image) errorImages = [parsed.error_image];
+                    cleanNotes = parsed.admin_notes || parsed.evaluation_note || parsed.notes || '';
+                }
+            } catch {}
+        }
+
         res.json({
             success: true,
             data: {
@@ -170,9 +221,11 @@ router.get('/:id', async (req, res, next) => {
                 title: m.title,
                 description: m.description || '-',
                 status: m.status,
-                notes: m.notes || '',
+                notes: cleanNotes,
+                error_image: errorImages[0] || null,
+                error_images: errorImages,
                 developer_progress: {
-                    status: devProgress?.status || (m.status === 'completed' ? 'completed' : 'in_progress'),
+                    status: devProgress?.status || (m.status === 'completed' ? 'completed' : 'scheduled'),
                     progress_percentage: devProgress?.progress_percentage ?? (m.status === 'completed' ? 100 : 0),
                     notes: devProgress?.notes || '',
                     updated_at: devProgress?.updated_at ? new Date(devProgress.updated_at).toISOString().replace('T', ' ').slice(0, 16) : null,
@@ -225,11 +278,29 @@ router.get('/:id', async (req, res, next) => {
 // Developer TIDAK MENGUBAH status tiket maintenance atau status order pusat (wewenang eksklusif Super Admin).
 router.put('/:id', async (req, res, next) => {
     try {
-        const { id } = req.params;
+        const rawParam = req.params.id ? String(req.params.id).trim() : '';
+        const isNumeric = /^\d+$/.test(rawParam);
         const { status, notes } = req.body;
 
+        let whereClause = null;
+        if (isNumeric) {
+            const numericId = BigInt(rawParam);
+            whereClause = {
+                deleted_at: null,
+                OR: [{ id: numericId }, { order_id: numericId }],
+            };
+        } else {
+            whereClause = {
+                deleted_at: null,
+                OR: [
+                    { orders: { order_number: rawParam } },
+                    { orders: { parent_order: { order_number: rawParam } } },
+                ],
+            };
+        }
+
         const m = await prisma.maintenances.findFirst({
-            where: { id: BigInt(id), deleted_at: null },
+            where: whereClause,
             include: {
                 orders: {
                     include: {
@@ -284,7 +355,7 @@ router.put('/:id', async (req, res, next) => {
         // Developer TIDAK mengubah maintenances.status ataupun orders.status!
         // Hanya perbarui timestamp updated_at pada tiket
         await prisma.maintenances.update({
-            where: { id: BigInt(id) },
+            where: { id: m.id },
             data: {
                 updated_at: new Date(),
             },

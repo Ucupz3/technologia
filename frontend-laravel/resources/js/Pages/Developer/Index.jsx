@@ -253,12 +253,6 @@ export default function DeveloperDashboard() {
               <Clock size={18} className="text-amber-400" />
               <h2 className="text-sm font-semibold text-brand-text">Tenggat Waktu / Deadline Terdekat</h2>
             </div>
-            <Link
-              href="/developer/tasks"
-              className="text-xs text-brand-accent hover:underline flex items-center gap-1 font-medium"
-            >
-              Semua Tugas <ArrowRight size={12} />
-            </Link>
           </div>
 
           {upcomingTasks.length === 0 ? (
@@ -380,12 +374,6 @@ export default function DeveloperDashboard() {
             <span className="text-xs text-brand-text-muted">
               Menampilkan {displayedProjects.length} dari {projects.length} penugasan
             </span>
-            <Link
-              href="/developer/tasks"
-              className="text-xs font-semibold text-brand-accent hover:underline flex items-center gap-1 shrink-0"
-            >
-              Lihat Semua Tugas <ArrowRight size={13} />
-            </Link>
           </div>
         </div>
 
@@ -516,8 +504,6 @@ export default function DeveloperDashboard() {
                 <tr>
                   <th className="px-4 py-3 text-xs font-semibold uppercase">No Order</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase">Customer</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">Layanan</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">Job Anda</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase">Status Proyek</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase">Progres Saya</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase text-right">Aksi</th>
@@ -545,36 +531,17 @@ export default function DeveloperDashboard() {
                       {project.customer_name}
                     </td>
 
-                    {/* 3. Layanan */}
-                    <td className="px-4 py-3 text-sm text-brand-text-muted whitespace-nowrap">
-                      {project.service_name}
-                    </td>
-
-                    {/* 4. Job Penugasan Developer */}
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {project.jobs?.map((j) => (
-                          <span
-                            key={j.assignment_id}
-                            className="inline-block px-2.5 py-0.5 rounded bg-brand-accent/10 text-brand-accent text-xs font-semibold border border-brand-accent/20 whitespace-nowrap"
-                          >
-                            {j.job_name}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-
-                    {/* 5. Status Proyek Pusat */}
+                    {/* 3. Status Proyek Pusat */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <OrderStatusBadge status={project.status} />
                     </td>
 
-                    {/* 6. Progres Tugas Saya */}
+                    {/* 4. Progres Tugas Saya */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <DeveloperProjectProgressBadge jobs={project.jobs} />
                     </td>
 
-                    {/* 7. Tombol Aksi Detail */}
+                    {/* 5. Tombol Aksi Detail */}
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <button
                         type="button"
@@ -591,16 +558,10 @@ export default function DeveloperDashboard() {
 
             {/* Banner Footer Jika Total Proyek Lebih Dari 5 */}
             {projects.length > 5 && (
-              <div className="p-3 bg-brand-primary/50 border-t border-brand-border text-xs text-brand-text-muted flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4">
+              <div className="p-3 bg-brand-primary/50 border-t border-brand-border text-xs text-brand-text-muted flex items-center justify-between px-4">
                 <span>
-                  Menampilkan 5 penugasan proyek terbaru. Buka menu tugas untuk memantau dan mengupdate seluruh pekerjaan Anda.
+                  Menampilkan 5 penugasan proyek terbaru.
                 </span>
-                <Link
-                  href="/developer/tasks"
-                  className="text-brand-accent hover:underline font-semibold flex items-center gap-1 shrink-0"
-                >
-                  Buka Semua Tugas ({projects.length} Proyek) <ArrowRight size={13} />
-                </Link>
               </div>
             )}
           </div>
@@ -641,23 +602,35 @@ export default function DeveloperDashboard() {
             {/* Isi Modal */}
             <div className="p-6 overflow-y-auto space-y-5 flex-1 text-sm">
               {/* Ringkasan Proyek */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-3 bg-brand-primary/50 border border-brand-border/60 rounded-xl">
-                  <span className="text-brand-text-muted block text-[11px]">Jadwal Periode Proyek:</span>
-                  <span className="font-semibold text-brand-text text-xs mt-0.5 flex items-center gap-1.5">
-                    <Calendar size={13} className="text-brand-accent" />
-                    {selectedProject.start_date_project && selectedProject.end_date_project
-                      ? `${formatDate(selectedProject.start_date_project)} s/d ${formatDate(selectedProject.end_date_project)}`
-                      : selectedProject.end_date_project
-                      ? `Deadline: ${formatDate(selectedProject.end_date_project)}`
-                      : '—'}
+                  <span className="text-brand-text-muted block text-[11px]">Layanan Dipesan:</span>
+                  <span className="font-semibold text-brand-text text-xs mt-0.5 block leading-relaxed" title={selectedProject.service_name}>
+                    {selectedProject.service_name || '—'}
                   </span>
                 </div>
                 <div className="p-3 bg-brand-primary/50 border border-brand-border/60 rounded-xl">
-                  <span className="text-brand-text-muted block text-[11px]">Total Job Ditugaskan:</span>
-                  <span className="font-semibold text-brand-text text-xs mt-0.5 block">
-                    {selectedProject.jobs?.length || 0} Tugas Spesialisasi
+                  <span className="text-brand-text-muted block text-[11px]">Jadwal Periode Proyek:</span>
+                  <span className="font-semibold text-brand-text text-xs mt-0.5 flex items-center gap-1.5">
+                    <Calendar size={13} className="text-brand-accent shrink-0" />
+                    <span>
+                      {selectedProject.start_date_project && selectedProject.end_date_project
+                        ? `${formatDate(selectedProject.start_date_project)} s/d ${formatDate(selectedProject.end_date_project)}`
+                        : selectedProject.end_date_project
+                        ? `Deadline: ${formatDate(selectedProject.end_date_project)}`
+                        : '—'}
+                    </span>
                   </span>
+                </div>
+                <div className="p-3 bg-brand-primary/50 border border-brand-border/60 rounded-xl">
+                  <span className="text-brand-text-muted block text-[11px]">Job & Spesialisasi Anda:</span>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {selectedProject.jobs?.map((j) => (
+                      <span key={j.assignment_id} className="inline-block px-2 py-0.5 rounded bg-brand-accent/15 text-brand-accent font-semibold text-[11px] border border-brand-accent/30">
+                        {j.job_name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -748,13 +721,7 @@ export default function DeveloperDashboard() {
             </div>
 
             {/* Footer Modal */}
-            <div className="p-4 border-t border-brand-border flex items-center justify-between bg-brand-primary/40">
-              <Link
-                href="/developer/tasks"
-                className="text-xs font-semibold text-brand-accent hover:underline flex items-center gap-1.5"
-              >
-                <PlayCircle size={14} /> Buka Halaman Tugas untuk Update Setoran &rarr;
-              </Link>
+            <div className="p-4 border-t border-brand-border flex items-center justify-end bg-brand-primary/40">
               <button
                 type="button"
                 onClick={() => setSelectedProject(null)}

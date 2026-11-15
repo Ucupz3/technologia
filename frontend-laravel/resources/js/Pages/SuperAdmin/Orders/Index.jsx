@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link } from '@inertiajs/react';
+import Toast from '@/Components/Toast';
 import {
   RefreshCw, Search, Plus, FileText, 
   CheckCircle2, AlertCircle, Users, ChevronDown, Check, X
@@ -74,7 +75,11 @@ export default function OrdersIndex() {
 
   const filtered = orders.filter((o) => {
     const q = search.toLowerCase();
-    const matchSearch = !q || o.order_number?.toLowerCase().includes(q) || o.customer_name_snapshot?.toLowerCase().includes(q);
+    const matchSearch =
+      !q ||
+      o.order_number?.toLowerCase().includes(q) ||
+      o.customer_name_snapshot?.toLowerCase().includes(q) ||
+      o.parent_order?.order_number?.toLowerCase().includes(q);
     const matchStatus = !statusFilter || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -83,12 +88,7 @@ export default function OrdersIndex() {
     <RoleLayout>
       <Head title="Orders" />
 
-      {toast && (
-        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600' : 'bg-red-500/15 border-red-500/40 text-red-600'}`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-brand-text">Orders</h1>
@@ -162,7 +162,7 @@ export default function OrdersIndex() {
       <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
         {loading && <div className="p-12 text-center text-brand-text-muted"><RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />Loading...</div>}
         {error && <div className="p-8 text-center"><p className="text-red-500 mb-3">Error: {error}</p><button onClick={load} className="text-brand-accent underline">Coba lagi</button></div>}
-        {!loading && !error && filtered.length === 0 && <div className="p-12 text-center"><FileText size={48} className="mx-auto mb-3 text-brand-text-muted/40" /><p className="text-brand-text-muted">Tidak ada order</p></div>}
+        {!loading && !error && filtered.length === 0 && <div className="p-12 text-center"><FileText size={48} className="mx-auto mb-3 text-brand-text-muted/40" /><p className="text-brand-text-muted">Tidak ada order yang sesuai</p></div>}
 
         {!loading && !error && filtered.length > 0 && (
           <div className="overflow-x-auto">
@@ -172,7 +172,7 @@ export default function OrdersIndex() {
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">No Order</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Customer</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Tim</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Total</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Total Biaya</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Status</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase text-right">Aksi</th>
                 </tr>
@@ -181,20 +181,43 @@ export default function OrdersIndex() {
                 {filtered.map((o) => (
                   <tr key={o.id} className="hover:bg-brand-muted/40 transition">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-brand-text text-sm font-mono">{o.order_number}</div>
-                      <div className="text-xs text-brand-text-muted">{formatDate(o.created_at)}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-brand-text text-sm font-mono">{o.order_number}</span>
+                        {o.parent_order_id ? (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                            Maintenance
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                            Proyek
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-brand-text-muted mt-0.5">
+                        {formatDate(o.created_at)}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-brand-text">{o.customer_name_snapshot}</td>
                     <td className="px-4 py-3 text-sm text-brand-text-muted">
                       {o.teams?.name ? <span className="inline-flex items-center gap-1 text-xs bg-brand-muted/50 px-2 py-1 rounded border border-brand-border"><Users size={12} /> {o.teams.name}</span> : '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-brand-accent">{formatRupiah(o.grand_total)}</td>
+                    <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      {o.parent_order_id ? (
+                        <div>
+                          <span className="font-semibold text-brand-text">Rp 0</span>
+                          <span className="block text-[10px] text-emerald-400 font-medium">Garansi / Bebas Biaya</span>
+                        </div>
+                      ) : (
+                        <span className="font-semibold text-brand-accent">{formatRupiah(o.grand_total)}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3"><OrderStatusBadge status={o.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end">
                         <Link
-                          href={`${basePath}/orders/${o.id}`}
+                          href={o.parent_order_id ? `${basePath}/maintenance/${o.maintenances?.[0]?.id || o.id}` : `${basePath}/orders/${o.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
+                          title={o.parent_order_id ? 'Buka Detail Tiket Maintenance' : 'Buka Detail Order'}
                         >
                           Detail
                         </Link>

@@ -36,17 +36,18 @@ function MaintenanceStatusBadge({ status }) {
 }
 
 function DeveloperProgressBadge({ status, percentage }) {
-    if (status === 'completed' || percentage === 100) {
+    const pct = typeof percentage === 'number' ? percentage : parseInt(percentage, 10) || 0;
+    if (status === 'completed' || pct === 100) {
         return (
             <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/40">
                 100% Selesai
             </span>
         );
     }
-    if (status === 'in_progress' || (percentage > 0 && percentage < 100)) {
+    if (pct > 0 && pct < 100) {
         return (
             <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-blue-500/15 text-blue-400 border border-blue-500/40">
-                {percentage || 50}% Pengerjaan
+                {pct}% Pengerjaan
             </span>
         );
     }

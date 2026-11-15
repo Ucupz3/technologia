@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head } from '@inertiajs/react';
+import Toast from '@/Components/Toast';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 import CategoriesTab from './Categories/Index';
@@ -33,16 +34,7 @@ export default function MasterDataIndex() {
     <RoleLayout>
       <Head title="Master Data Management" />
 
-      {toast && (
-        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border transition ${
-          toast.type === 'success'
-            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-            : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       <div className="mb-14">
         <h1 className="text-2xl font-bold text-brand-text">Management</h1>

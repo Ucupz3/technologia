@@ -2,8 +2,28 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { generateOrderNumber } from '../lib/orderHelpers.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 export const maintenancesRouter = Router();
+
+const maintenanceUploadDir = './public/uploads/maintenance';
+if (!fs.existsSync(maintenanceUploadDir)) {
+  fs.mkdirSync(maintenanceUploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, maintenanceUploadDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, 'error-' + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 // GET /api/v1/maintenances/completed-orders
 // Mengambil daftar order yang berstatus 'completed' untuk dropdown pembuatan maintenance
@@ -95,6 +115,7 @@ maintenancesRouter.get('/', async (_req, res, next) => {
                   where: { deleted_at: null },
                   orderBy: { created_at: 'desc' },
                   take: 1,
+                  include: { progress_attachments: true },
                 },
               },
             },
@@ -120,14 +141,32 @@ maintenancesRouter.get('/', async (_req, res, next) => {
           ? order?.status || 'in_progress'
           : m.status;
 
+      let cleanNotes = m.notes || '';
+      let errorImages = [];
+      if (devProgress?.progress_attachments && devProgress.progress_attachments.length > 0) {
+        errorImages = devProgress.progress_attachments.map((att) => att.file_path);
+      }
+      if (m.notes) {
+        try {
+          const parsed = JSON.parse(m.notes);
+          if (typeof parsed === 'object' && parsed !== null) {
+            if (Array.isArray(parsed.error_images)) errorImages = parsed.error_images;
+            else if (parsed.error_image) errorImages = [parsed.error_image];
+            cleanNotes = parsed.admin_notes || parsed.evaluation_note || parsed.notes || '';
+          }
+        } catch {}
+      }
+
       return {
         id: m.id.toString(),
         title: m.title,
         description: m.description || '-',
         status: officialStatus,
-        developer_progress_status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'in_progress'),
+        developer_progress_status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'scheduled'),
         developer_progress_percentage: devProgress?.progress_percentage ?? (officialStatus === 'completed' ? 100 : 0),
-        notes: m.notes || '',
+        notes: cleanNotes,
+        error_image: errorImages[0] || null,
+        error_images: errorImages,
         start_datetime: m.start_datetime ? new Date(m.start_datetime).toISOString().split('T')[0] : '-',
         end_datetime: m.end_datetime ? new Date(m.end_datetime).toISOString().split('T')[0] : '-',
         created_at: m.created_at ? new Date(m.created_at).toISOString().split('T')[0] : '-',
@@ -161,7 +200,7 @@ const createMaintenanceSchema = z.object({
   status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).default('in_progress'),
 });
 
-maintenancesRouter.post('/', async (req, res, next) => {
+maintenancesRouter.post('/', upload.any(), async (req, res, next) => {
   try {
     const parsed = createMaintenanceSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -265,7 +304,7 @@ maintenancesRouter.post('/', async (req, res, next) => {
           grand_total: 0,
           start_date_project: startDate,
           end_date_project: endDate,
-          notes: `Tiket Maintenance: ${title} (Order Turunan dari ${parentOrder.order_number})`,
+          notes: description ? description.trim() : (title ? title.trim() : ''),
         },
       });
 
@@ -299,19 +338,49 @@ maintenancesRouter.post('/', async (req, res, next) => {
         },
       });
 
-      // 5. Buat initial progress di progress_order
-      await tx.progress_order.create({
+      // 5. Buat initial progress di progress_order (enum progress_order_status: pending, in_progress, completed, cancelled)
+      const initProgress = await tx.progress_order.create({
         data: {
           assignment_id: assignment.id,
           title: `Perbaikan Kendala: ${title}`,
-          status: status === 'completed' ? 'completed' : 'in_progress',
+          status: status === 'completed' ? 'completed' : 'pending',
           progress_percentage: status === 'completed' ? 100 : 0,
           notes: `Laporan kendala klien: ${description}`,
           started_at: startDate,
         },
       });
 
+      const uploadedFiles = req.files || (req.file ? [req.file] : []);
+      const uploadedFilePaths = [];
+      const uploadedFileNames = [];
+
+      if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        for (const file of uploadedFiles) {
+          const filePath = `/uploads/maintenance/${file.filename}`;
+          uploadedFilePaths.push(filePath);
+          uploadedFileNames.push(file.originalname);
+
+          await tx.progress_attachments.create({
+            data: {
+              progress_id: initProgress.id,
+              file_path: filePath,
+              file_name: file.originalname,
+              file_type: file.mimetype || 'image/jpeg',
+              file_size: BigInt(file.size || 0),
+            },
+          });
+        }
+      }
+
       // 6. Buat tiket di tabel maintenances
+      const maintenanceNotes = uploadedFilePaths.length > 0
+        ? JSON.stringify({
+            error_images: uploadedFilePaths,
+            error_image: uploadedFilePaths[0],
+            file_names: uploadedFileNames,
+          })
+        : null;
+
       const maintenance = await tx.maintenances.create({
         data: {
           order_id: childOrder.id,
@@ -320,7 +389,7 @@ maintenancesRouter.post('/', async (req, res, next) => {
           status,
           start_datetime: startDate,
           end_datetime: endDate,
-          notes: null,
+          notes: maintenanceNotes,
         },
       });
 
@@ -363,12 +432,34 @@ maintenancesRouter.post('/', async (req, res, next) => {
 
 // GET /api/v1/maintenances/:id
 // Mengambil detail lengkap satu tiket maintenance (termasuk order induk, tim awal, dan histori)
+// Mendukung pencarian via ID angka tiket maintenance, ID order, maupun kode string nomor order (contoh: ORD-20261106-003)
 maintenancesRouter.get('/:id', async (req, res, next) => {
   try {
-    const id = BigInt(req.params.id);
+    const rawParam = req.params.id ? String(req.params.id).trim() : '';
+    const isNumeric = /^\d+$/.test(rawParam);
+
+    let whereClause = null;
+    if (isNumeric) {
+      const numericId = BigInt(rawParam);
+      whereClause = {
+        deleted_at: null,
+        OR: [
+          { id: numericId },
+          { order_id: numericId },
+        ],
+      };
+    } else {
+      whereClause = {
+        deleted_at: null,
+        OR: [
+          { orders: { order_number: rawParam } },
+          { orders: { parent_order: { order_number: rawParam } } },
+        ],
+      };
+    }
 
     const m = await prisma.maintenances.findFirst({
-      where: { id, deleted_at: null },
+      where: whereClause,
       include: {
         orders: {
           include: {
@@ -398,6 +489,7 @@ maintenancesRouter.get('/:id', async (req, res, next) => {
                   where: { deleted_at: null },
                   orderBy: { created_at: 'desc' },
                   take: 1,
+                  include: { progress_attachments: true },
                 },
               },
             },
@@ -411,7 +503,10 @@ maintenancesRouter.get('/:id', async (req, res, next) => {
     });
 
     if (!m) {
-      return res.status(404).json({ success: false, message: 'Tiket maintenance tidak ditemukan' });
+      return res.status(404).json({
+        success: false,
+        message: `Tiket maintenance tidak ditemukan untuk ID / Nomor Order '${rawParam}'`,
+      });
     }
 
     const childOrder = m.orders;
@@ -442,6 +537,22 @@ maintenancesRouter.get('/:id', async (req, res, next) => {
       job: a.jobs?.name || '-',
     }));
 
+    let cleanNotes = m.notes || '';
+    let errorImages = [];
+    if (devProgress?.progress_attachments && devProgress.progress_attachments.length > 0) {
+      errorImages = devProgress.progress_attachments.map((att) => att.file_path);
+    }
+    if (m.notes) {
+      try {
+        const parsed = JSON.parse(m.notes);
+        if (typeof parsed === 'object' && parsed !== null) {
+          if (Array.isArray(parsed.error_images)) errorImages = parsed.error_images;
+          else if (parsed.error_image) errorImages = [parsed.error_image];
+          cleanNotes = parsed.admin_notes || parsed.evaluation_note || parsed.notes || '';
+        }
+      } catch {}
+    }
+
     res.json({
       success: true,
       data: {
@@ -449,9 +560,11 @@ maintenancesRouter.get('/:id', async (req, res, next) => {
         title: m.title,
         description: m.description || '-',
         status: officialStatus,
-        notes: m.notes || '',
+        notes: cleanNotes,
+        error_image: errorImages[0] || null,
+        error_images: errorImages,
         developer_progress: {
-          status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'in_progress'),
+          status: devProgress?.status || (officialStatus === 'completed' ? 'completed' : 'scheduled'),
           progress_percentage: devProgress?.progress_percentage ?? (officialStatus === 'completed' ? 100 : 0),
           notes: devProgress?.notes || '',
           updated_at: devProgress?.updated_at ? new Date(devProgress.updated_at).toISOString().replace('T', ' ').slice(0, 16) : null,
@@ -508,29 +621,62 @@ maintenancesRouter.get('/:id', async (req, res, next) => {
   }
 });
 
-// PUT /api/v1/maintenances/:id
+// PUT & PATCH /api/v1/maintenances/:id (dan /:id/status)
 // Update status / catatan tiket maintenance oleh Super Admin atau Admin
-maintenancesRouter.put('/:id', async (req, res, next) => {
+const updateMaintenanceHandler = async (req, res, next) => {
   try {
-    const id = BigInt(req.params.id);
+    const rawParam = req.params.id ? String(req.params.id).trim() : '';
+    const isNumeric = /^\d+$/.test(rawParam);
     const { status, notes, start_datetime, end_datetime } = req.body;
 
-    const currentM = await prisma.maintenances.findUnique({
-      where: { id },
-      include: { orders: true },
-    });
+    let currentM = null;
+    if (isNumeric) {
+      const numericId = BigInt(rawParam);
+      currentM = await prisma.maintenances.findFirst({
+        where: {
+          deleted_at: null,
+          OR: [{ id: numericId }, { order_id: numericId }],
+        },
+        include: { orders: true },
+      });
+    } else {
+      currentM = await prisma.maintenances.findFirst({
+        where: {
+          deleted_at: null,
+          OR: [
+            { orders: { order_number: rawParam } },
+            { orders: { parent_order: { order_number: rawParam } } },
+          ],
+        },
+        include: { orders: true },
+      });
+    }
 
     if (!currentM) {
-      return res.status(404).json({ success: false, message: 'Tiket maintenance tidak ditemukan' });
+      return res.status(404).json({
+        success: false,
+        message: `Tiket maintenance tidak ditemukan untuk ID / Nomor Order '${rawParam}'`,
+      });
     }
 
     const prevStatus = currentM.orders?.status || currentM.status;
 
+    let newNotes = notes !== undefined ? notes : undefined;
+    if (notes !== undefined && currentM.notes) {
+      try {
+        const parsed = JSON.parse(currentM.notes);
+        if (typeof parsed === 'object' && parsed !== null && (parsed.error_images || parsed.error_image)) {
+          parsed.admin_notes = notes || '';
+          newNotes = JSON.stringify(parsed);
+        }
+      } catch {}
+    }
+
     const updated = await prisma.maintenances.update({
-      where: { id },
+      where: { id: currentM.id },
       data: {
         status: status || undefined,
-        notes: notes !== undefined ? notes : undefined,
+        notes: newNotes,
         start_datetime: start_datetime ? new Date(start_datetime) : undefined,
         end_datetime: end_datetime ? new Date(end_datetime) : undefined,
         updated_at: new Date(),
@@ -573,14 +719,48 @@ maintenancesRouter.put('/:id', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+maintenancesRouter.put('/:id', updateMaintenanceHandler);
+maintenancesRouter.patch('/:id', updateMaintenanceHandler);
+maintenancesRouter.patch('/:id/status', updateMaintenanceHandler);
 
 // DELETE /api/v1/maintenances/:id (Soft delete)
 maintenancesRouter.delete('/:id', async (req, res, next) => {
   try {
-    const id = BigInt(req.params.id);
+    const rawParam = req.params.id ? String(req.params.id).trim() : '';
+    const isNumeric = /^\d+$/.test(rawParam);
+
+    let currentM = null;
+    if (isNumeric) {
+      const numericId = BigInt(rawParam);
+      currentM = await prisma.maintenances.findFirst({
+        where: {
+          deleted_at: null,
+          OR: [{ id: numericId }, { order_id: numericId }],
+        },
+      });
+    } else {
+      currentM = await prisma.maintenances.findFirst({
+        where: {
+          deleted_at: null,
+          OR: [
+            { orders: { order_number: rawParam } },
+            { orders: { parent_order: { order_number: rawParam } } },
+          ],
+        },
+      });
+    }
+
+    if (!currentM) {
+      return res.status(404).json({
+        success: false,
+        message: `Tiket maintenance tidak ditemukan untuk ID / Nomor Order '${rawParam}'`,
+      });
+    }
+
     await prisma.maintenances.update({
-      where: { id },
+      where: { id: currentM.id },
       data: { deleted_at: new Date() },
     });
     res.json({ success: true, message: 'Tiket maintenance berhasil dihapus' });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link } from '@inertiajs/react';
+import Toast from '@/Components/Toast';
 import {
   RefreshCw, Search, Plus, FileText, CheckCircle2, AlertCircle,
   Users, ChevronDown, Check, X, Calendar, User, Mail, Phone, MapPin, Briefcase
@@ -117,7 +118,8 @@ export default function AdminOrdersIndex() {
       o.customer_name_snapshot?.toLowerCase().includes(q) ||
       o.pic_name_snapshot?.toLowerCase().includes(q) ||
       o.customers?.name?.toLowerCase().includes(q) ||
-      o.teams?.name?.toLowerCase().includes(q);
+      o.teams?.name?.toLowerCase().includes(q) ||
+      o.parent_order?.order_number?.toLowerCase().includes(q);
     const matchStatus = !statusFilter || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -175,18 +177,7 @@ export default function AdminOrdersIndex() {
       <Head title="Orders - Admin" />
 
       {/* Toast Notifikasi */}
-      {toast && (
-        <div
-          className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${
-            toast.type === 'success'
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-              : 'bg-red-500/15 border-red-500/40 text-red-400'
-          }`}
-        >
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       {/* Header Halaman Sesuai Desain Super Admin */}
       <div className="mb-6">
@@ -347,26 +338,46 @@ export default function AdminOrdersIndex() {
               <thead className="bg-brand-muted/40 border-b border-brand-border">
                 <tr>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Order No</th>
-                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Total</th>
-                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Progress</th>
-                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Payment</th>
-                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase text-right">Action</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Total</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Progress</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Payment</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/50">
                 {filtered.map((o) => (
                   <tr key={o.id} className="hover:bg-brand-muted/40 transition">
-                    {/* 1. No Order & Tanggal (Nowrap font-mono rapi tanpa ikon jam) */}
+                    {/* 1. No Order & Tanggal */}
                     <td className="px-4 py-3">
-                      <div className="font-medium text-brand-text text-sm font-mono whitespace-nowrap">
-                        {o.order_number}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-brand-text text-sm font-mono whitespace-nowrap">
+                          {o.order_number}
+                        </span>
+                        {o.parent_order_id ? (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                            Maintenance
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                            Proyek
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs text-brand-text-muted mt-0.5">{formatDate(o.created_at)}</div>
+                      <div className="text-xs text-brand-text-muted mt-0.5">
+                        {formatDate(o.created_at)}
+                      </div>
                     </td>
 
-                     {/* 4. Total Biaya (Format rupiah aksen bersih tanpa baris diskon berlebih) */}
-                    <td className="px-4 py-3 text-sm font-semibold text-brand-accent whitespace-nowrap">
-                      {formatRupiah(o.grand_total)}
+                    {/* 4. Total Biaya */}
+                    <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      {o.parent_order_id ? (
+                        <div>
+                          <span className="font-semibold text-brand-text">Rp 0</span>
+                          <span className="block text-[10px] text-emerald-400 font-medium">Garansi / Bebas Biaya</span>
+                        </div>
+                      ) : (
+                        <span className="font-semibold text-brand-accent">{formatRupiah(o.grand_total)}</span>
+                      )}
                     </td>
 
                     {/* 5. Status Pengerjaan (Pill badge bersih persis Super Admin) */}
@@ -383,8 +394,9 @@ export default function AdminOrdersIndex() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end">
                         <Link
-                          href={`/admin/orders/${o.id}`}
+                          href={o.parent_order_id ? `/admin/maintenance/${o.maintenances?.[0]?.id || o.id}` : `/admin/orders/${o.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
+                          title={o.parent_order_id ? 'Buka Detail Tiket Maintenance' : 'Buka Detail Order'}
                         >
                           Detail
                         </Link>

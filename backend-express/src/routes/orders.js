@@ -78,6 +78,12 @@ ordersRouter.get('/', async (_req, res, next) => {
       include: {
         customers: { select: { id: true, name: true } },
         teams: { select: { id: true, name: true } },
+        parent_order: { select: { id: true, order_number: true } },
+        maintenances: {
+          where: { deleted_at: null },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
     res.json({ success: true, data: orders });
@@ -96,6 +102,14 @@ ordersRouter.get('/:id', async (req, res, next) => {
         teams: true,
         order_services: true,
         invoices: true,
+        parent_order: {
+          select: { id: true, order_number: true, customer_name_snapshot: true },
+        },
+        maintenances: {
+          where: { deleted_at: null },
+          select: { id: true, title: true, description: true, status: true },
+          take: 1,
+        },
         order_assignments: {
           include: {
             team_members: { include: { users: true } },
@@ -358,6 +372,121 @@ ordersRouter.patch('/:id/status', async (req, res, next) => {
     }
 
     res.json({ success: true, data: updatedOrder, message: 'Status pengerjaan berhasil diupdate' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============ UPDATE ORDER (EDIT TIM, PENUGASAN, TANGGAL, NOTES) ============
+const updateOrderSchema = z.object({
+  team_id: z.coerce.number().int().positive().optional().nullable(),
+  sales_id: z.coerce.number().int().positive().optional().nullable(),
+  start_date_project: z.string().optional().nullable(),
+  end_date_project: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  status: z.enum(['draft', 'pending', 'in_progress', 'completed', 'cancelled']).optional(),
+  assignments: z.array(z.object({
+    id: z.coerce.number().optional().nullable(),
+    team_member_id: z.coerce.number().int().positive(),
+    job_id: z.coerce.number().int().positive(),
+    is_lead: z.boolean().optional().default(false),
+    phase_order: z.coerce.number().int().min(1).default(1),
+    start_date: z.string().optional().nullable(),
+    end_date: z.string().optional().nullable(),
+  })).optional(),
+});
+
+ordersRouter.put('/:id', async (req, res, next) => {
+  try {
+    const id = BigInt(req.params.id);
+    const order = await prisma.orders.findFirst({ where: { id, deleted_at: null } });
+    if (!order) return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
+
+    const parsed = updateOrderSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(422).json({
+        success: false,
+        message: 'Validasi data gagal',
+        errors: parsed.error.flatten().fieldErrors,
+      });
+    }
+
+    const {
+      team_id, sales_id, start_date_project, end_date_project, notes, status, assignments
+    } = parsed.data;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updateData = { updated_at: new Date() };
+
+      if (team_id !== undefined) updateData.team_id = team_id ? BigInt(team_id) : null;
+      if (sales_id !== undefined) updateData.sales_id = sales_id ? BigInt(sales_id) : null;
+      if (start_date_project !== undefined) updateData.start_date_project = start_date_project ? new Date(start_date_project) : null;
+      if (end_date_project !== undefined) updateData.end_date_project = end_date_project ? new Date(end_date_project) : null;
+      if (notes !== undefined) updateData.notes = notes;
+      if (status !== undefined) updateData.status = status;
+
+      const updated = await tx.orders.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Update assignments if provided
+      if (assignments !== undefined) {
+        const existingAssignments = await tx.order_assignments.findMany({
+          where: { order_id: id },
+          include: { progress_order: true },
+        });
+
+        const incomingIds = assignments.filter((a) => a.id).map((a) => BigInt(a.id));
+
+        // Delete assignments not in incoming list, if they have no progress
+        for (const ea of existingAssignments) {
+          if (!incomingIds.includes(ea.id)) {
+            const hasProgress = ea.progress_order && ea.progress_order.length > 0;
+            if (!hasProgress) {
+              await tx.order_assignments.delete({ where: { id: ea.id } });
+            }
+          }
+        }
+
+        // Upsert incoming assignments
+        for (const a of assignments) {
+          if (a.id && existingAssignments.some((ea) => ea.id === BigInt(a.id))) {
+            await tx.order_assignments.update({
+              where: { id: BigInt(a.id) },
+              data: {
+                team_member_id: BigInt(a.team_member_id),
+                job_id: BigInt(a.job_id),
+                is_lead: Boolean(a.is_lead),
+                phase_order: Number(a.phase_order || 1),
+                start_date: a.start_date ? new Date(a.start_date) : null,
+                end_date: a.end_date ? new Date(a.end_date) : null,
+              },
+            });
+          } else {
+            await tx.order_assignments.create({
+              data: {
+                order_id: id,
+                team_member_id: BigInt(a.team_member_id),
+                job_id: BigInt(a.job_id),
+                is_lead: Boolean(a.is_lead),
+                phase_order: Number(a.phase_order || 1),
+                start_date: a.start_date ? new Date(a.start_date) : null,
+                end_date: a.end_date ? new Date(a.end_date) : null,
+              },
+            });
+          }
+        }
+      }
+
+      return updated;
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'Order & penugasan tim berhasil diperbarui',
+    });
   } catch (err) {
     next(err);
   }

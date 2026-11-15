@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link } from '@inertiajs/react';
+import Toast from '@/Components/Toast';
 import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertCircle,
   MapPin, Star, ChevronDown, Check, AlertTriangle, Users, X,
-  Clock, Eye, FileText
+  Clock, Eye, FileText, Pencil, Plus, Trash2, Save, Calendar
 } from 'lucide-react';
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+
+const cleanNotes = (rawNotes) => {
+  if (!rawNotes) return '';
+  const match = String(rawNotes).trim().match(/^Tiket Maintenance:\s*(.+?)\s*\(Order Turunan dari\s+[^)]+\)$/i);
+  if (match) return match[1].trim();
+  return rawNotes;
+};
 
 const STATUS_OPTIONS = [
   { value: 'draft',       label: 'Draft' },
@@ -84,6 +92,21 @@ export default function AdminOrderShow({ orderId }) {
   // State Modal Detail Setoran Progres Developer
   const [selectedAssignment, setSelectedAssignment] = useState(null);
 
+  // State Modal Edit Order & Atur Penugasan Tim
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [teamsList, setTeamsList] = useState([]);
+  const [jobsList, setJobsList] = useState([]);
+  const [salesList, setSalesList] = useState([]);
+  const [editForm, setEditForm] = useState({
+    sales_id: '',
+    team_id: '',
+    start_date_project: '',
+    end_date_project: '',
+    notes: '',
+    assignments: [],
+  });
+
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
@@ -115,10 +138,179 @@ export default function AdminOrderShow({ orderId }) {
     fetch('/api/v1/orders/options/teams')
       .then(r => r.json())
       .then(d => {
-        if (d.success) setTeams(d.data || []);
+        if (d.success) {
+          setTeams(d.data || []);
+          setTeamsList(d.data || []);
+        }
       })
       .catch(() => {});
   }, [orderId]);
+
+  // Load data master tim dan jobs saat modal edit dibuka
+  const openEditModal = () => {
+    if (!order) return;
+
+    if (teamsList.length === 0 || jobsList.length === 0 || salesList.length === 0) {
+      Promise.all([
+        fetch('/api/v1/orders/options/teams').then((r) => r.json()),
+        fetch('/api/v1/jobs?per_page=100').then((r) => r.json()),
+        fetch('/api/v1/orders/options/sales').then((r) => r.json()),
+      ])
+        .then(([tRes, jRes, sRes]) => {
+          if (tRes.success) setTeamsList(tRes.data || []);
+          if (jRes.success) setJobsList(jRes.data || []);
+          if (sRes?.success) setSalesList(sRes.data || []);
+        })
+        .catch(() => {});
+    }
+
+    setEditForm({
+      sales_id: order.sales_id ? String(order.sales_id) : '',
+      team_id: order.team_id ? String(order.team_id) : '',
+      start_date_project: order.start_date_project ? order.start_date_project.split('T')[0] : '',
+      end_date_project: order.end_date_project ? order.end_date_project.split('T')[0] : '',
+      notes: cleanNotes(order.notes),
+      assignments: (order.order_assignments || []).map((a) => ({
+        id: a.id,
+        team_member_id: a.team_member_id ? String(a.team_member_id) : '',
+        job_id: a.job_id ? String(a.job_id) : '',
+        is_lead: Boolean(a.is_lead),
+        phase_order: a.phase_order || 1,
+        start_date: a.start_date ? a.start_date.split('T')[0] : '',
+        end_date: a.end_date ? a.end_date.split('T')[0] : '',
+      })),
+    });
+
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditTeamChange = (newTeamId) => {
+    const selectedTeam = teamsList.find((t) => String(t.id) === String(newTeamId));
+    let newAssignments = [];
+
+    if (selectedTeam && selectedTeam.team_members?.length > 0) {
+      newAssignments = selectedTeam.team_members.map((tm, idx) => {
+        const primaryJob = tm.users?.user_jobs?.find((uj) => uj.is_primary) || tm.users?.user_jobs?.[0];
+        return {
+          team_member_id: String(tm.id),
+          job_id: primaryJob?.job_id ? String(primaryJob.job_id) : '',
+          is_lead: idx === 0,
+          phase_order: 1,
+          start_date: editForm.start_date_project || '',
+          end_date: editForm.end_date_project || '',
+        };
+      });
+    }
+
+    setEditForm((prev) => ({
+      ...prev,
+      team_id: newTeamId,
+      assignments: newAssignments,
+    }));
+  };
+
+  const handleAddAssignmentRow = () => {
+    const selectedTeam = teamsList.find((t) => String(t.id) === String(editForm.team_id));
+    const firstMember = selectedTeam?.team_members?.[0];
+    const primaryJob = firstMember?.users?.user_jobs?.find((uj) => uj.is_primary) || firstMember?.users?.user_jobs?.[0];
+
+    setEditForm((prev) => ({
+      ...prev,
+      assignments: [
+        ...prev.assignments,
+        {
+          team_member_id: firstMember ? String(firstMember.id) : '',
+          job_id: primaryJob?.job_id ? String(primaryJob.job_id) : '',
+          is_lead: prev.assignments.length === 0,
+          phase_order: 1,
+          start_date: prev.start_date_project || '',
+          end_date: prev.end_date_project || '',
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveAssignmentRow = (index) => {
+    setEditForm((prev) => ({
+      ...prev,
+      assignments: prev.assignments.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAssignmentChange = (index, field, value) => {
+    setEditForm((prev) => {
+      const next = [...prev.assignments];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, assignments: next };
+    });
+  };
+
+  const handleMemberSelect = (index, memberId) => {
+    const selectedTeam = teamsList.find((t) => String(t.id) === String(editForm.team_id));
+    const tm = selectedTeam?.team_members?.find((m) => String(m.id) === String(memberId));
+    const primaryJob = tm?.users?.user_jobs?.find((uj) => uj.is_primary) || tm?.users?.user_jobs?.[0];
+
+    setEditForm((prev) => {
+      const next = [...prev.assignments];
+      next[index] = {
+        ...next[index],
+        team_member_id: memberId,
+        job_id: primaryJob?.job_id ? String(primaryJob.job_id) : next[index].job_id,
+      };
+      return { ...prev, assignments: next };
+    });
+  };
+
+  const handleSaveEdit = async (e) => {
+    if (e) e.preventDefault();
+
+    if (editForm.team_id && editForm.assignments.length > 0) {
+      const hasInvalid = editForm.assignments.some((a) => !a.team_member_id || !a.job_id);
+      if (hasInvalid) {
+        alert('Harap pilih developer dan peran/job untuk setiap baris penugasan.');
+        return;
+      }
+    }
+
+    setEditSubmitting(true);
+    try {
+      const payload = {
+        sales_id: editForm.sales_id ? Number(editForm.sales_id) : null,
+        team_id: editForm.team_id ? Number(editForm.team_id) : null,
+        start_date_project: editForm.start_date_project || null,
+        end_date_project: editForm.end_date_project || null,
+        notes: editForm.notes || null,
+        assignments: editForm.assignments.map((a) => ({
+          id: a.id ? Number(a.id) : undefined,
+          team_member_id: Number(a.team_member_id),
+          job_id: Number(a.job_id),
+          is_lead: Boolean(a.is_lead),
+          phase_order: Number(a.phase_order || 1),
+          start_date: a.start_date || null,
+          end_date: a.end_date || null,
+        })),
+      };
+
+      const res = await fetch(`/api/v1/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast('error', data.message || 'Gagal menyimpan perubahan');
+      } else {
+        showToast('success', 'Order dan penugasan tim berhasil disimpan!');
+        setIsEditModalOpen(false);
+        load();
+      }
+    } catch {
+      showToast('error', 'Gagal menghubungi server saat menyimpan order');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
 
   // Handle Ubah Status biasa: draft -> pending -> in_progress -> completed
   const handleStatusChange = async (newStatus) => {
@@ -143,7 +335,8 @@ export default function AdminOrderShow({ orderId }) {
         showToast('error', data.message || 'Gagal mengubah status');
       } else {
         load();
-        showToast('success', 'Status order berhasil diperbarui');
+        const statusLabel = STATUS_OPTIONS.find((s) => s.value === newStatus)?.label || newStatus;
+        showToast('success', `Status order berhasil diubah menjadi ${statusLabel}`);
       }
     } catch {
       showToast('error', 'Gagal menghubungi server');
@@ -225,14 +418,7 @@ export default function AdminOrderShow({ orderId }) {
     <RoleLayout>
       <Head title={`Detail Order ${order.order_number} — Admin`} />
 
-      {toast && (
-        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border ${
-          toast.type === 'success' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'bg-red-500/15 border-red-500/40 text-red-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       {/* Header Halaman Persis Desain Super Admin */}
       <div className="mb-6">
@@ -322,6 +508,16 @@ export default function AdminOrderShow({ orderId }) {
               </button>
             )}
 
+            {/* Tombol Edit Order */}
+            <button
+              type="button"
+              onClick={openEditModal}
+              className="bg-brand-accent text-brand-secondary px-3.5 py-2 rounded-xl text-sm font-semibold hover:bg-brand-accent/90 transition shadow-sm flex items-center gap-1.5"
+            >
+              <Pencil size={15} />
+              <span>Edit</span>
+            </button>
+
             <button
               onClick={load}
               className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm"
@@ -331,6 +527,33 @@ export default function AdminOrderShow({ orderId }) {
           </div>
         </div>
       </div>
+
+      {/* Banner Khusus Order Maintenance (Smart Redirect ke Tiket Maintenance Lengkap) */}
+      {order.parent_order_id && (
+        <div className="mb-6 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-300 shrink-0">
+              <Eye size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-purple-200">
+                Order ini adalah Tiket Perbaikan Maintenance
+              </h3>
+              <p className="text-xs text-brand-text-muted mt-0.5">
+                {order.parent_order?.order_number ? `Turunan dari order induk ${order.parent_order.order_number}. ` : ''}
+                Lihat rincian komplain klien, foto tangkapan layar (screenshot) error, dan form pengesahan di halaman maintenance.
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/admin/maintenance/${order.maintenances?.[0]?.id || order.id}`}
+            className="shrink-0 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-1.5"
+          >
+            <Eye size={14} />
+            <span>Buka Detail Tiket & Foto Error</span>
+          </Link>
+        </div>
+      )}
 
       {/* Grid Informasi Persis Super Admin (3 Kolom: 1 Kiri, 2 Kanan) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -377,8 +600,10 @@ export default function AdminOrderShow({ orderId }) {
           </Card>
 
           <Card title="Catatan Order">
-            <p className="text-sm text-brand-text whitespace-pre-line">
-              {order.notes || 'Tidak ada catatan order'}
+            <p className="text-sm text-brand-text whitespace-pre-line leading-relaxed">
+              {cleanNotes(order.notes) || (
+                <span className="text-brand-text-muted italic">Tidak ada catatan order</span>
+              )}
             </p>
           </Card>
 
@@ -512,111 +737,127 @@ export default function AdminOrderShow({ orderId }) {
               </div>
             )}
 
-            {/* Tabel Anggota Tim */}
+            {/* Daftar Anggota Tim (Desain Vertikal Responsif) */}
             {assignments.length === 0 ? (
-              <p className="text-sm text-brand-text-muted italic text-center py-4">Belum ada anggota tim yang ditugaskan ke order ini.</p>
+              <p className="text-sm text-brand-text-muted italic text-center py-6">
+                Belum ada anggota tim yang ditugaskan ke order ini.
+              </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-brand-muted/30 border-b border-brand-border">
-                    <tr>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Fase</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Developer & Posisi</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Status Tugas Developer</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Progres</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs">Catatan Setoran Terakhir</th>
-                      <th className="px-3 py-2 font-medium text-brand-text-muted text-xs text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-brand-border/50">
-                    {assignments.map((a) => {
-                      const latestProgress = a.progress_order?.[0];
-                      const progress = latestProgress?.progress_percentage ?? 0;
-                      const taskStatus = latestProgress?.status ?? (progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending');
-                      const notes = latestProgress?.notes;
+              <div className="space-y-3">
+                {assignments.map((a) => {
+                  const latestProgress = a.progress_order?.[0];
+                  const progress = Number(latestProgress?.progress_percentage ?? 0);
+                  const taskStatus = latestProgress?.status ?? (progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending');
+                  const notes = latestProgress?.notes;
+                  const devName = a.team_members?.users?.name || '—';
+                  const initials = devName !== '—' ? devName.substring(0, 2).toUpperCase() : 'DV';
 
-                      return (
-                        <tr key={a.id} className="hover:bg-brand-muted/20 transition">
-                          <td className="px-3 py-3 align-top">
-                            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/30">
-                              Fase {a.phase_order || 1}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 align-top">
-                            <div className="flex items-center gap-1.5 font-medium text-brand-text">
-                              <span>{a.team_members?.users?.name || '—'}</span>
+                  return (
+                    <div
+                      key={a.id}
+                      className="p-4 rounded-xl bg-brand-primary/50 border border-brand-border hover:border-brand-accent/40 transition-all space-y-3.5"
+                    >
+                      {/* Baris Atas: Info Developer, Fase, Status, dan Tombol Detail */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-brand-accent/15 border border-brand-accent/30 text-brand-accent font-bold text-sm flex items-center justify-center shrink-0">
+                            {initials}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-brand-text text-sm">{devName}</span>
                               {a.is_lead && (
-                                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">
+                                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30">
                                   <Star size={10} className="fill-amber-400" /> Lead
                                 </span>
                               )}
-                            </div>
-                            <div className="mt-1">
-                              <span className="inline-block text-[11px] px-2 py-0.5 rounded bg-brand-muted text-brand-text-muted border border-brand-border">
-                                {a.jobs?.name || '—'}
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                                Fase {a.phase_order || 1}
                               </span>
                             </div>
-                            {a.start_date && a.end_date && (
-                              <div className="text-[11px] text-brand-text-muted/70 mt-1">
-                                {formatDate(a.start_date)} - {formatDate(a.end_date)}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 align-top">
-                            {taskStatus === 'completed' || progress === 100 ? (
-                              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle2 size={12} /> Tugas Selesai
-                              </span>
-                            ) : taskStatus === 'in_progress' || progress > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                                <Clock size={12} /> Sedang Dikerjakan
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-gray-500/15 text-gray-400 border border-gray-500/30">
-                                Belum Dimulai
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 align-top">
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-brand-muted rounded-full h-1.5 overflow-hidden border border-brand-border/40">
-                                <div
-                                  className={`h-full transition-all duration-300 ${progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                              <span className="text-xs font-semibold text-brand-text">{progress}%</span>
+                            <div className="text-xs text-brand-accent/90 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+                              <span>{a.jobs?.name || 'Developer'}</span>
+                              {a.start_date && a.end_date && (
+                                <>
+                                  <span className="text-brand-text-muted/40">&bull;</span>
+                                  <span className="text-[11px] text-brand-text-muted flex items-center gap-1">
+                                    <Calendar size={11} className="text-brand-text-muted/60" />
+                                    {formatDate(a.start_date)} &ndash; {formatDate(a.end_date)}
+                                  </span>
+                                </>
+                              )}
                             </div>
-                          </td>
-                          <td className="px-3 py-3 align-top max-w-xs">
-                            {notes ? (
-                              <div>
-                                <p className="text-xs text-brand-text line-clamp-2 leading-relaxed">
-                                  {notes}
-                                </p>
-                                <span className="text-[10px] text-brand-text-muted mt-1 block">
-                                  Diupdate: {formatDateTime(latestProgress?.updated_at || latestProgress?.created_at)}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-brand-text-muted italic">Belum ada catatan setoran</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 align-top text-center">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedAssignment(a)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-primary border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent transition shadow-sm"
-                            >
-                              <Eye size={13} />
-                              Detail
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </div>
+                        </div>
+
+                        {/* Status Tugas & Tombol Detail */}
+                        <div className="flex items-center gap-2.5 self-start sm:self-center shrink-0">
+                          {taskStatus === 'completed' || progress === 100 ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <CheckCircle2 size={13} /> Selesai
+                            </span>
+                          ) : taskStatus === 'in_progress' || progress > 0 ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                              <Clock size={13} /> Dikerjakan
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium bg-gray-500/15 text-gray-400 border border-gray-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-gray-400" /> Belum Dimulai
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAssignment(a)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-brand-secondary border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent transition shadow-sm"
+                          >
+                            <Eye size={13} />
+                            <span>Detail</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Baris Bawah: Progres Bar & Catatan Setoran Terakhir */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 border-t border-brand-border/40">
+                        {/* Progress Bar (4 cols) */}
+                        <div className="md:col-span-4 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[11px] text-brand-text-muted font-medium">Progres Pengerjaan</span>
+                            <span className="font-bold text-brand-text">{progress}%</span>
+                          </div>
+                          <div className="w-full bg-brand-secondary rounded-full h-2 overflow-hidden border border-brand-border/60">
+                            <div
+                              className={`h-full transition-all duration-300 rounded-full ${
+                                progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-brand-accent' : 'bg-gray-600'
+                              }`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Catatan Setoran Terakhir (8 cols) */}
+                        <div className="md:col-span-8 flex items-center justify-between text-xs">
+                          {notes ? (
+                            <div className="min-w-0 flex-1">
+                              <p className="text-brand-text text-xs leading-relaxed truncate" title={notes}>
+                                <span className="text-brand-text-muted mr-1">Setoran Terakhir:</span>
+                                &ldquo;{notes}&rdquo;
+                              </p>
+                              <span className="text-[10px] text-brand-text-muted flex items-center gap-1 mt-0.5">
+                                <Clock size={10} className="shrink-0 text-brand-text-muted/60" />
+                                <span>Diupdate {formatDateTime(latestProgress?.updated_at || latestProgress?.created_at)}</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-brand-text-muted/60 italic text-xs">
+                              Belum ada catatan setoran progres dari developer ini.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -838,13 +1079,7 @@ export default function AdminOrderShow({ orderId }) {
                 </div>
               )}
 
-              {/* Info Hak Otoritas Admin / Super Admin */}
-              <div className="p-3.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-xs text-blue-300 flex items-start gap-2.5">
-                <AlertCircle size={16} className="text-blue-400 shrink-0 mt-0.5" />
-                <p className="leading-relaxed">
-                  <strong>Otoritas Pusat:</strong> Progres dan status di atas adalah laporan pengerjaan teknis dari developer. Pengesahan status order di sistem pusat tetap di bawah kendali manajemen melalui dropdown status di halaman ini.
-                </p>
-              </div>
+
             </div>
 
             {/* Footer Modal */}
@@ -861,15 +1096,284 @@ export default function AdminOrderShow({ orderId }) {
           </div>
         </div>
       )}
+      {/* MODAL ATUR TIM & EDIT PENUGASAN DEVELOPER */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-3xl my-6 overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            {/* Header Modal */}
+            <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-brand-primary/40 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-brand-accent/15 border border-brand-accent/30 flex items-center justify-center text-brand-accent">
+                  <Users size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-brand-text">
+                    Edit Order
+                  </h3>
+                  <p className="text-xs text-brand-text-muted">
+                    Order: <strong className="font-mono text-brand-text">{order.order_number}</strong> &bull; {order.customer_name_snapshot}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="w-8 h-8 rounded-lg bg-brand-primary hover:bg-brand-muted text-brand-text-muted hover:text-brand-text flex items-center justify-center transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* 1. Tim & Sales PIC */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-brand-text uppercase tracking-wider mb-2">
+                    Tim Penanggung Jawab
+                  </label>
+                  <select
+                    value={editForm.team_id}
+                    onChange={(e) => handleEditTeamChange(e.target.value)}
+                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                  >
+                    <option value="">-- Belum Ada Tim Ditugaskan --</option>
+                    {teamsList.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.team_members?.length || 0} anggota developer)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-brand-text uppercase tracking-wider mb-2">
+                    Sales PIC
+                  </label>
+                  <select
+                    value={editForm.sales_id}
+                    onChange={(e) => setEditForm({ ...editForm, sales_id: e.target.value })}
+                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                  >
+                    <option value="">-- Belum Ada Sales Ditugaskan --</option>
+                    {salesList.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* 2. Jadwal Tanggal Proyek */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-brand-text uppercase tracking-wider mb-2">
+                    Tanggal Mulai Proyek
+                  </label>
+                  <input
+                    type="date"
+                    value={editForm.start_date_project}
+                    onChange={(e) => setEditForm({ ...editForm, start_date_project: e.target.value })}
+                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-text uppercase tracking-wider mb-2">
+                    Target Selesai Proyek
+                  </label>
+                  <input
+                    type="date"
+                    value={editForm.end_date_project}
+                    onChange={(e) => setEditForm({ ...editForm, end_date_project: e.target.value })}
+                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Daftar Penugasan Developer */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-brand-text uppercase tracking-wider">
+                    2. Penugasan Anggota Developer
+                  </label>
+                  {editForm.team_id && (
+                    <button
+                      type="button"
+                      onClick={handleAddAssignmentRow}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-brand-accent hover:text-brand-accent2 transition"
+                    >
+                      <Plus size={13} /> Tambah Anggota Developer
+                    </button>
+                  )}
+                </div>
+
+                {!editForm.team_id ? (
+                  <div className="p-4 rounded-xl bg-brand-primary/40 border border-brand-border text-center text-xs text-brand-text-muted italic">
+                    Silakan pilih Tim Penanggung Jawab di atas terlebih dahulu untuk menambahkan developer.
+                  </div>
+                ) : editForm.assignments.length === 0 ? (
+                  <div className="p-5 rounded-xl bg-brand-primary/40 border border-dashed border-brand-border text-center space-y-2">
+                    <p className="text-xs text-brand-text-muted">Belum ada anggota yang ditugaskan ke order ini.</p>
+                    <button
+                      type="button"
+                      onClick={handleAddAssignmentRow}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-accent/15 text-brand-accent border border-brand-accent/30 hover:bg-brand-accent/25 transition"
+                    >
+                      <Plus size={13} /> Tambah Anggota Sekarang
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {editForm.assignments.map((a, idx) => {
+                      const selectedTeam = teamsList.find((t) => String(t.id) === String(editForm.team_id));
+                      const availableMembers = selectedTeam?.team_members || [];
+
+                      return (
+                        <div key={idx} className="p-4 rounded-xl bg-brand-primary/60 border border-brand-border space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-brand-accent">
+                              Anggota #{idx + 1}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <label className="inline-flex items-center gap-1.5 text-xs text-brand-text cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(a.is_lead)}
+                                  onChange={(e) => handleAssignmentChange(idx, 'is_lead', e.target.checked)}
+                                  className="rounded border-brand-border text-brand-accent focus:ring-brand-accent/30"
+                                />
+                                <span className="font-semibold flex items-center gap-1">
+                                  <Star size={11} className={a.is_lead ? "fill-amber-400 text-amber-400" : "text-brand-text-muted"} />
+                                  Team Lead
+                                </span>
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAssignmentRow(idx)}
+                                className="text-red-400 hover:text-red-300 p-1 rounded-md hover:bg-red-500/10 transition"
+                                title="Hapus baris penugasan ini"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="sm:col-span-1">
+                              <label className="block text-[11px] font-semibold text-brand-text-muted mb-1">
+                                Developer
+                              </label>
+                              <select
+                                value={a.team_member_id}
+                                onChange={(e) => handleMemberSelect(idx, e.target.value)}
+                                className="w-full bg-brand-secondary border border-brand-border rounded-xl px-3 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                              >
+                                <option value="">-- Pilih Developer --</option>
+                                {availableMembers.map((tm) => (
+                                  <option key={tm.id} value={tm.id}>
+                                    {tm.users?.name || `Member #${tm.id}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="sm:col-span-1">
+                              <label className="block text-[11px] font-semibold text-brand-text-muted mb-1">
+                                Peran / Job
+                              </label>
+                              <select
+                                value={a.job_id}
+                                onChange={(e) => handleAssignmentChange(idx, 'job_id', e.target.value)}
+                                className="w-full bg-brand-secondary border border-brand-border rounded-xl px-3 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                              >
+                                <option value="">-- Pilih Posisi Job --</option>
+                                {jobsList.map((j) => (
+                                  <option key={j.id} value={j.id}>
+                                    {j.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="sm:col-span-1">
+                              <label className="block text-[11px] font-semibold text-brand-text-muted mb-1">
+                                Fase Pengerjaan
+                              </label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={a.phase_order || 1}
+                                onChange={(e) => handleAssignmentChange(idx, 'phase_order', e.target.value)}
+                                className="w-full bg-brand-secondary border border-brand-border rounded-xl px-3 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                placeholder="Contoh: 1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Catatan / Keterangan Order */}
+              <div>
+                <label className="block text-xs font-bold text-brand-text uppercase tracking-wider mb-2">
+                  Catatan / Keterangan Order
+                </label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  placeholder="Tambahkan catatan atau keterangan instruksi untuk order ini..."
+                  className="w-full bg-brand-primary border border-brand-border rounded-xl p-3 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-brand-border flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-xs font-semibold text-brand-text hover:bg-brand-muted transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="px-5 py-2.5 bg-brand-accent text-brand-secondary rounded-xl text-xs font-bold hover:bg-brand-accent/90 transition shadow-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  {editSubmitting ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span>Simpan Perubahan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </RoleLayout>
   );
 }
 
-function Card({ title, children }) {
+function Card({ title, action, children }) {
   return (
     <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-brand-border">
+      <div className="px-5 py-3.5 border-b border-brand-border flex items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-brand-text uppercase tracking-widest">{title}</h2>
+        {action}
       </div>
       <div className="p-5">{children}</div>
     </div>

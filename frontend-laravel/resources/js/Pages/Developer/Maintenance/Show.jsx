@@ -5,8 +5,86 @@ import {
     ChevronLeft, ClipboardClock, CheckCircle2, AlertCircle,
     Wrench, Clock, Calendar, User, FileText, Save,
     Building2, Mail, Phone, MapPin, Layers,
-    ShieldAlert, Users, ArrowRight
+    ShieldAlert, Users, ArrowRight, Image as ImageIcon, ExternalLink
 } from 'lucide-react';
+
+const formatDate = (d) => {
+    if (!d || d === '-' || d === '—') return '—';
+    try {
+        if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+            const [y, m, day] = d.split('-').map(Number);
+            const date = new Date(y, m - 1, day);
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        const date = new Date(d);
+        if (isNaN(date.getTime())) return d;
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+        return d;
+    }
+};
+
+const formatScheduleRange = (start, end, status, devProgress, updatedAt) => {
+    const isValid = (d) => d && d !== '-' && d !== '—';
+    const hasStart = isValid(start);
+    const hasEnd = isValid(end);
+
+    const parseDateObj = (d) => {
+        if (!d || d === '-' || d === '—') return null;
+        if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+            const [y, m, day] = d.split('-').map(Number);
+            return new Date(y, m - 1, day);
+        }
+        const date = new Date(d);
+        return isNaN(date.getTime()) ? null : date;
+    };
+
+    const formatShort = (dateObj) => {
+        if (!dateObj) return '';
+        return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    };
+
+    // 1. Jika tanggal target selesai sudah ditentukan secara eksplisit
+    if (hasStart && hasEnd) {
+        const sDate = parseDateObj(start);
+        const eDate = parseDateObj(end);
+        if (sDate && eDate && sDate.getFullYear() === eDate.getFullYear()) {
+            return `${formatShort(sDate)} – ${formatDate(end)}`;
+        }
+        return `${formatDate(start)} – ${formatDate(end)}`;
+    }
+
+    // 2. Jika tanggal target selesai belum diisi, tapi perbaikan sudah diselesaikan
+    const isCompleted =
+        status === 'completed' ||
+        devProgress?.status === 'completed' ||
+        devProgress?.progress_percentage === 100;
+    const finishDate = isValid(updatedAt)
+        ? updatedAt
+        : isValid(devProgress?.updated_at)
+        ? devProgress.updated_at
+        : null;
+
+    if (hasStart && isCompleted && finishDate) {
+        const sDate = parseDateObj(start);
+        const fDate = parseDateObj(finishDate);
+        if (sDate && fDate && sDate.getFullYear() === fDate.getFullYear()) {
+            return `${formatShort(sDate)} – ${formatDate(finishDate)}`;
+        }
+        return `${formatDate(start)} – ${formatDate(finishDate)}`;
+    }
+
+    // 3. Jika belum ada tanggal akhir dan masih berjalan: tampilkan – Selesai
+    if (hasStart) {
+        return `${formatDate(start)} – Selesai`;
+    }
+
+    if (hasEnd) {
+        return `s/d ${formatDate(end)}`;
+    }
+
+    return 'Belum Ditentukan';
+};
 
 const getStatusBadge = (status) => {
     switch (status) {
@@ -49,14 +127,15 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
     const [error, setError] = useState('');
 
     const [form, setForm] = useState({
-        status: 'in_progress',
+        status: 'scheduled',
         notes: ''
     });
     const [submitting, setSubmitting] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [saveError, setSaveError] = useState('');
 
-    const loadDetail = () => {
-        setLoading(true);
+    const loadDetail = (silent = false) => {
+        if (!silent) setLoading(true);
         setError('');
         fetch(`/api/v1/developer/maintenance/${maintenanceId}`, { cache: 'no-store' })
             .then((r) => r.json())
@@ -64,28 +143,29 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
                 if (res.success && res.data) {
                     setData(res.data);
                     setForm({
-                        status: res.data.developer_progress?.status || (res.data.developer_progress?.progress_percentage === 100 ? 'completed' : 'in_progress'),
+                        status: res.data.developer_progress?.status || (res.data.developer_progress?.progress_percentage === 100 ? 'completed' : 'scheduled'),
                         notes: res.data.developer_progress?.notes || ''
                     });
                 } else {
-                    setError(res.message || 'Gagal memuat detail maintenance');
+                    if (!silent) setError(res.message || 'Gagal memuat detail maintenance');
                 }
-                setLoading(false);
+                if (!silent) setLoading(false);
             })
             .catch((err) => {
-                setError(err.message || 'Terjadi kesalahan jaringan');
-                setLoading(false);
+                if (!silent) setError(err.message || 'Terjadi kesalahan jaringan');
+                if (!silent) setLoading(false);
             });
     };
 
     useEffect(() => {
-        if (maintenanceId) loadDetail();
+        if (maintenanceId) loadDetail(false);
     }, [maintenanceId]);
 
     const handleSave = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         setSaveSuccess(false);
+        setSaveError('');
 
         try {
             const res = await fetch(`/api/v1/developer/maintenance/${maintenanceId}`, {
@@ -99,9 +179,9 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
 
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
-            loadDetail();
+            loadDetail(true);
         } catch (err) {
-            alert(err.message || 'Terjadi kesalahan saat menyimpan laporan.');
+            setSaveError(err.message || 'Terjadi kesalahan saat menyimpan laporan.');
         } finally {
             setSubmitting(false);
         }
@@ -162,32 +242,52 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
 
             {/* HEADER JUDUL KENDALA */}
             <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 mb-8 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text">
-                                Order Pemeliharaan: {data.child_order.order_number}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+                    <div className="space-y-2.5">
+                        {/* BADGES METADATA */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-brand-primary border border-brand-border text-brand-text shadow-xs">
+                                {data.child_order.order_number}
                             </span>
                             {parent && (
-                                <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                                    Lanjutan dari Order Induk: <strong>{parent.order_number}</strong>
+                                <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/25 flex items-center gap-1">
+                                    Induk: <strong className="font-mono text-purple-300">{parent.order_number}</strong>
                                 </span>
                             )}
                         </div>
-                        <h1 className="text-2xl font-bold text-brand-text">
+
+                        {/* JUDUL TIKET */}
+                        <h1 className="text-2xl font-bold text-brand-text tracking-tight">
                             {data.title}
                         </h1>
-                        <p className="text-xs text-brand-text-muted mt-1">
-                            Klien: <strong className="text-brand-text">{cust.name}</strong> • Dilaporkan pada {data.created_at}
-                        </p>
+
+                        {/* SUB-INFO: KLIEN & TANGGAL LAPOR */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-brand-text-muted">
+                            <span className="flex items-center gap-1.5">
+                                <Building2 size={13} className="text-brand-text-muted/80" />
+                                Klien: <strong className="text-brand-text font-semibold">{cust.name}</strong>
+                            </span>
+                            <span className="inline-block w-1 h-1 rounded-full bg-brand-border" />
+                            <span className="flex items-center gap-1.5">
+                                <Clock size={13} className="text-brand-text-muted/80" />
+                                Dilaporkan {formatDate(data.created_at)}
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="bg-brand-primary/60 border border-brand-border/60 p-3.5 rounded-xl text-right shrink-0">
-                        <span className="text-[11px] text-brand-text-muted uppercase block font-medium">Jadwal Perbaikan</span>
-                        <span className="text-xs font-semibold text-brand-text flex items-center gap-1.5 mt-0.5 md:justify-end">
-                            <Calendar size={13} className="text-brand-accent" />
-                            {data.start_datetime} s/d {data.end_datetime}
-                        </span>
+                    {/* JADWAL PERBAIKAN WIDGET */}
+                    <div className="flex items-center gap-3.5 bg-brand-primary/60 border border-brand-border px-4 py-3 rounded-xl shrink-0 shadow-xs self-start lg:self-center">
+                        <div className="w-10 h-10 rounded-xl bg-brand-accent/15 border border-brand-accent/30 flex items-center justify-center text-brand-accent shrink-0">
+                            <Calendar size={18} />
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-text-muted block leading-none mb-1">
+                                Jadwal Perbaikan
+                            </span>
+                            <span className="text-xs sm:text-sm font-semibold text-brand-text block">
+                                {formatScheduleRange(data.start_datetime, data.end_datetime, data.status, data.developer_progress, data.updated_at)}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -210,6 +310,72 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
                                 {data.description}
                             </p>
                         </div>
+
+                        {((data.error_images && data.error_images.length > 0) || data.error_image) && (() => {
+                            const images = (data.error_images && data.error_images.length > 0)
+                                ? data.error_images
+                                : [data.error_image];
+
+                            return (
+                                <div className="p-4 bg-brand-primary/60 border border-brand-border/60 rounded-xl mb-4">
+                                    <div className="mb-3">
+                                        <span className="text-[11px] font-semibold text-brand-accent uppercase tracking-wider flex items-center gap-1.5">
+                                            <ImageIcon size={14} /> Foto / Tangkapan Layar Kendala Error ({images.length} Foto)
+                                        </span>
+                                    </div>
+
+                                    {images.length === 1 ? (
+                                        <div className="space-y-2">
+                                            <div className="rounded-xl overflow-hidden border border-brand-border bg-black/40 flex items-center justify-center max-h-96 group relative">
+                                                <img
+                                                    src={images[0]}
+                                                    alt="Tangkapan Layar Kendala Error"
+                                                    className="w-full max-h-96 object-contain rounded-xl transition duration-200 group-hover:scale-[1.01]"
+                                                    loading="lazy"
+                                                />
+                                            </div>
+                                            <div className="text-right">
+                                                <a
+                                                    href={images[0]}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs text-brand-accent hover:underline font-medium"
+                                                >
+                                                    <ExternalLink size={12} /> Buka Ukuran Asli di Tab Baru
+                                                </a>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                            {images.map((imgUrl, idx) => (
+                                                <a
+                                                    key={idx}
+                                                    href={imgUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="group relative rounded-xl overflow-hidden border border-brand-border bg-black/40 hover:border-brand-accent transition block"
+                                                >
+                                                    <div className="h-48 w-full flex items-center justify-center overflow-hidden">
+                                                        <img
+                                                            src={imgUrl}
+                                                            alt={`Bukti Error ${idx + 1}`}
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                                                            loading="lazy"
+                                                        />
+                                                    </div>
+                                                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 flex items-center justify-between text-[11px] text-white">
+                                                        <span>Foto #{idx + 1}</span>
+                                                        <span className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition text-brand-accent font-medium">
+                                                            <ExternalLink size={12} /> Buka
+                                                        </span>
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                             <div className="p-3 bg-brand-muted/40 border border-brand-border/40 rounded-xl">
@@ -238,6 +404,13 @@ export default function DeveloperMaintenanceShow({ maintenanceId }) {
                             <div className="p-3.5 mb-4 bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
                                 <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
                                 Laporan perbaikan berhasil disimpan ke server!
+                            </div>
+                        )}
+
+                        {saveError && (
+                            <div className="p-3.5 mb-4 bg-red-500/10 dark:bg-red-500/15 border border-red-500/30 rounded-xl text-xs text-red-800 dark:text-red-300 flex items-center gap-2 font-medium">
+                                <AlertCircle size={16} className="text-red-600 dark:text-red-400" />
+                                {saveError}
                             </div>
                         )}
 

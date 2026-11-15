@@ -34,6 +34,7 @@ import { developerMaintenanceRouter } from './routes/developer-maintenance.js';
 import { maintenancesRouter } from './routes/maintenances.js';
 import swaggerUi from 'swagger-ui-express';
 import { openapiSpecification } from './docs/swagger.js';
+import path from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -41,7 +42,9 @@ const PORT = process.env.PORT || 4000;
 // ============ MIDDLEWARE ============
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 
 // ============ HEALTH ============
 app.get('/health', (_req, res) => {

@@ -716,5 +716,181 @@ export const openapiSpecification = {
         },
       },
     },
+
+    // ================= MAINTENANCES (ADMIN / SUPER ADMIN) =================
+    '/api/v1/maintenances/completed-orders': {
+      get: {
+        summary: 'Daftar Order Selesai (Completed) untuk Order Induk',
+        tags: ['Maintenances'],
+        description: 'Mengambil seluruh order berstatus completed beserta tim, layanan, dan anggota tim yang dapat dipilih sebagai penanggung jawab maintenance.',
+        responses: {
+          200: { description: 'Daftar order completed berhasil diambil' },
+        },
+      },
+    },
+    '/api/v1/maintenances': {
+      get: {
+        summary: 'Daftar Seluruh Tiket & Order Maintenance',
+        tags: ['Maintenances'],
+        description: 'Menampilkan seluruh tiket maintenance beserta nomor order turunan, order induk, data customer, developer PIC, dan persentase progres perbaikan.',
+        responses: {
+          200: { description: 'Daftar tiket maintenance' },
+        },
+      },
+      post: {
+        summary: 'Buat Tiket Maintenance Baru (Otomatis Buat Child Order)',
+        tags: ['Maintenances'],
+        description: 'Menerbitkan tiket maintenance untuk pesanan selesai. Sistem otomatis membuat Order Turunan (Child Order), menugaskan Developer PIC di order_assignments, membuat progress_order, dan menyimpan foto bukti error.',
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['parent_order_id', 'job_id', 'developer_user_id', 'title', 'description'],
+                properties: {
+                  parent_order_id: { type: 'integer', example: 24, description: 'ID Order Proyek yang sudah completed' },
+                  job_id: { type: 'integer', example: 1, description: 'ID Job / Peran yang mengalami error' },
+                  developer_user_id: { type: 'integer', example: 2, description: 'User ID Developer penanggung jawab' },
+                  title: { type: 'string', example: 'Perbaikan Bug Error 500 API Checkout' },
+                  description: { type: 'string', example: 'Klien melaporkan gagal transaksi saat checkout payment gateway.' },
+                  status: { type: 'string', enum: ['scheduled', 'in_progress', 'completed', 'cancelled'], default: 'in_progress' },
+                  start_datetime: { type: 'string', format: 'date', example: '2026-11-12' },
+                  end_datetime: { type: 'string', format: 'date', example: '2026-11-19' },
+                  error_images: {
+                    type: 'array',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'Unggah satu atau beberapa foto tangkapan layar bukti error klien (PNG/JPG/WEBP)',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Tiket maintenance & Order turunan berhasil dibuat' },
+          422: { description: 'Validasi form gagal atau order belum berstatus completed' },
+        },
+      },
+    },
+    '/api/v1/maintenances/{id}': {
+      get: {
+        summary: 'Detail Lengkap Tiket Maintenance',
+        tags: ['Maintenances'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Detail tiket maintenance, child order, parent order, bukti foto error, dan riwayat progres' },
+          404: { description: 'Tiket maintenance tidak ditemukan' },
+        },
+      },
+      delete: {
+        summary: 'Hapus Tiket Maintenance (Soft Delete)',
+        tags: ['Maintenances'],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Tiket maintenance berhasil dihapus' },
+          404: { description: 'Tiket maintenance tidak ditemukan' },
+        },
+      },
+    },
+    '/api/v1/maintenances/{id}/status': {
+      patch: {
+        summary: 'Ubah Status Resmi Tiket Maintenance (Super Admin / Admin)',
+        tags: ['Maintenances'],
+        description: 'Hanya Admin/Super Admin yang berhak mengesahkan status resmi tiket maintenance. Jika diubah menjadi completed, status child order diikutkan completed.',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['status'],
+                properties: {
+                  status: {
+                    type: 'string',
+                    enum: ['scheduled', 'in_progress', 'completed', 'cancelled'],
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Status resmi tiket maintenance berhasil diubah' },
+          404: { description: 'Tiket maintenance tidak ditemukan' },
+        },
+      },
+    },
+
+    // ================= DEVELOPER MAINTENANCE =================
+    '/api/v1/developer/maintenance': {
+      get: {
+        summary: 'Daftar Tiket Maintenance yang Ditugaskan ke Developer',
+        tags: ['Developer Maintenance'],
+        description: 'Mengambil daftar tiket perbaikan maintenance yang ditugaskan khusus ke developer yang sedang login.',
+        parameters: [
+          { name: 'user_id', in: 'query', required: true, schema: { type: 'string' }, description: 'User ID developer login' },
+        ],
+        responses: {
+          200: { description: 'Daftar tiket maintenance developer' },
+        },
+      },
+    },
+    '/api/v1/developer/maintenance/{id}': {
+      get: {
+        summary: 'Detail Tiket Maintenance untuk Developer',
+        tags: ['Developer Maintenance'],
+        description: 'Menampilkan detail kendala, keluhan klien, foto bukti error, dan status progres pengerjaan developer.',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Detail tiket maintenance developer' },
+          404: { description: 'Tiket maintenance tidak ditemukan' },
+        },
+      },
+      put: {
+        summary: 'Developer Setor / Update Progres Perbaikan',
+        tags: ['Developer Maintenance'],
+        description: 'Developer menyetorkan progres perbaikan tiket ke progress_order (status: in_progress = 50%, completed = 100%). Developer tidak mengubah status resmi tiket (wewenang Super Admin).',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['status'],
+                properties: {
+                  status: {
+                    type: 'string',
+                    enum: ['in_progress', 'completed', 'scheduled'],
+                    description: 'Status setoran progres: completed (100%), in_progress (50%)',
+                  },
+                  notes: {
+                    type: 'string',
+                    example: 'Sudah diperbaiki query checkout dan berhasil dites di staging.',
+                    description: 'Catatan hasil pengerjaan developer',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Progres perbaikan developer berhasil disimpan' },
+          404: { description: 'Tiket maintenance tidak ditemukan' },
+        },
+      },
+    },
   },
 };

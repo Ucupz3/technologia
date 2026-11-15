@@ -6,7 +6,7 @@ import fs from 'fs';
 import nodemailer from 'nodemailer';
 
 export const invoicesRouter = Router();
-export const paymentsRouter = invoicesRouter;
+export const paymentsRouter = invoicesRouter; 99
 
 // Helper biar BigInt & Decimal aman di JSON
 const safeSerialize = (obj) => {
@@ -82,7 +82,7 @@ invoicesRouter.get('/:id', async (req, res, next) => {
       where: { id: BigInt(req.params.id), deleted_at: null },
       include: {
         orders: { include: { order_services: true } },
-        customers: true, 
+        customers: true,
         invoice_attachments: true,
       },
     });
@@ -105,7 +105,7 @@ invoicesRouter.post('/:id/pay', upload.single('proof_file'), async (req, res, ne
   try {
     const id = BigInt(req.params.id);
     const amountPaid = Number(req.body.amount);
-    
+
     if (!amountPaid || amountPaid <= 0) {
       return res.status(422).json({ success: false, message: 'Nominal pembayaran tidak valid' });
     }
@@ -167,9 +167,9 @@ invoicesRouter.post('/:id/send-email', async (req, res) => {
 
     const invoice = await prisma.invoices.findFirst({
       where: { id, deleted_at: null },
-      include: { 
-        orders: { include: { order_services: true } }, 
-        customers: true 
+      include: {
+        orders: { include: { order_services: true } },
+        customers: true
       }
     });
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice tidak ditemukan' });
@@ -302,7 +302,7 @@ invoicesRouter.post('/:id/send-email', async (req, res) => {
     }
 
     res.json({ success: true, message: `Invoice berhasil dikirim ke ${uniqueRecipients.length} email.` });
-  } catch (err) { 
+  } catch (err) {
     console.error('Email Error Detail:', err);
     res.status(500).json({ success: false, message: err.message });
   }

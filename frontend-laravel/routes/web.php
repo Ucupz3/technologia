@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -48,6 +49,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 
     // Maintenance
     Route::get('/maintenance', fn() => Inertia::render('SuperAdmin/Maintenance/Index'))->name('maintenance.index');
+    Route::get('/maintenance/create', fn() => Inertia::render('SuperAdmin/Maintenance/Create'))->name('maintenance.create');
     Route::get('/maintenance/{id}', fn($id) => Inertia::render('SuperAdmin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
 
     Route::get('/invoices', fn() => Inertia::render('SuperAdmin/Invoices/Index'))->name('invoices.index');
@@ -70,6 +72,11 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 
 });
 
+// Redirect /superadmin to /super-admin fallback
+Route::any('/superadmin/{path?}', function ($path = null) {
+    return redirect('/super-admin/' . ($path ? ltrim($path, '/') : ''));
+})->where('path', '.*');
+
 // ========================================
 // ADMIN
 // ========================================
@@ -84,6 +91,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/orders/create', fn() => Inertia::render('Admin/Orders/Create'))->name('orders.create');
     Route::get('/orders/{id}', fn($id) => Inertia::render('Admin/Orders/Show', ['orderId' => (int) $id]))->name('orders.show');
     Route::get('/maintenance', fn() => Inertia::render('Admin/Maintenance/Index'))->name('maintenance.index');
+    Route::get('/maintenance/create', fn() => Inertia::render('Admin/Maintenance/Create'))->name('maintenance.create');
     Route::get('/maintenance/{id}', fn($id) => Inertia::render('SuperAdmin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
     Route::get('/schedules', fn() => Inertia::render('Admin/Schedules/Index'))->name('schedules.index');
 
@@ -112,11 +120,22 @@ Route::middleware(['auth'])->group(function () {
     })->name('developer.dashboard');
     
     // Route lainnya untuk developer
-    Route::get('/developer/tasks', fn() => Inertia::render('Developer/Tasks/Index'))->name('developer.tasks');
+    Route::get('/developer/tasks', fn() => redirect('/developer/dashboard'));
     Route::get('/developer/schedules', fn() => Inertia::render('Developer/Schedules/Index'))->name('developer.schedules');
     Route::get('/developer/maintenance', fn() => Inertia::render('Developer/Maintenance/Index'))->name('developer.maintenance');
     Route::get('/developer/maintenance/{id}', fn($id) => Inertia::render('Developer/Maintenance/Show', ['maintenanceId' => (string) $id]))->name('developer.maintenance.show');
     Route::get('/developer/logs', fn() => Inertia::render('Developer/Logs'))->name('developer.logs');
 });
+
+Route::get('/uploads/{path}', function ($path) {
+    $express = rtrim(env('EXPRESS_API_URL', 'http://localhost:4000'), '/');
+    $response = Http::get($express . '/uploads/' . $path);
+    if ($response->successful()) {
+        $contentType = $response->header('Content-Type') ?: 'image/jpeg';
+        return response($response->body(), $response->status())
+            ->header('Content-Type', $contentType);
+    }
+    abort(404);
+})->where('path', '.*');
 
 require __DIR__.'/auth.php';

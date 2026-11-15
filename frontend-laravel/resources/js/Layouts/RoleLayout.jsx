@@ -41,7 +41,6 @@ const menuByRole = {
   ],
   developer: [
     { label: 'Dashboard', href: '/developer/dashboard', icon: Home },
-    { label: 'Task & Progress', href: '/developer/tasks', icon: Briefcase },
     { label: 'Jadwal', href: '/developer/schedules', icon: Calendar },
     { label: 'Maintenance', href: '/developer/maintenance', icon: ClipboardClock },
   ],
