@@ -56,9 +56,7 @@ describe('Swagger UI & OpenAPI Documentation Verification', () => {
     const devAndSchedulePaths = [
       '/api/v1/schedules',
       '/api/v1/schedules/{id}',
-      '/api/v1/schedules/maintenances',
       '/api/v1/schedules/developer',
-      '/api/v1/schedules/developer/{userId}',
       '/api/v1/developer/dashboard',
       '/api/v1/developer/tasks',
       '/api/v1/developer/tasks/{id}',

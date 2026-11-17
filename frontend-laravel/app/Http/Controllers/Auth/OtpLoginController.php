@@ -24,12 +24,9 @@ class OtpLoginController extends Controller
             return redirect()->route('login');
         }
 
-        $devOtp = session('dev_otp_code') ?: $this->express->getActiveOtp((string) $email);
-
         return Inertia::render('Auth/VerifyOtp', [
-            'email'        => (string) $email,
-            'status'       => session('status'),
-            'dev_otp_code' => $devOtp,
+            'email'  => (string) $email,
+            'status' => session('status'),
         ]);
     }
 
@@ -57,8 +54,8 @@ class OtpLoginController extends Controller
         $roleNames = match ($expressUser['role_slug'] ?? null) {
             'super_admin' => ['Super Admin'],
             'admin'       => ['Admin'],
-            'cs', 'sales' => ['CS', 'Sales'],
-            default       => ['CS', 'Sales'],
+            'cs'          => ['CS'],
+            default       => ['CS'],
         };
 
         $role = Role::whereIn('name', $roleNames)->first();
@@ -90,7 +87,6 @@ class OtpLoginController extends Controller
         Auth::login($user);
 
         $request->session()->forget('otp_email');
-        $request->session()->forget('dev_otp_code');
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));
@@ -108,10 +104,6 @@ class OtpLoginController extends Controller
 
         if (!$result['success']) {
             return back()->withErrors(['code' => $result['message'] ?? 'Gagal kirim ulang OTP']);
-        }
-
-        if (!empty($result['otp_code'])) {
-            $request->session()->put('dev_otp_code', $result['otp_code']);
         }
 
         return back()->with('status', 'Kode OTP baru telah dikirim.');

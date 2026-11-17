@@ -959,16 +959,8 @@ export const openapiSpecification = {
       get: {
         summary: 'Daftar Kalender Jadwal Proyek & Alokasi Tim',
         tags: ['Schedules'],
-        parameters: [
-          { name: 'user_id', in: 'query', schema: { type: 'integer' }, description: 'Filter jadwal berdasarkan user ID' },
-          { name: 'scope', in: 'query', schema: { type: 'string', enum: ['mine', 'all'] }, description: 'Cakupan penugasan' },
-          { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Filter status order' },
-          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Cari nomor order atau customer' },
-          { name: 'month', in: 'query', schema: { type: 'integer' }, description: 'Index bulan (0-11)' },
-          { name: 'year', in: 'query', schema: { type: 'integer' }, description: 'Tahun kalender' },
-        ],
         responses: {
-          200: { description: 'Daftar jadwal proyek, tim, dan deteksi konflik jadwal' },
+          200: { description: 'data (jadwal terformat), orders (ringkasan order), teams (tim aktif), dan conflicts (deteksi jadwal bentrok)' },
         },
       },
       post: {
@@ -1048,15 +1040,6 @@ export const openapiSpecification = {
         },
       },
     },
-    '/api/v1/schedules/maintenances': {
-      get: {
-        summary: 'Daftar Tiket Jadwal Pemeliharaan & Maintenance',
-        tags: ['Schedules'],
-        responses: {
-          200: { description: 'Daftar jadwal maintenance dan referensi order' },
-        },
-      },
-    },
     '/api/v1/schedules/developer': {
       get: {
         summary: 'Jadwal Proyek Khusus Portal Developer',
@@ -1067,19 +1050,7 @@ export const openapiSpecification = {
           { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Filter status proyek' },
         ],
         responses: {
-          200: { description: 'Ringkasan developer, statistik, daftar proyek tertugaskan, dan upcoming tasks' },
-        },
-      },
-    },
-    '/api/v1/schedules/developer/{userId}': {
-      get: {
-        summary: 'Jadwal Proyek Developer berdasarkan User ID URL Param',
-        tags: ['Developer', 'Schedules'],
-        parameters: [
-          { name: 'userId', in: 'path', required: true, schema: { type: 'string' }, description: 'ID Developer' },
-        ],
-        responses: {
-          200: { description: 'Ringkasan jadwal dan proyek developer terkait' },
+          200: { description: 'stats, projects (jadwal + penugasan + progres terbaru), dan upcoming_tasks' },
         },
       },
     },

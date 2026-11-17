@@ -41,9 +41,8 @@ class ExpressService
             }
 
             return [
-                'success'  => true,
-                'message'  => $response->json('message'),
-                'otp_code' => $response->json('data.otp_code'),
+                'success' => true,
+                'message' => $response->json('message'),
             ];
         } catch (\Throwable $e) {
             Log::error('Express requestLogin exception', [
@@ -94,9 +93,8 @@ class ExpressService
             }
 
             return [
-                'success'  => true,
-                'message'  => $response->json('message'),
-                'otp_code' => $response->json('data.otp_code'),
+                'success' => true,
+                'message' => $response->json('message'),
             ];
         } catch (\Throwable $e) {
             Log::error('Express resendOtp exception', [
@@ -107,23 +105,6 @@ class ExpressService
                 'success' => false,
                 'message' => 'Tidak bisa menghubungi server',
             ];
-        }
-    }
-
-    public function getActiveOtp(string $email): ?string
-    {
-        try {
-            $response = $this->http()->get("{$this->baseUrl}/api/v1/auth/current-otp", [
-                'email' => $email,
-            ]);
-
-            if (!$response->successful()) {
-                return null;
-            }
-
-            return $response->json('code');
-        } catch (\Throwable $e) {
-            return null;
         }
     }
 

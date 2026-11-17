@@ -123,15 +123,5 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/developer/schedules', fn() => Inertia::render('Developer/Schedules/Index'))->name('developer.schedules');
     Route::get('/developer/maintenance', fn() => Inertia::render('Developer/Maintenance/Index'))->name('developer.maintenance');
     Route::get('/developer/maintenance/{id}', fn($id) => Inertia::render('Developer/Maintenance/Show', ['maintenanceId' => (string) $id]))->name('developer.maintenance.show');
-    Route::get('/developer/logs', fn() => Inertia::render('Developer/Logs'))->name('developer.logs');
 });
-
-// ========================================
-// DEVELOPER
-// ========================================
-Route::middleware(['auth', 'role:developer'])->prefix('developer')->name('developer.')->group(function () {
-    Route::get('/schedule', fn() => Inertia::render('Developer/Schedule/index'))->name('schedule.index');
-    Route::get('/schedules', fn() => Inertia::render('Developer/Schedule/index'))->name('schedules.index');
-});
-
 require __DIR__.'/auth.php';

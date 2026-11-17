@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { Shield, Mail, ArrowLeft, CheckCircle2, RefreshCw, KeyRound, Copy, Check, Sparkles, Terminal } from 'lucide-react';
+import { Shield, Mail, ArrowLeft, CheckCircle2, RefreshCw, KeyRound } from 'lucide-react';
 
-export default function VerifyOtp({ email, status, dev_otp_code }) {
+export default function VerifyOtp({ email, status }) {
   const { data, setData, post, processing, errors } = useForm({ code: '' });
   const [resending, setResending] = useState(false);
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
-  const [copied, setCopied] = useState(false);
   const inputRefs = useRef([]);
 
   useEffect(() => {
@@ -17,23 +16,6 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
   useEffect(() => {
     setData('code', digits.join(''));
   }, [digits]);
-
-  const fillOtp = (otp) => {
-    if (!otp) return;
-    const clean = String(otp).replace(/\D/g, '').slice(0, 6);
-    const next = clean.split('');
-    while (next.length < 6) next.push('');
-    setDigits(next);
-    setData('code', clean);
-    inputRefs.current[Math.min(clean.length, 5)]?.focus();
-  };
-
-  const handleCopy = () => {
-    if (!dev_otp_code) return;
-    navigator.clipboard?.writeText(dev_otp_code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleChange = (index, value) => {
     const v = value.replace(/\D/g, '');
@@ -83,7 +65,10 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     if (!pasted) return;
-    fillOtp(pasted);
+    const next = ['', '', '', '', '', ''];
+    pasted.split('').forEach((d, i) => (next[i] = d));
+    setDigits(next);
+    inputRefs.current[Math.min(pasted.length, 5)]?.focus();
   };
 
   const submit = (e) => {
@@ -115,12 +100,12 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
           src="/images/login-bg.webp"
           alt="Tekna background"
           className="
-            absolute
+            fixed md:absolute
             inset-0
             w-full h-full
             object-cover
             object-center
-            scale-[1.03]
+            md:scale-[1.03]
           "
           onError={(e) => {
             e.currentTarget.style.display = 'none';
@@ -130,18 +115,18 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
         {/* overlay gelap */}
         <div
           className="
-            absolute
+            fixed md:absolute
             inset-0
-            bg-brand-primary/85
+            bg-brand-primary/80
           "
         />
 
         {/* Radial vignette */}
         <div
           className="
-            absolute
+            fixed md:absolute
             inset-0
-            bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.65)_100%)]
+            bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.55)_100%)]
           "
         />
 
@@ -153,7 +138,7 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
             -right-32
             w-[400px]
             h-[400px]
-            bg-brand-accent/15
+            bg-brand-muted/10
             rounded-full
             blur-3xl
             pointer-events-none
@@ -167,7 +152,7 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
             -left-40
             w-[400px]
             h-[400px]
-            bg-brand-accent2/10
+            bg-brand-muted/10
             rounded-full
             blur-3xl
             pointer-events-none
@@ -177,29 +162,28 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
         {/* content */}
         <div className="relative z-10 w-full max-w-md">
 
-          <div className="relative rounded-2xl p-[1px] bg-gradient-to-b from-brand-accent/40 via-brand-border/60 to-brand-accent2/20 shadow-2xl shadow-black/60">
-            <div className="rounded-2xl bg-brand-secondary/95 dark:bg-[#161d1d]/95 backdrop-blur-xl p-6 sm:p-8 relative overflow-hidden border border-brand-border/50">
+          <div className="relative rounded-2xl p-[1px] to-brand-accent2/10 shadow-2xl shadow-black/40">
+            <div className="rounded-2xl bg-brand-primary backdrop-blur-xl p-6 sm:p-8 relative overflow-hidden">
           
               {/* hiasan atasss */}
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand-accent to-transparent" />
-
-              {/* kembali ke halaman login */}
+              {/* kemabli ke halamn login */}
               <Link
                 href={route('login')}
                 aria-label="Kembali ke halaman login"
-                className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full text-brand-text-muted hover:text-brand-accent hover:bg-brand-muted/20 transition"
+                className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full text-brand-text-muted hover:text-brand-accent hover:border-brand-accent/50 transition"
               >
                 <ArrowLeft className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
               </Link>
-
               {/* logosssss*/}
-              <div className="flex items-center justify-center mb-5 sm:mb-8">
+              <div className="flex items-center justify-center mb-5 sm:mb-10">
                 <img
                   src="/logo.webp"
                   alt="Tekna"
                   className="
                     w-16 h-16
                     sm:w-20 sm:h-20
+                    md:w-24 md:h-24
                     object-contain
                     drop-shadow-[0_6px_20px_rgba(0,0,0,0.65)]
                   "
@@ -211,7 +195,7 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
               </div>
 
               {/* Heading */}
-              <div className="relative text-center mb-6 sm:mb-8">
+              <div className="relative text-center mb-6 sm:mb-10">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-brand-text mb-2">
                   Verifikasi OTP<span className="text-brand-accent">.</span>
                 </h1>
@@ -229,58 +213,9 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
                 </p>
               </div>
 
-              {/* Mode Development OTP Banner */}
-              {dev_otp_code && (
-                <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-brand-accent/15 to-brand-accent2/10 border border-brand-accent/40 shadow-inner">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-brand-accent">
-                      <Terminal className="w-3.5 h-3.5" />
-                      Mode Pengembangan (Dev)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopy}
-                      className="inline-flex items-center gap-1 text-xs text-brand-accent hover:text-brand-accent2 font-medium transition"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span className="text-emerald-400">Tersalin</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Salin</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-brand-text-muted mb-3 leading-relaxed">
-                    Karena SMTP email belum dikonfigurasi, gunakan kode berikut:
-                  </p>
-
-                  <div className="flex items-center justify-between bg-brand-primary/90 px-3 py-2 rounded-lg border border-brand-accent/30 mb-3">
-                    <span className="text-xs font-medium text-brand-text-muted">Kode OTP:</span>
-                    <span className="text-xl sm:text-2xl font-mono font-bold tracking-[0.25em] text-brand-accent select-all">
-                      {dev_otp_code}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => fillOtp(dev_otp_code)}
-                    className="w-full py-2 px-3 rounded-lg bg-brand-accent hover:bg-brand-accent2 text-brand-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Klik untuk Isi Otomatis Kode Ini
-                  </button>
-                </div>
-              )}
-
               {/* Status */}
               {status && (
-                <div className="mb-5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-sm flex items-center gap-2">
+                <div className="mb-5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-sm sm:text-base flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 sm:w-[18px] sm:h-[18px] shrink-0" />
                   {status}
                 </div>
@@ -324,7 +259,7 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
                     </p>
                   )}
 
-                  <p className="mt-8 mb-4 text-xs sm:text-sm text-brand-text-muted text-center">
+                  <p className="mt-12 mb-4 text-xs sm:text-sm text-brand-text-muted text-center">
                     Kode berlaku <span className="text-brand-accent font-medium">5 menit</span>
                   </p>
                 </div>
@@ -333,7 +268,7 @@ export default function VerifyOtp({ email, status, dev_otp_code }) {
                 <button
                   type="submit"
                   disabled={processing || !isComplete}
-                  className="relative w-full bg-gradient-to-r from-brand-accent to-brand-accent2 text-brand-primary font-bold py-3 text-base sm:py-3.5 sm:text-base rounded-xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed group overflow-hidden shadow-lg shadow-brand-accent/20 hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
+                  className="relative w-full bg-gradient-to-r from-brand-accent to-brand-accent2 text-brand-primary font-bold py-3 text-base sm:py-4 sm:text-lg rounded-xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed group overflow-hidden shadow-lg shadow-brand-accent/20 hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
 

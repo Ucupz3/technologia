@@ -26,6 +26,12 @@ import { invoicesRouter, paymentsRouter } from './routes/invoices.js';
 import { assignmentsRouter, orderAssignmentsRouter } from './routes/assignments.js';
 import { schedulesRouter } from './routes/schedules.js';
 import { progressRouter, orderProgressRouter } from './routes/progress.js';
+import { jobsRouter } from './routes/jobs.js';
+import { maintenancesRouter } from './routes/maintenances.js';
+import { auditLogsRouter } from './routes/audit-logs.js';
+import { developerDashboardRouter } from './routes/developer-dashboard.js';
+import { developerTasksRouter } from './routes/developer-tasks.js';
+import { developerMaintenanceRouter } from './routes/developer-maintenance.js';
 import swaggerUi from 'swagger-ui-express';
 import { openapiSpecification } from './docs/swagger.js';
 
@@ -82,6 +88,12 @@ app.use('/api/v1/orders/:orderId/assignments', orderAssignmentsRouter);
 app.use('/api/v1/progress', progressRouter);
 app.use('/api/v1/schedules', schedulesRouter);
 app.use('/api/v1/orders/:orderId/progress', orderProgressRouter);
+app.use('/api/v1/jobs', jobsRouter);
+app.use('/api/v1/maintenances', maintenancesRouter);
+app.use('/api/v1/audit-logs', auditLogsRouter);
+app.use('/api/v1/developer/dashboard', developerDashboardRouter);
+app.use('/api/v1/developer/tasks', developerTasksRouter);
+app.use('/api/v1/developer/maintenance', developerMaintenanceRouter);
 
 // ============ 404 ============
 app.use((_req, res) => {

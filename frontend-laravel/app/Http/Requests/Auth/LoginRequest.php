@@ -44,11 +44,6 @@ class LoginRequest extends FormRequest
         }
 
         $this->session()->put('otp_email', $email);
-        if (!empty($result['otp_code'])) {
-            $this->session()->put('dev_otp_code', $result['otp_code']);
-        } else {
-            $this->session()->forget('dev_otp_code');
-        }
 
         RateLimiter::clear($this->throttleKey());
     }

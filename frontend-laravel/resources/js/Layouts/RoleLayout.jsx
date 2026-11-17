@@ -40,7 +40,10 @@ const menuByRole = {
     { label: 'Invoices',  href: '/cs/invoices',     icon: Newspaper },
   ],
   developer: [
-    { label: 'Schedule', href: '/developer/schedule', icon: Calendar },
+    { label: 'Dashboard',   href: '/developer/dashboard',   icon: Home },
+    { label: 'Tasks',       href: '/developer/tasks',       icon: Package },
+    { label: 'Schedules',   href: '/developer/schedules',   icon: Calendar },
+    { label: 'Maintenance', href: '/developer/maintenance', icon: ClipboardClock },
   ],
 };
 
@@ -56,6 +59,13 @@ const roleBadgeColor = {
   admin:       'bg-blue-500/15 text-blue-400 border-blue-500/40',
   cs:          'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
   developer:   'bg-purple-500/15 text-purple-400 border-purple-500/40',
+};
+
+const MODE_META = {
+  super_admin: { label: roleLabel.super_admin, description: 'Kelola pengguna, peran & data master', icon: Shield, badge: roleBadgeColor.super_admin, dot: 'bg-orange-400' },
+  admin:       { label: roleLabel.admin,       description: 'Operasional order, layanan & jadwal', icon: Briefcase, badge: roleBadgeColor.admin, dot: 'bg-blue-400' },
+  cs:          { label: roleLabel.cs,          description: 'Layanan pelanggan & penagihan', icon: Headset, badge: roleBadgeColor.cs, dot: 'bg-emerald-400' },
+  developer:   { label: roleLabel.developer,   description: 'Tugas teknis & progres proyek', icon: Code, badge: roleBadgeColor.developer, dot: 'bg-purple-400' },
 };
 
 const SIDEBAR_STORAGE_KEY = 'erp_sidebar_open';
