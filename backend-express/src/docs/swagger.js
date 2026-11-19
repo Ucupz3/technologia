@@ -162,7 +162,8 @@ export const openapiSpecification = {
                 properties: {
                   customer_id: { type: 'integer', example: 1 },
                   pic_id: { type: 'integer', nullable: true, example: 2, description: 'ID PIC Customer dari tabel customer_pics' },
-                  sales_id: { type: 'integer', nullable: true, example: 3, description: 'ID Sales / CS penanggung jawab' },
+                  customer_service_id: { type: 'integer', nullable: true, example: 3, description: 'ID Customer Service penanggung jawab' },
+                  sales_id: { type: 'integer', nullable: true, deprecated: true, description: 'Alias lama untuk customer_service_id' },
                   team_id: { type: 'integer', nullable: true, example: 1, description: 'ID Tim pelaksana' },
                   services: {
                     type: 'array',
@@ -793,10 +794,10 @@ export const openapiSpecification = {
         tags: ['Customers'],
         parameters: [
           { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Cari berdasarkan nama, email, atau telepon' },
-          { name: 'sales_id', in: 'query', schema: { type: 'integer' }, description: 'Filter berdasarkan penanggung jawab sales' },
+          { name: 'customer_service_id', in: 'query', schema: { type: 'integer' }, description: 'Filter berdasarkan Customer Service penanggung jawab' },
         ],
         responses: {
-          200: { description: 'Daftar customer aktif beserta info kontak dan sales terkait' },
+          200: { description: 'Daftar customer aktif beserta info kontak dan Customer Service terkait' },
         },
       },
       post: {
@@ -815,6 +816,7 @@ export const openapiSpecification = {
                   phone: { type: 'string', example: '081234567890' },
                   address: { type: 'string', example: 'Gedung Cyber 2 Lt. 10, Jakarta' },
                   notes: { type: 'string' },
+                  customer_service_id: { type: 'integer', example: 4 },
                   sales_id: { type: 'integer', example: 4 },
                 },
               },
@@ -828,12 +830,12 @@ export const openapiSpecification = {
         },
       },
     },
-    '/api/v1/customers/sales/options': {
+    '/api/v1/customers/customer-service/options': {
       get: {
-        summary: 'Daftar Opsi Staf Sales / Marketing untuk Dropdown',
+        summary: 'Daftar Opsi Customer Service untuk Dropdown',
         tags: ['Customers'],
         responses: {
-          200: { description: 'Daftar staf tim sales yang aktif' },
+          200: { description: 'Daftar staf Customer Service yang aktif' },
         },
       },
     },
@@ -867,6 +869,7 @@ export const openapiSpecification = {
                   phone: { type: 'string' },
                   address: { type: 'string' },
                   notes: { type: 'string' },
+                  customer_service_id: { type: 'integer' },
                   sales_id: { type: 'integer' },
                 },
               },

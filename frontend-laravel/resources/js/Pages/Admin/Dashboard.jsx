@@ -56,42 +56,41 @@ export default function AdminDashboard() {
     loadData();
   }, []);
 
+  // ===== LOADING STATE (sama seperti SuperAdminDashboard) =====
+  if (loading) {
+    return (
+      <RoleLayout>
+        <Head title="Admin Dashboard" />
+        <div className="p-12 text-center text-brand-text-muted">
+          <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
+          Loading dashboard...
+        </div>
+      </RoleLayout>
+    );
+  }
+
   return (
     <RoleLayout>
       <Head title="Admin Dashboard" />
 
       {/* HEADER */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
-            <Home size={24} className="text-brand-accent" />
-            Dashboard Administrator
-          </h1>
+          <h1 className="text-2xl font-bold text-brand-text">Dashboard</h1>
           <p className="text-sm text-brand-text-muted mt-1">
             Ikhtisar operasional pesanan proyek, pengerjaan tim, dan penanganan maintenance kendala klien.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="bg-brand-secondary border border-brand-border text-brand-text px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-brand-muted transition shadow-sm disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Refresh Data
-          </button>
-          <Link
-            href="/admin/orders/create"
-            className="bg-brand-accent text-brand-secondary font-semibold px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-brand-accent/90 transition shadow-sm"
-          >
-            <Plus size={16} />
-            Order Baru
-          </Link>
-        </div>
+        <button
+          onClick={loadData}
+          className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition"
+        >
+          <RefreshCw size={16} /> Refresh
+        </button>
       </div>
 
       {/* STAT CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard title="Total Pesanan (Order)" value={data.total_orders} icon={Package} color="blue" />
         <StatCard title="Proyek Selesai" value={data.completed_orders} icon={CheckCircle2} color="emerald" />
         <StatCard title="Sedang Dikerjakan" value={data.active_orders} icon={Clock} color="purple" />
@@ -99,10 +98,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* BANNER MAINTENANCE & KENDALA ORDER */}
-      <div className="bg-gradient-to-r from-brand-secondary via-brand-secondary to-brand-muted/40 border border-brand-border rounded-2xl p-6 mb-8 shadow-sm">
+      <div className="bg-gradient-to-r from-brand-secondary via-brand-secondary to-brand-muted/40 border border-brand-border rounded-lg p-5 mb-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl shrink-0 mt-0.5">
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg shrink-0 mt-0.5">
               <ClipboardClock size={28} />
             </div>
             <div>
@@ -125,7 +124,7 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/admin/maintenance"
-              className="bg-brand-accent text-brand-secondary font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-brand-accent/90 transition shadow-sm flex items-center gap-2"
+              className="bg-brand-accent text-brand-secondary font-semibold px-3 py-2 rounded-lg text-sm hover:bg-brand-accent/90 transition flex items-center gap-2"
             >
               Buka Menu Maintenance
               <ArrowRight size={16} />
@@ -135,9 +134,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* GRID DUA KOLOM: TIKET MAINTENANCE TERBARU & ORDER TERBARU */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* TIKET MAINTENANCE TERBARU */}
-        <div className="bg-brand-secondary border border-brand-border rounded-xl p-5 shadow-sm">
+        <div className="bg-brand-secondary border border-brand-border rounded-lg p-5">
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-brand-border">
             <h3 className="font-bold text-brand-text text-base flex items-center gap-2">
               <Wrench size={18} className="text-amber-500" />
@@ -155,7 +154,7 @@ export default function AdminDashboard() {
           ) : (
             <div className="space-y-3">
               {data.recent_maintenance.map((m) => (
-                <div key={m.id} className="p-3 bg-brand-primary/40 border border-brand-border/60 rounded-xl space-y-1.5">
+                <div key={m.id} className="p-3 bg-brand-primary/40 border border-brand-border/60 rounded-lg space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-brand-text">{m.title}</span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${m.status === 'completed'
@@ -178,7 +177,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* PESANAN TERBARU */}
-        <div className="bg-brand-secondary border border-brand-border rounded-xl p-5 shadow-sm">
+        <div className="bg-brand-secondary border border-brand-border rounded-lg p-5">
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-brand-border">
             <h3 className="font-bold text-brand-text text-base flex items-center gap-2">
               <Package size={18} className="text-brand-accent" />
@@ -196,7 +195,7 @@ export default function AdminDashboard() {
           ) : (
             <div className="space-y-3">
               {data.recent_orders.map((o) => (
-                <div key={o.id} className="p-3 bg-brand-primary/40 border border-brand-border/60 rounded-xl flex items-center justify-between">
+                <div key={o.id} className="p-3 bg-brand-primary/40 border border-brand-border/60 rounded-lg flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-bold text-brand-text">{o.order_number}</span>
@@ -238,7 +237,7 @@ function StatCard({ title, value, icon: Icon, color }) {
   };
 
   return (
-    <div className="bg-brand-secondary border border-brand-border rounded-xl p-4 shadow-sm flex items-center gap-4 hover:shadow-md transition">
+    <div className="bg-brand-secondary border border-brand-border rounded-lg p-5 flex items-center gap-4 transition">
       <div className={`p-3 rounded-lg border ${colors[color]}`}>
         <Icon size={22} />
       </div>

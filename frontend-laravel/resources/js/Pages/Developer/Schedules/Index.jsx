@@ -30,21 +30,21 @@ const getStatusBadge = (status) => {
     case 'in_progress':
       return {
         label: 'Berjalan',
-        color: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
+        color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40',
         barColor: 'bg-blue-500',
         calendarBg: 'bg-blue-600/95 hover:bg-blue-600 text-white border-blue-400/60',
       };
     case 'completed':
       return {
         label: 'Selesai',
-        color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+        color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
         barColor: 'bg-emerald-500',
         calendarBg: 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-400/60',
       };
     case 'cancelled':
       return {
         label: 'Dibatalkan',
-        color: 'bg-red-500/15 text-red-400 border-red-500/40',
+        color: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
         barColor: 'bg-red-500',
         calendarBg: 'bg-red-600/95 hover:bg-red-600 text-white border-red-400/60',
       };
@@ -52,7 +52,7 @@ const getStatusBadge = (status) => {
     default:
       return {
         label: 'Menunggu',
-        color: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
+        color: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40',
         barColor: 'bg-amber-500',
         calendarBg: 'bg-amber-600/95 hover:bg-amber-600 text-white border-amber-400/60',
       };
@@ -64,27 +64,27 @@ const formatDateShort = (d) => {
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-// Badge sisa waktu: satu informasi ringkas
+// Badge sisa waktu
 const getDeadlineBadge = (p) => {
   if (p.status === 'completed' || p.days_remaining === null || p.days_remaining === undefined) return null;
   if (p.is_overdue) {
-    return { text: 'Terlambat', cls: 'bg-red-500/15 text-red-400 border-red-500/30' };
+    return { text: 'Terlambat', cls: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30' };
   }
   if (p.days_remaining === 0) {
-    return { text: 'Hari ini', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' };
+    return { text: 'Hari ini', cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' };
   }
   return {
     text: `${p.days_remaining} hari lagi`,
     cls: p.days_remaining <= 3
-      ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+      : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
   };
 };
 
 function MiniProgress({ value = 0, status }) {
   const color = getStatusBadge(status).barColor;
   return (
-    <div className="flex items-center gap-2 w-28">
+    <div className="flex items-center gap-2 w-28 shrink-0">
       <div className="flex-1 bg-brand-primary h-1.5 rounded-full overflow-hidden border border-brand-border">
         <div className={`h-full ${color} transition-all duration-300`} style={{ width: `${value}%` }} />
       </div>
@@ -412,44 +412,48 @@ export default function DeveloperSchedule() {
   };
 
   const statCards = [
-    { label: 'Total Proyek', value: stats.total_projects, icon: Briefcase, color: 'text-blue-400' },
-    { label: 'Berjalan', value: stats.in_progress, icon: Activity, color: 'text-cyan-400' },
-    { label: 'Selesai', value: stats.completed, icon: CheckCircle2, color: 'text-emerald-400' },
-    { label: 'Terlambat', value: stats.overdue, icon: AlertTriangle, color: 'text-rose-400' },
+    { label: 'Total Proyek', value: stats.total_projects, icon: Briefcase, color: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Berjalan', value: stats.in_progress, icon: Activity, color: 'text-cyan-600 dark:text-cyan-400' },
+    { label: 'Selesai', value: stats.completed, icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Terlambat', value: stats.overdue, icon: AlertTriangle, color: 'text-rose-600 dark:text-rose-400' },
   ];
 
   return (
     <RoleLayout>
       <Head title="Jadwal Kerja" />
 
-      {/* Toast */}
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 border transition-all ${
+        <div className={`fixed bottom-5 right-5 z-50 max-w-[calc(100vw-2rem)] px-4 py-3 rounded-xl shadow-2xl text-xs sm:text-sm font-medium flex items-center gap-2.5 border transition-all ${
           toast.type === 'success'
             ? 'bg-emerald-950/90 text-emerald-200 border-emerald-800'
             : 'bg-red-950/90 text-red-200 border-red-800'
         }`}>
           {toast.type === 'success'
-            ? <CheckCircle2 size={18} className="text-emerald-400" />
-            : <AlertCircle size={18} className="text-red-400" />}
+            ? <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+            : <AlertCircle size={18} className="text-red-400 shrink-0" />}
           <span>{toast.message}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-4 sm:mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text">Jadwal Kerja</h1>
-          <p className="text-sm text-brand-text-muted mt-1">
-            Pantau jadwal dan progres proyek Anda.
+          <h1 className="text-xl sm:text-2xl font-bold text-brand-text flex items-center gap-2">
+            <CalendarIcon size={24} className="text-brand-accent shrink-0 sm:w-7 sm:h-7" />
+            <span>Jadwal Kerja</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5">
+            Pantau jadwal dan progres proyek Anda secara visual.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex rounded-lg border border-brand-border bg-brand-secondary p-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-xl border border-brand-border bg-brand-secondary p-1 w-full sm:w-auto justify-between sm:justify-start">
             <button
+              type="button"
               onClick={() => setScope('mine')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center gap-1.5 ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
                 scope === 'mine'
                   ? 'bg-brand-accent text-brand-primary shadow-sm'
                   : 'text-brand-text-muted hover:text-brand-text'
@@ -458,8 +462,9 @@ export default function DeveloperSchedule() {
               <UserCheck size={14} /> Tugas Saya
             </button>
             <button
+              type="button"
               onClick={() => setScope('all')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center gap-1.5 ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
                 scope === 'all'
                   ? 'bg-brand-accent text-brand-primary shadow-sm'
                   : 'text-brand-text-muted hover:text-brand-text'
@@ -470,51 +475,61 @@ export default function DeveloperSchedule() {
           </div>
 
           <button
+            type="button"
             onClick={loadData}
             disabled={loading}
-            className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm"
+            className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-xl hover:bg-brand-muted flex items-center justify-center gap-2 text-xs sm:text-sm font-medium transition shadow-sm w-full sm:w-auto"
             title="Muat ulang data"
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin text-brand-accent' : ''} />
-            <span className="hidden sm:inline">Refresh</span>
+            <RefreshCw size={15} className={loading ? 'animate-spin text-brand-accent' : ''} />
+            <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* Statistik ringkas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {/* Statistik Ringkas */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-4 sm:mb-6">
         {statCards.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="bg-brand-secondary border border-brand-border rounded-xl p-4 shadow-sm flex items-center justify-between">
+            <div key={s.label} className="bg-brand-secondary border border-brand-border rounded-xl p-3.5 sm:p-4 shadow-sm flex items-center justify-between">
               <div>
-                <div className="text-xs font-medium text-brand-text-muted">{s.label}</div>
-                <div className={`text-2xl font-bold mt-0.5 ${s.color}`}>{s.value}</div>
+                <div className="text-[11px] sm:text-xs font-medium text-brand-text-muted">{s.label}</div>
+                <div className={`text-xl sm:text-2xl font-bold mt-0.5 ${s.color}`}>{s.value}</div>
               </div>
-              <Icon size={20} className={s.color} />
+              <Icon size={20} className={`${s.color} shrink-0`} />
             </div>
           );
         })}
       </div>
 
-      {/* Filter bar */}
-      <div className="bg-brand-secondary border border-brand-border rounded-xl p-3 mb-6 shadow-sm flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
-        <div className="relative flex-1 max-w-md">
+      {/* Filter Bar */}
+      <div className="bg-brand-secondary border border-brand-border rounded-xl p-3 mb-4 sm:mb-6 shadow-sm flex flex-col md:flex-row gap-2.5 sm:gap-3 justify-between items-stretch md:items-center">
+        <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari proyek atau customer..."
-            className="w-full pl-9 pr-4 py-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent transition"
+            className="w-full pl-9 pr-8 py-2 bg-brand-primary border border-brand-border rounded-xl text-base sm:text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent transition shadow-sm"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition p-1"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-brand-primary border border-brand-border text-brand-text text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-brand-accent"
+            className="bg-brand-primary border border-brand-border text-brand-text text-base sm:text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-brand-accent flex-1 sm:flex-none shadow-sm"
           >
             <option value="all">Semua Status</option>
             <option value="in_progress">Berjalan</option>
@@ -522,10 +537,11 @@ export default function DeveloperSchedule() {
             <option value="completed">Selesai</option>
           </select>
 
-          <div className="inline-flex rounded-lg border border-brand-border bg-brand-primary p-0.5">
+          <div className="inline-flex rounded-xl border border-brand-border bg-brand-primary p-0.5">
             <button
+              type="button"
               onClick={() => setViewMode('calendar')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${
                 viewMode === 'calendar'
                   ? 'bg-brand-accent text-brand-primary font-semibold shadow-sm'
                   : 'text-brand-text-muted hover:text-brand-text'
@@ -534,8 +550,9 @@ export default function DeveloperSchedule() {
               <CalendarIcon size={14} /> Kalender
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${
                 viewMode === 'list'
                   ? 'bg-brand-accent text-brand-primary font-semibold shadow-sm'
                   : 'text-brand-text-muted hover:text-brand-text'
@@ -547,45 +564,46 @@ export default function DeveloperSchedule() {
         </div>
       </div>
 
-      {/* Error */}
+      {/* Error State */}
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-800 text-red-300 text-sm flex items-center justify-between">
+        <div className="mb-4 sm:mb-6 p-3.5 sm:p-4 rounded-xl bg-red-950/40 border border-red-800 text-red-300 text-xs sm:text-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle size={18} className="text-red-400 shrink-0" />
             <span>{error}</span>
           </div>
-          <button onClick={loadData} className="underline text-xs hover:text-white">Coba lagi</button>
+          <button onClick={loadData} className="underline text-xs hover:text-white shrink-0 ml-2">Coba lagi</button>
         </div>
       )}
 
       {loading && projects.length === 0 ? (
-        <div className="p-16 text-center text-brand-text-muted bg-brand-secondary border border-brand-border rounded-xl">
+        <div className="p-8 sm:p-16 text-center text-brand-text-muted bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl shadow-sm">
           <RefreshCw size={28} className="animate-spin mx-auto mb-3 text-brand-accent" />
-          <p className="text-sm font-medium">Memuat jadwal...</p>
+          <p className="text-xs sm:text-sm font-medium">Memuat jadwal proyek...</p>
         </div>
       ) : (
         <>
           {/* ================= VIEW: KALENDER ================= */}
           {viewMode === 'calendar' && (
-            <div className="bg-brand-secondary border border-brand-border rounded-xl shadow-sm overflow-hidden mb-6">
-              <div className="p-4 border-b border-brand-border flex flex-col sm:flex-row items-center justify-between gap-3">
-                <h2 className="text-lg font-bold text-brand-text flex items-center gap-2">
-                  <CalendarIcon size={20} className="text-brand-accent" />
-                  {MONTHS[currentMonth]} {currentYear}
+            <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl shadow-sm overflow-hidden mb-6">
+              <div className="p-3.5 sm:p-4 border-b border-brand-border flex flex-col sm:flex-row items-center justify-between gap-3">
+                <h2 className="text-base sm:text-lg font-bold text-brand-text flex items-center gap-2">
+                  <CalendarIcon size={18} className="text-brand-accent shrink-0" />
+                  <span>{MONTHS[currentMonth]} {currentYear}</span>
                 </h2>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
                   <button
+                    type="button"
                     onClick={goToToday}
-                    className="px-3 py-1.5 bg-brand-primary border border-brand-border text-brand-text rounded-lg text-xs font-semibold hover:bg-brand-muted transition shadow-sm"
+                    className="px-3 py-1.5 bg-brand-primary border border-brand-border text-brand-text rounded-xl text-xs font-semibold hover:bg-brand-muted transition shadow-sm"
                   >
                     Hari Ini
                   </button>
-                  <div className="flex items-center border border-brand-border rounded-lg overflow-hidden bg-brand-primary shadow-sm">
-                    <button onClick={prevMonth} className="p-1.5 hover:bg-brand-muted text-brand-text transition" title="Bulan sebelumnya">
+                  <div className="flex items-center border border-brand-border rounded-xl overflow-hidden bg-brand-primary shadow-sm">
+                    <button type="button" onClick={prevMonth} className="p-1.5 hover:bg-brand-muted text-brand-text transition" title="Bulan sebelumnya">
                       <ChevronLeft size={16} />
                     </button>
-                    <button onClick={nextMonth} className="p-1.5 hover:bg-brand-muted text-brand-text transition border-l border-brand-border" title="Bulan berikutnya">
+                    <button type="button" onClick={nextMonth} className="p-1.5 hover:bg-brand-muted text-brand-text transition border-l border-brand-border" title="Bulan berikutnya">
                       <ChevronRight size={16} />
                     </button>
                   </div>
@@ -593,189 +611,244 @@ export default function DeveloperSchedule() {
               </div>
 
               {/* Legend */}
-              <div className="px-4 py-2 bg-brand-primary/50 border-b border-brand-border flex flex-wrap items-center gap-4 text-xs text-brand-text-muted">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Berjalan</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Menunggu</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Selesai</span>
+              <div className="px-3.5 py-2 bg-brand-primary/50 border-b border-brand-border flex flex-wrap items-center gap-3.5 text-xs text-brand-text-muted">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> In Progress</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Pending</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Completed</span>
               </div>
 
-              {/* Hari */}
-              <div className="grid grid-cols-7 border-b border-brand-border text-center text-xs font-bold py-2 text-brand-text-muted bg-brand-primary/40 uppercase tracking-wider">
-                {DAYS.map((day, idx) => (
-                  <div key={day} className={idx === 0 || idx === 6 ? 'text-red-400/90' : ''}>{day}</div>
-                ))}
-              </div>
+              {/* Pembungkus Scroll Horizontal untuk Grid Kalender di Mobile */}
+              <div className="overflow-x-auto scrollbar-none">
+                <div className="min-w-[650px]">
+                  {/* Hari */}
+                  <div className="grid grid-cols-7 border-b border-brand-border text-center text-[11px] font-bold py-2 text-brand-text-muted bg-brand-primary/40 uppercase tracking-wider">
+                    {DAYS.map((day, idx) => (
+                      <div key={day} className={idx === 0 || idx === 6 ? 'text-red-500 dark:text-red-400' : ''}>{day}</div>
+                    ))}
+                  </div>
 
-              {/* Minggu */}
-              <div className="divide-y divide-brand-border">
-                {calendarData.map((weekData, wIdx) => {
-                  const isExpanded = Boolean(expandedWeeks[wIdx]);
-                  const hiddenCount = weekData.events.filter((e) => (e.track || 0) >= MAX_VISIBLE_TRACKS).length;
-                  const hasHidden = hiddenCount > 0;
+                  {/* Minggu */}
+                  <div className="divide-y divide-brand-border">
+                    {calendarData.map((weekData, wIdx) => {
+                      const isExpanded = Boolean(expandedWeeks[wIdx]);
+                      const hiddenCount = weekData.events.filter((e) => (e.track || 0) >= MAX_VISIBLE_TRACKS).length;
+                      const hasHidden = hiddenCount > 0;
 
-                  const visibleEvents = isExpanded
-                    ? weekData.events
-                    : weekData.events.filter((e) => (e.track || 0) < MAX_VISIBLE_TRACKS);
+                      const visibleEvents = isExpanded
+                        ? weekData.events
+                        : weekData.events.filter((e) => (e.track || 0) < MAX_VISIBLE_TRACKS);
 
-                  const visibleTracks = isExpanded
-                    ? weekData.maxTrack + 1
-                    : Math.min(weekData.maxTrack + 1, MAX_VISIBLE_TRACKS);
+                      const visibleTracks = isExpanded
+                        ? weekData.maxTrack + 1
+                        : Math.min(weekData.maxTrack + 1, MAX_VISIBLE_TRACKS);
 
-                  let areaHeight = PAD_TOP + visibleTracks * TRACK_STEP + PAD_BOTTOM;
-                  if (hasHidden) areaHeight += 26;
-                  if (areaHeight < 52) areaHeight = 52;
+                      let areaHeight = PAD_TOP + visibleTracks * TRACK_STEP + PAD_BOTTOM;
+                      if (hasHidden) areaHeight += 26;
+                      if (areaHeight < 52) areaHeight = 52;
 
-                  return (
-                    <div key={wIdx} className="bg-brand-secondary">
-                      {/* Baris tanggal */}
-                      <div className="grid grid-cols-7 divide-x divide-brand-border/40 bg-brand-primary/25 border-b border-brand-border/30 h-8">
-                        {weekData.week.map((day, dIdx) => {
-                          const isToday =
-                            day !== null &&
-                            day === today.getDate() &&
-                            currentMonth === today.getMonth() &&
-                            currentYear === today.getFullYear();
-                          const isWeekend = dIdx === 0 || dIdx === 6;
+                      return (
+                        <div key={wIdx} className="bg-brand-secondary">
+                          {/* Baris tanggal */}
+                          <div className="grid grid-cols-7 divide-x divide-brand-border/40 bg-brand-primary/25 border-b border-brand-border/30 h-8">
+                            {weekData.week.map((day, dIdx) => {
+                              const isToday =
+                                day !== null &&
+                                day === today.getDate() &&
+                                currentMonth === today.getMonth() &&
+                                currentYear === today.getFullYear();
+                              const isWeekend = dIdx === 0 || dIdx === 6;
 
-                          return (
-                            <div
-                              key={dIdx}
-                              className={`px-2 py-1 flex items-center text-xs ${
-                                day === null ? 'bg-brand-primary/20' : isToday ? 'bg-brand-accent/15' : isWeekend ? 'bg-brand-muted/10' : ''
-                              }`}
-                            >
-                              {day !== null && (
-                                <span
-                                  className={`inline-flex items-center justify-center font-bold text-xs rounded-full w-6 h-6 ${
-                                    isToday
-                                      ? 'bg-brand-accent text-brand-primary shadow'
-                                      : isWeekend
-                                      ? 'text-red-400'
-                                      : 'text-brand-text'
+                              return (
+                                <div
+                                  key={dIdx}
+                                  className={`px-2 py-1 flex items-center text-xs ${
+                                    day === null ? 'bg-brand-primary/20' : isToday ? 'bg-brand-accent/15' : isWeekend ? 'bg-brand-muted/10' : ''
                                   }`}
                                 >
-                                  {day}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Area bar proyek */}
-                      <div className="relative" style={{ height: `${areaHeight}px` }}>
-                        <div className="absolute inset-0 grid grid-cols-7 divide-x divide-brand-border/30 pointer-events-none">
-                          {weekData.week.map((day, dIdx) => (
-                            <div
-                              key={dIdx}
-                              className={`h-full ${
-                                day === null ? 'bg-brand-primary/10' : dIdx === 0 || dIdx === 6 ? 'bg-brand-muted/5' : ''
-                              }`}
-                            />
-                          ))}
-                        </div>
-
-                        {visibleEvents.map((event) => {
-                          const badge = getStatusBadge(event.status);
-                          const leftPct = (event.startCol / 7) * 100;
-                          const widthPct = ((event.endCol - event.startCol + 1) / 7) * 100;
-                          const topPx = PAD_TOP + (event.track || 0) * TRACK_STEP;
-
-                          return (
-                            <div
-                              key={event.id}
-                              onClick={() => setSelectedProject(event)}
-                              style={{
-                                left: `calc(${leftPct}% + 4px)`,
-                                width: `calc(${widthPct}% - 8px)`,
-                                top: `${topPx}px`,
-                                height: `${BAR_H}px`,
-                              }}
-                              className={`absolute rounded-md px-2 flex items-center justify-between gap-2 text-xs cursor-pointer transition shadow-sm border z-10 hover:brightness-110 ${badge.calendarBg}`}
-                              title={`${getTitle(event)} (${event.order_number}) - ${event.customer_name}\n${formatDateShort(event.start_date_project)} s/d ${formatDateShort(event.end_date_project)}`}
-                            >
-                              <span className="font-semibold text-[11px] truncate">{getTitle(event)}</span>
-                              <span className="text-[10px] font-mono font-bold px-1.5 rounded bg-black/40 shrink-0">
-                                {event.progress_percentage}%
-                              </span>
-                            </div>
-                          );
-                        })}
-
-                        {hasHidden && (
-                          <div
-                            style={{
-                              top: `${PAD_TOP + visibleTracks * TRACK_STEP}px`,
-                            }}
-                            className="absolute left-2 right-2 flex items-center justify-center z-10"
-                          >
-                            <button
-                              onClick={() => toggleWeekExpand(wIdx)}
-                              className="text-[11px] font-semibold text-brand-accent bg-brand-primary/95 border border-brand-accent/30 hover:border-brand-accent px-3 py-0.5 rounded-full shadow-sm transition flex items-center gap-1"
-                            >
-                              {isExpanded ? (
-                                <>Sembunyikan <ChevronUp size={12} /></>
-                              ) : (
-                                <>+{hiddenCount} lainnya <ChevronDown size={12} /></>
-                              )}
-                            </button>
+                                  {day !== null && (
+                                    <span
+                                      className={`inline-flex items-center justify-center font-bold text-xs rounded-full w-6 h-6 ${
+                                        isToday
+                                          ? 'bg-brand-accent text-brand-primary shadow'
+                                          : isWeekend
+                                          ? 'text-red-500 dark:text-red-400'
+                                          : 'text-brand-text'
+                                      }`}
+                                    >
+                                      {day}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+
+                          {/* Area bar proyek */}
+                          <div className="relative" style={{ height: `${areaHeight}px` }}>
+                            <div className="absolute inset-0 grid grid-cols-7 divide-x divide-brand-border/30 pointer-events-none">
+                              {weekData.week.map((day, dIdx) => (
+                                <div
+                                  key={dIdx}
+                                  className={`h-full ${
+                                    day === null ? 'bg-brand-primary/10' : dIdx === 0 || dIdx === 6 ? 'bg-brand-muted/5' : ''
+                                  }`}
+                                />
+                              ))}
+                            </div>
+
+                            {visibleEvents.map((event) => {
+                              const badge = getStatusBadge(event.status);
+                              const leftPct = (event.startCol / 7) * 100;
+                              const widthPct = ((event.endCol - event.startCol + 1) / 7) * 100;
+                              const topPx = PAD_TOP + (event.track || 0) * TRACK_STEP;
+
+                              return (
+                                <div
+                                  key={event.id}
+                                  onClick={() => setSelectedProject(event)}
+                                  style={{
+                                    left: `calc(${leftPct}% + 4px)`,
+                                    width: `calc(${widthPct}% - 8px)`,
+                                    top: `${topPx}px`,
+                                    height: `${BAR_H}px`,
+                                  }}
+                                  className={`absolute rounded-lg px-2 flex items-center justify-between gap-2 text-xs cursor-pointer transition shadow-sm border z-10 hover:brightness-110 ${badge.calendarBg}`}
+                                  title={`${getTitle(event)} (${event.order_number}) - ${event.customer_name}\n${formatDateShort(event.start_date_project)} s/d ${formatDateShort(event.end_date_project)}`}
+                                >
+                                  <span className="font-semibold text-[11px] truncate">{getTitle(event)}</span>
+                                  <span className="text-[10px] font-mono font-bold px-1.5 rounded bg-black/40 shrink-0">
+                                    {event.progress_percentage}%
+                                  </span>
+                                </div>
+                              );
+                            })}
+
+                            {hasHidden && (
+                              <div
+                                style={{
+                                  top: `${PAD_TOP + visibleTracks * TRACK_STEP}px`,
+                                }}
+                                className="absolute left-2 right-2 flex items-center justify-center z-10"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => toggleWeekExpand(wIdx)}
+                                  className="text-[11px] font-semibold text-brand-accent bg-brand-primary/95 border border-brand-accent/30 hover:border-brand-accent px-3 py-0.5 rounded-full shadow-sm transition flex items-center gap-1"
+                                >
+                                  {isExpanded ? (
+                                    <>Sembunyikan <ChevronUp size={12} /></>
+                                  ) : (
+                                    <>+{hiddenCount} lainnya <ChevronDown size={12} /></>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* ================= VIEW: DAFTAR ================= */}
           {viewMode === 'list' && (
-            <div className="bg-brand-secondary border border-brand-border rounded-xl shadow-sm overflow-hidden mb-6">
+            <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl shadow-sm overflow-hidden mb-6">
               {sortedProjects.length === 0 ? (
-                <div className="py-16 text-center">
+                <div className="py-12 sm:py-16 text-center">
                   <Briefcase size={36} className="mx-auto text-brand-text-muted mb-3 opacity-60" />
-                  <p className="text-base font-medium text-brand-text">Tidak ada proyek ditemukan</p>
+                  <p className="text-sm font-medium text-brand-text">Tidak ada proyek ditemukan</p>
                   <p className="text-xs text-brand-text-muted mt-1">Coba ubah filter atau kata kunci pencarian.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-brand-border">
-                  {sortedProjects.map((item) => {
-                    const badge = getStatusBadge(item.status);
-                    const dl = getDeadlineBadge(item);
+                <>
+                  {/* 1. CARD VIEW (MOBILE - < md) */}
+                  <div className="block md:hidden divide-y divide-brand-border/50">
+                    {sortedProjects.map((item) => {
+                      const badge = getStatusBadge(item.status);
+                      const dl = getDeadlineBadge(item);
 
-                    return (
-                      <button
-                        type="button"
-                        key={item.id}
-                        onClick={() => setSelectedProject(item)}
-                        className="w-full text-left p-4 hover:bg-brand-primary/40 transition flex flex-col md:flex-row md:items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-bold text-brand-text truncate">{getTitle(item)}</div>
-                          <div className="text-xs text-brand-text-muted mt-0.5 truncate">{item.customer_name}</div>
-                        </div>
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => setSelectedProject(item)}
+                          className="p-4 space-y-3 hover:bg-brand-muted/30 transition cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="font-bold text-xs sm:text-sm text-brand-text block truncate">
+                                {getTitle(item)}
+                              </span>
+                              <span className="text-[11px] text-brand-text-muted block mt-0.5 truncate">
+                                {item.customer_name || '—'}
+                              </span>
+                            </div>
+                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border shrink-0 ${badge.color}`}>
+                              {badge.label}
+                            </span>
+                          </div>
 
-                        <div className="flex flex-wrap items-center gap-4 md:gap-5">
-                          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${badge.color}`}>
-                            {badge.label}
-                          </span>
+                          <div className="bg-brand-primary/40 rounded-xl p-3 border border-brand-border/40 flex items-center justify-between gap-2">
+                            <span className="text-brand-text-muted text-[11px] font-semibold uppercase tracking-wider">Progres Proyek</span>
+                            <MiniProgress value={item.progress_percentage} status={item.status} />
+                          </div>
 
-                          <MiniProgress value={item.progress_percentage} status={item.status} />
-
-                          <div className="md:w-32 md:text-right">
-                            <div className="text-xs text-brand-text">{formatDateShort(item.end_date_project)}</div>
+                          <div className="flex items-center justify-between pt-0.5 text-xs">
+                            <div className="text-brand-text-muted text-[11px]">
+                              Selesai: <span className="text-brand-text font-medium">{formatDateShort(item.end_date_project)}</span>
+                            </div>
                             {dl && (
-                              <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full font-semibold border ${dl.cls}`}>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${dl.cls}`}>
                                 {dl.text}
                               </span>
                             )}
                           </div>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 2. TABLE VIEW (DESKTOP - >= md) */}
+                  <div className="hidden md:block divide-y divide-brand-border">
+                    {sortedProjects.map((item) => {
+                      const badge = getStatusBadge(item.status);
+                      const dl = getDeadlineBadge(item);
+
+                      return (
+                        <button
+                          type="button"
+                          key={item.id}
+                          onClick={() => setSelectedProject(item)}
+                          className="w-full text-left p-4 hover:bg-brand-primary/40 transition flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-bold text-brand-text truncate">{getTitle(item)}</div>
+                            <div className="text-xs text-brand-text-muted mt-0.5 truncate">{item.customer_name}</div>
+                          </div>
+
+                          <div className="flex items-center gap-5">
+                            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${badge.color}`}>
+                              {badge.label}
+                            </span>
+
+                            <MiniProgress value={item.progress_percentage} status={item.status} />
+
+                            <div className="w-32 text-right">
+                              <div className="text-xs text-brand-text">{formatDateShort(item.end_date_project)}</div>
+                              {dl && (
+                                <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full font-semibold border ${dl.cls}`}>
+                                  {dl.text}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -784,13 +857,13 @@ export default function DeveloperSchedule() {
 
       {/* ================= MODAL DETAIL PROYEK ================= */}
       {selectedProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm" onClick={() => setSelectedProject(null)}>
+          <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-5 border-b border-brand-border flex items-center justify-between gap-3 sticky top-0 bg-brand-secondary z-10">
+            <div className="p-4 sm:p-5 border-b border-brand-border flex items-center justify-between gap-3 bg-brand-primary/40 shrink-0">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-brand-text truncate">{getTitle(selectedProject)}</h3>
+                  <h3 className="text-sm sm:text-lg font-bold text-brand-text truncate">{getTitle(selectedProject)}</h3>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${getStatusBadge(selectedProject.status).color}`}>
                     {getStatusBadge(selectedProject.status).label}
                   </span>
@@ -798,25 +871,26 @@ export default function DeveloperSchedule() {
                 <p className="text-xs text-brand-text-muted mt-0.5 truncate">{selectedProject.customer_name}</p>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedProject(null)}
-                className="text-brand-text-muted hover:text-brand-text p-1 rounded-lg hover:bg-brand-primary transition shrink-0"
+                className="text-brand-text-muted hover:text-brand-text p-1.5 rounded-lg hover:bg-brand-primary transition shrink-0"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Isi */}
-            <div className="p-5 space-y-5">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 text-xs sm:text-sm">
               {/* Periode & progres */}
-              <div className="p-4 bg-brand-primary/60 border border-brand-border rounded-xl space-y-3">
+              <div className="p-3.5 bg-brand-primary/60 border border-brand-border rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-brand-text-muted flex items-center gap-1.5">
-                    <CalendarIcon size={13} className="text-brand-accent" />
-                    {formatDateShort(selectedProject.start_date_project)} – {formatDateShort(selectedProject.end_date_project)}
+                    <CalendarIcon size={13} className="text-brand-accent shrink-0" />
+                    <span>{formatDateShort(selectedProject.start_date_project)} – {formatDateShort(selectedProject.end_date_project)}</span>
                   </span>
-                  <span className="font-bold text-brand-accent">{selectedProject.progress_percentage}%</span>
+                  <span className="font-bold text-brand-accent font-mono">{selectedProject.progress_percentage}%</span>
                 </div>
-                <div className="w-full bg-brand-primary h-2.5 rounded-full overflow-hidden border border-brand-border">
+                <div className="w-full bg-brand-primary h-2 rounded-full overflow-hidden border border-brand-border">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${getStatusBadge(selectedProject.status).barColor}`}
                     style={{ width: `${selectedProject.progress_percentage}%` }}
@@ -824,7 +898,7 @@ export default function DeveloperSchedule() {
                 </div>
               </div>
 
-              {/* Layanan (satu baris) */}
+              {/* Layanan */}
               {selectedProject.services && selectedProject.services.length > 0 && (
                 <div className="text-xs">
                   <span className="text-brand-text-muted">Layanan: </span>
@@ -836,15 +910,15 @@ export default function DeveloperSchedule() {
 
               {/* Tim */}
               <div>
-                <h4 className="text-xs font-bold text-brand-text-muted uppercase tracking-wider mb-2">Tim</h4>
+                <h4 className="text-[11px] sm:text-xs font-bold text-brand-text-muted uppercase tracking-wider mb-2">Tim</h4>
                 {selectedProject.assignments && selectedProject.assignments.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedProject.assignments.map((m, idx) => (
                       <span
                         key={idx}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-brand-primary border border-brand-border text-brand-text flex items-center gap-1.5"
+                        className="text-xs px-2.5 py-1 rounded-xl bg-brand-primary border border-brand-border text-brand-text flex items-center gap-1.5"
                       >
-                        {m.is_lead && <Crown size={11} className="text-amber-400" />}
+                        {m.is_lead && <Crown size={11} className="text-amber-400 shrink-0" />}
                         <strong>{m.user_name}</strong>
                         <span className="text-brand-text-muted">· {m.job_name || 'Developer'}</span>
                       </span>
@@ -858,8 +932,8 @@ export default function DeveloperSchedule() {
               {/* Catatan proyek */}
               {selectedProject.notes && (
                 <div>
-                  <h4 className="text-xs font-bold text-brand-text-muted uppercase tracking-wider mb-1.5">Catatan</h4>
-                  <div className="p-3 bg-brand-primary border border-brand-border rounded-lg text-xs text-brand-text whitespace-pre-line leading-relaxed">
+                  <h4 className="text-[11px] sm:text-xs font-bold text-brand-text-muted uppercase tracking-wider mb-1.5">Catatan</h4>
+                  <div className="p-3 bg-brand-primary border border-brand-border rounded-xl text-xs text-brand-text whitespace-pre-line leading-relaxed">
                     {selectedProject.notes}
                   </div>
                 </div>
@@ -867,11 +941,11 @@ export default function DeveloperSchedule() {
 
               {/* Riwayat progres (3 terbaru) */}
               <div>
-                <h4 className="text-xs font-bold text-brand-text-muted uppercase tracking-wider mb-2">Update Terbaru</h4>
+                <h4 className="text-[11px] sm:text-xs font-bold text-brand-text-muted uppercase tracking-wider mb-2">Update Terbaru</h4>
                 {selectedProject.recent_progress && selectedProject.recent_progress.length > 0 ? (
                   <div className="space-y-2">
                     {selectedProject.recent_progress.slice(0, 3).map((prog, idx) => (
-                      <div key={idx} className="p-3 bg-brand-primary border border-brand-border rounded-lg text-xs">
+                      <div key={idx} className="p-3 bg-brand-primary border border-brand-border rounded-xl text-xs">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-brand-text truncate">{prog.title}</span>
                           <span className="font-mono font-bold text-brand-accent shrink-0">{prog.progress_percentage}%</span>
@@ -892,21 +966,23 @@ export default function DeveloperSchedule() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-brand-border bg-brand-primary/40 flex items-center justify-between gap-2.5 rounded-b-2xl">
-              <span className="text-xs text-brand-text-muted">
+            <div className="p-4 border-t border-brand-border bg-brand-primary/40 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 shrink-0">
+              <span className="text-xs text-brand-text-muted text-center sm:text-left">
                 {!selectedProject.my_assignment && 'Mode baca (bukan tim Anda)'}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
+                  type="button"
                   onClick={() => setSelectedProject(null)}
-                  className="px-4 py-2 bg-brand-secondary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-lg transition"
+                  className="w-full sm:w-auto px-4 py-2 bg-brand-secondary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-xl transition"
                 >
                   Tutup
                 </button>
                 {selectedProject.my_assignment && (
                   <button
+                    type="button"
                     onClick={() => openProgressModal(selectedProject)}
-                    className="px-4 py-2 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm"
+                    className="w-full sm:w-auto px-4 py-2 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     <TrendingUp size={14} /> Update Progres
                   </button>
@@ -919,14 +995,15 @@ export default function DeveloperSchedule() {
 
       {/* ================= MODAL UPDATE PROGRES ================= */}
       {isProgressModalOpen && progressProject && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-brand-border flex items-center justify-between gap-3">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm" onClick={() => setIsProgressModalOpen(false)}>
+          <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-5 border-b border-brand-border flex items-center justify-between gap-3 shrink-0">
               <div className="min-w-0">
-                <h3 className="text-base font-bold text-brand-text">Update Progres</h3>
+                <h3 className="text-sm sm:text-base font-bold text-brand-text">Update Progres</h3>
                 <p className="text-xs text-brand-text-muted truncate">{getTitle(progressProject)}</p>
               </div>
               <button
+                type="button"
                 onClick={() => setIsProgressModalOpen(false)}
                 className="text-brand-text-muted hover:text-brand-text p-1.5 rounded-lg hover:bg-brand-primary transition shrink-0"
               >
@@ -934,10 +1011,10 @@ export default function DeveloperSchedule() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProgress} className="p-5 space-y-4">
+            <form onSubmit={handleSaveProgress} className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
               {(!progressProject.assignments || progressProject.assignments.length === 0) && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2">
-                  <AlertCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-600 dark:text-red-300 flex items-start gap-2">
+                  <AlertCircle size={14} className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
                   <span>Proyek ini belum punya penugasan tim, progres belum bisa disimpan.</span>
                 </div>
               )}
@@ -963,8 +1040,8 @@ export default function DeveloperSchedule() {
 
               {/* Judul */}
               <div>
-                <label className="block text-xs font-semibold text-brand-text mb-1.5">
-                  Judul <span className="text-red-400">*</span>
+                <label className="block text-[11px] sm:text-xs font-semibold text-brand-text mb-1.5">
+                  Judul <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -972,35 +1049,35 @@ export default function DeveloperSchedule() {
                   value={progressForm.title}
                   onChange={(e) => setProgressForm({ ...progressForm, title: e.target.value })}
                   placeholder="Contoh: Integrasi API selesai"
-                  className="w-full px-3.5 py-2.5 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent"
+                  className="w-full px-3.5 py-2.5 sm:py-2 bg-brand-primary border border-brand-border rounded-xl text-base sm:text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent transition shadow-sm"
                 />
               </div>
 
               {/* Keterangan */}
               <div>
-                <label className="block text-xs font-semibold text-brand-text mb-1.5">Keterangan (opsional)</label>
+                <label className="block text-[11px] sm:text-xs font-semibold text-brand-text mb-1.5">Keterangan (opsional)</label>
                 <textarea
                   rows="3"
                   value={progressForm.description}
                   onChange={(e) => setProgressForm({ ...progressForm, description: e.target.value })}
                   placeholder="Apa yang sudah dikerjakan..."
-                  className="w-full px-3.5 py-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent resize-none"
+                  className="w-full px-3.5 py-2 bg-brand-primary border border-brand-border rounded-xl text-base sm:text-sm text-brand-text placeholder-brand-text-muted focus:outline-none focus:border-brand-accent resize-none transition shadow-sm"
                 />
               </div>
 
-              <div className="pt-3 border-t border-brand-border flex items-center justify-end gap-2.5">
+              <div className="pt-3 border-t border-brand-border flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsProgressModalOpen(false)}
                   disabled={submittingProgress}
-                  className="px-4 py-2 bg-brand-primary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-lg transition"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-brand-primary border border-brand-border hover:bg-brand-muted text-brand-text text-xs font-semibold rounded-xl transition text-center"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={submittingProgress || !progressProject.assignments || progressProject.assignments.length === 0}
-                  className="px-4 py-2 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-brand-accent text-brand-primary hover:bg-brand-accent2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
                 >
                   {submittingProgress ? (
                     <>

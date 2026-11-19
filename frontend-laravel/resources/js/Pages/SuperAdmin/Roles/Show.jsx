@@ -373,7 +373,6 @@ function getRoleConfig(roleName) {
   const configs = {
     'Super Admin': { bg: 'bg-orange-500/15', text: 'text-orange-600 dark:text-orange-400' },
     'Admin':       { bg: 'bg-blue-500/15',   text: 'text-blue-600 dark:text-blue-400' },
-    'Sales':       { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400' },
     'CS':          { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400' }, // ✅ CS Hijau
     'Customer Service': { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400' }, // ✅ CS Hijau
     'Finance':     { bg: 'bg-amber-500/15',  text: 'text-amber-600 dark:text-amber-400' },

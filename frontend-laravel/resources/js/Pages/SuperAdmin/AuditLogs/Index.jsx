@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, usePage } from '@inertiajs/react';
-import { Activity, RefreshCw, Search, Filter, Download, ChevronLeft, ChevronRight, Eye, X } from 'lucide-react';
+import { Activity, RefreshCw, Search, Filter, ChevronLeft, ChevronRight, Eye, X } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
 
 export default function AuditLogsPage() {
@@ -101,58 +101,69 @@ export default function AuditLogsPage() {
       <Head title="Audit Logs" />
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
-            <Activity size={28} className="text-brand-accent" />
-            Audit Logs
+          <h1 className="text-xl sm:text-2xl font-bold text-brand-text flex items-center gap-2">
+            <span>Audit Logs</span>
           </h1>
-          <p className="text-sm text-brand-text-muted mt-1">
+          <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5">
             Catatan aktivitas seluruh pengguna dalam sistem
           </p>
         </div>
         <button
           onClick={load}
-          className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition"
+          disabled={loading}
+          className="bg-brand-secondary border border-brand-border text-brand-text px-3.5 py-2.5 sm:py-2 rounded-xl hover:bg-brand-muted flex items-center justify-center gap-2 text-xs sm:text-sm font-medium transition shadow-sm w-full sm:w-auto disabled:opacity-50"
         >
-          <RefreshCw size={16} /> Refresh
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          <span>Refresh</span>
         </button>
       </div>
 
-      {/* Search & Filters */}
-      <div className="bg-brand-secondary rounded-lg border border-brand-border p-4 mb-4">
-        <div className="flex flex-col md:flex-row gap-3">
-          {/* Search */}
+      {/* Search & Filters Toolbar */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border p-3.5 sm:p-4 mb-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+          {/* Search Input */}
           <div className="flex-1 relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
             <input
               type="text"
               placeholder="Cari user, aksi, entity..."
               value={search}
               onChange={handleSearchChange}
-              className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+              className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-xl pl-10 pr-9 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition p-1"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {/* Filter Toggle */}
           <button
+            type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className="bg-brand-primary border border-brand-border text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition"
+            className="bg-brand-primary border border-brand-border text-brand-text px-4 py-2.5 sm:py-2 rounded-xl hover:bg-brand-muted flex items-center justify-center gap-2 text-xs sm:text-sm font-medium transition shadow-sm"
           >
-            <Filter size={16} />
-            {showFilters ? 'Sembunyikan' : 'Filter'}
+            <Filter size={15} className={showFilters ? 'text-brand-accent' : ''} />
+            <span>{showFilters ? 'Sembunyikan Filter' : 'Filter'}</span>
           </button>
         </div>
 
-        {/* Filter Options */}
+        {/* Filter Options Panel */}
         {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4 pt-4 border-t border-brand-border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mt-4 pt-4 border-t border-brand-border">
             <div>
-              <label className="block text-xs text-brand-text-muted mb-1">User</label>
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1">User</label>
               <select
                 value={filterUser}
                 onChange={(e) => { setFilterUser(e.target.value); setPage(1); }}
-                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-xl px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
               >
                 <option value="">Semua User</option>
                 {users.map(user => (
@@ -164,13 +175,13 @@ export default function AuditLogsPage() {
             </div>
             
             <div>
-              <label className="block text-xs text-brand-text-muted mb-1">Aksi</label>
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1">Aksi</label>
               <select
                 value={filterAction}
                 onChange={(e) => { setFilterAction(e.target.value); setPage(1); }}
-                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-xl px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
               >
-                <option value="">Semua</option>
+                <option value="">Semua Aksi</option>
                 <option value="LOGIN">LOGIN</option>
                 <option value="LOGOUT">LOGOUT</option>
                 <option value="CREATE">CREATE</option>
@@ -181,13 +192,13 @@ export default function AuditLogsPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-brand-text-muted mb-1">Entity</label>
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1">Entity</label>
               <select
                 value={filterEntity}
                 onChange={(e) => { setFilterEntity(e.target.value); setPage(1); }}
-                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-xl px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
               >
-                <option value="">Semua</option>
+                <option value="">Semua Entity</option>
                 <option value="User">User</option>
                 <option value="Order">Order</option>
                 <option value="Service">Service</option>
@@ -197,29 +208,30 @@ export default function AuditLogsPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-brand-text-muted mb-1">Dari Tanggal</label>
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1">Dari Tanggal</label>
               <input
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => { setFilterDateFrom(e.target.value); setPage(1); }}
-                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-xl px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-brand-text-muted mb-1">Sampai Tanggal</label>
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1">Sampai Tanggal</label>
               <input
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => { setFilterDateTo(e.target.value); setPage(1); }}
-                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                className="w-full bg-brand-primary border border-brand-border text-brand-text rounded-xl px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
               />
             </div>
 
-            <div className="md:col-span-4 flex gap-2">
+            <div className="sm:col-span-2 md:col-span-5 flex justify-end gap-2 pt-1">
               <button
+                type="button"
                 onClick={handleResetFilters}
-                className="bg-brand-primary border border-brand-border text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted text-sm transition"
+                className="w-full sm:w-auto bg-brand-primary border border-brand-border text-brand-text px-4 py-2 rounded-xl hover:bg-brand-muted text-xs sm:text-sm font-medium transition"
               >
                 Reset Filter
               </button>
@@ -228,38 +240,86 @@ export default function AuditLogsPage() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="bg-brand-secondary rounded-lg border border-brand-border p-4 mb-4">
-        <div className="text-sm text-brand-text-muted">
+      {/* Stats Card */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border p-3.5 sm:p-4 mb-4 shadow-sm">
+        <div className="text-xs sm:text-sm text-brand-text-muted">
           Total: <span className="font-semibold text-brand-text">{total}</span> aktivitas tercatat
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
+      {/* Data View Container */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border overflow-hidden shadow-sm">
         {loading ? (
-          <div className="p-12 text-center text-brand-text-muted">
+          <div className="p-8 sm:p-12 text-center text-brand-text-muted">
             <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-            Memuat data...
+            <p className="text-xs sm:text-sm">Memuat data audit log...</p>
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-red-500">
+          <div className="p-6 sm:p-8 text-center text-red-600 dark:text-red-400 text-xs sm:text-sm">
             Error: {error}
           </div>
         ) : logs.length === 0 ? (
-          <div className="p-12 text-center text-brand-text-muted">
+          <div className="p-8 sm:p-12 text-center text-brand-text-muted text-xs sm:text-sm">
             Tidak ada aktivitas ditemukan
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* 1. CARD VIEW (MOBILE - < md) */}
+            <div className="block md:hidden divide-y divide-brand-border/50">
+              {logs.map((log) => (
+                <div key={log.id} className="p-4 space-y-3 hover:bg-brand-muted/30 transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] text-brand-text-muted font-mono">
+                      {formatDateTime(log.created_at)}
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold shrink-0 ${getActionBadge(log.action)}`}>
+                      {log.action}
+                    </span>
+                  </div>
+
+                  <div className="bg-brand-primary/40 rounded-xl p-3 border border-brand-border/40 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-brand-text">{log.user_name || '—'}</span>
+                      {log.user_role && (
+                        <span className="text-[10px] text-brand-accent font-semibold">{log.user_role}</span>
+                      )}
+                    </div>
+                    {log.user_email && (
+                      <p className="text-[11px] text-brand-text-muted truncate">{log.user_email}</p>
+                    )}
+                    {log.entity_type && (
+                      <p className="text-[11px] text-brand-text-muted pt-1 border-t border-brand-border/30 mt-1">
+                        Entity: <span className="text-brand-text font-medium">{log.entity_type} {log.entity_id ? `#${log.entity_id}` : ''}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedLog(log);
+                        setShowDetail(true);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition flex items-center gap-1.5"
+                    >
+                      <Eye size={14} />
+                      <span>Lihat Detail</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. TABLE VIEW (DESKTOP - >= md) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-brand-muted/50 border-b border-brand-border">
                   <tr>
                     <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Waktu</th>
                     <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">User</th>
                     <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Aksi</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Detail</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Detail</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-border/50">
@@ -284,13 +344,14 @@ export default function AuditLogsPage() {
                           {log.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-right">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedLog(log);
                             setShowDetail(true);
                           }}
-                          className="flex items-center gap-1 text-brand-accent hover:text-brand-accent2 text-xs font-medium transition"
+                          className="inline-flex items-center gap-1 text-brand-accent hover:text-brand-accent2 text-xs font-medium transition"
                         >
                           <Eye size={14} />
                           Lihat
@@ -302,27 +363,29 @@ export default function AuditLogsPage() {
               </table>
             </div>
 
-            {/* Pagination */}
+            {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-brand-border">
-                <div className="text-sm text-brand-text-muted">
-                  Halaman {page} dari {totalPages}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-brand-border bg-brand-secondary">
+                <div className="text-xs sm:text-sm text-brand-text-muted">
+                  Halaman <strong className="text-brand-text">{page}</strong> dari <strong className="text-brand-text">{totalPages}</strong>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
                   <button
+                    type="button"
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1 bg-brand-primary border border-brand-border text-brand-text rounded hover:bg-brand-muted disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1"
+                    className="flex-1 sm:flex-initial px-3 py-1.5 bg-brand-primary border border-brand-border text-brand-text text-xs sm:text-sm rounded-xl hover:bg-brand-muted disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-1"
                   >
                     <ChevronLeft size={16} />
-                    Prev
+                    <span>Prev</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="px-3 py-1 bg-brand-primary border border-brand-border text-brand-text rounded hover:bg-brand-muted disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1"
+                    className="flex-1 sm:flex-initial px-3 py-1.5 bg-brand-primary border border-brand-border text-brand-text text-xs sm:text-sm rounded-xl hover:bg-brand-muted disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-1"
                   >
-                    Next
+                    <span>Next</span>
                     <ChevronRight size={16} />
                   </button>
                 </div>
@@ -332,72 +395,71 @@ export default function AuditLogsPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Detail Modal (Responsif Mobile) */}
       {showDetail && selectedLog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowDetail(false)}>
-          <div className="bg-brand-secondary border border-brand-border rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-brand-border">
-              <h3 className="text-lg font-semibold text-brand-text">Detail Aktivitas</h3>
-              <button onClick={() => setShowDetail(false)} className="text-brand-text-muted hover:text-brand-text transition">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4" onClick={() => setShowDetail(false)}>
+          <div className="bg-brand-secondary border border-brand-border rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Header Modal */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-brand-border shrink-0">
+              <h3 className="text-base sm:text-lg font-bold text-brand-text">Detail Aktivitas</h3>
+              <button type="button" onClick={() => setShowDetail(false)} className="text-brand-text-muted hover:text-brand-text p-1 rounded-lg transition">
                 <X size={20} />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
-              <div className="space-y-4">
-                {/* Waktu */}
-                <div>
-                  <label className="text-xs text-brand-text-muted uppercase tracking-wider font-semibold">Waktu</label>
-                  <p className="text-brand-text mt-1">{formatDateTime(selectedLog.created_at)}</p>
+            {/* Body Content */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm">
+              {/* Waktu */}
+              <div>
+                <label className="text-[11px] sm:text-xs text-brand-text-muted uppercase tracking-wider font-semibold block">Waktu</label>
+                <p className="text-brand-text mt-0.5 font-mono text-xs sm:text-sm">{formatDateTime(selectedLog.created_at)}</p>
+              </div>
+
+              {/* User */}
+              <div>
+                <label className="text-[11px] sm:text-xs text-brand-text-muted uppercase tracking-wider font-semibold block">User</label>
+                <div className="mt-1 bg-brand-primary/40 border border-brand-border/60 p-3 rounded-xl">
+                  <p className="text-brand-text font-medium">{selectedLog.user_name || '—'}</p>
+                  {selectedLog.user_email && <p className="text-brand-text-muted text-xs mt-0.5">{selectedLog.user_email}</p>}
+                  {selectedLog.user_role && <p className="text-brand-accent text-xs font-semibold mt-0.5">{selectedLog.user_role}</p>}
                 </div>
+              </div>
 
-                {/* User */}
+              {/* Aksi */}
+              <div>
+                <label className="text-[11px] sm:text-xs text-brand-text-muted uppercase tracking-wider font-semibold block mb-1">Aksi</label>
                 <div>
-                  <label className="text-xs text-brand-text-muted uppercase tracking-wider font-semibold">User</label>
-                  <div className="mt-1">
-                    <p className="text-brand-text font-medium">{selectedLog.user_name || '—'}</p>
-                    {selectedLog.user_email && <p className="text-brand-text-muted text-sm">{selectedLog.user_email}</p>}
-                    {selectedLog.user_role && <p className="text-brand-accent text-sm font-semibold">{selectedLog.user_role}</p>}
-                  </div>
+                  <span className={`text-xs px-2.5 py-1 rounded font-mono font-semibold inline-block ${getActionBadge(selectedLog.action)}`}>
+                    {selectedLog.action}
+                  </span>
                 </div>
+              </div>
 
-                {/* Aksi */}
+              {/* Entity */}
+              {selectedLog.entity_type && (
                 <div>
-                  <label className="text-xs text-brand-text-muted uppercase tracking-wider font-semibold">Aksi</label>
-                  <div className="mt-1">
-                    <span className={`text-xs px-2 py-1 rounded font-mono font-semibold ${getActionBadge(selectedLog.action)}`}>
-                      {selectedLog.action}
-                    </span>
-                  </div>
+                  <label className="text-[11px] sm:text-xs text-brand-text-muted uppercase tracking-wider font-semibold block">Entity</label>
+                  <p className="text-brand-text mt-0.5 font-medium">
+                    {selectedLog.entity_type} {selectedLog.entity_id ? `#${selectedLog.entity_id}` : ''}
+                  </p>
                 </div>
+              )}
 
-                {/* Entity */}
-                {selectedLog.entity_type && (
-                  <div>
-                    <label className="text-xs text-brand-text-muted uppercase tracking-wider font-semibold">Entity</label>
-                    <p className="text-brand-text mt-1">
-                      {selectedLog.entity_type} {selectedLog.entity_id ? `#${selectedLog.entity_id}` : ''}
-                    </p>
-                  </div>
-                )}
-
-                {/* Detail Aktivitas */}
-                <div>
-                  <label className="text-xs text-brand-text-muted uppercase tracking-wider font-semibold">Detail Aktivitas</label>
-                  <div className="mt-2 bg-brand-primary rounded-lg border border-brand-border overflow-hidden">
-                    {renderDetailTable(selectedLog)}
-                  </div>
+              {/* Detail Aktivitas */}
+              <div>
+                <label className="text-[11px] sm:text-xs text-brand-text-muted uppercase tracking-wider font-semibold block mb-1.5">Detail Aktivitas</label>
+                <div className="bg-brand-primary rounded-xl border border-brand-border overflow-hidden">
+                  {renderDetailTable(selectedLog)}
                 </div>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex justify-end p-4 border-t border-brand-border">
+            {/* Footer Modal */}
+            <div className="flex justify-end p-4 border-t border-brand-border shrink-0 bg-brand-secondary">
               <button
+                type="button"
                 onClick={() => setShowDetail(false)}
-                className="px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent2 transition"
+                className="w-full sm:w-auto px-5 py-2.5 bg-brand-accent text-brand-primary font-semibold text-xs sm:text-sm rounded-xl hover:bg-brand-accent2 transition shadow-sm"
               >
                 Tutup
               </button>
@@ -416,7 +478,7 @@ function renderDetailTable(log) {
   
   if (!log.after_data) {
     return (
-      <div className="p-4 text-sm text-brand-text-muted">
+      <div className="p-4 text-xs sm:text-sm text-brand-text-muted">
         Tidak ada detail perubahan
       </div>
     );
@@ -427,23 +489,19 @@ function renderDetailTable(log) {
     
     // Gunakan details jika ada (dari backend custom)
     if (data.details) {
-      // Parse details jadi key-value pairs
       const lines = data.details.split('\n').filter(line => line.trim());
       const rows = [];
       
-      // Tambahkan Module/Fitur di baris pertama jika ada
       if (data.module) {
         rows.push({ field: 'Modul/Fitur', value: data.module });
       }
       
-      // Tambahkan Email Tujuan khusus untuk SEND_EMAIL
       if (data.recipients && Array.isArray(data.recipients) && data.recipients.length > 0) {
         rows.push({ field: 'Email Tujuan', value: data.recipients.join(', ') });
       } else if (data.recipient) {
         rows.push({ field: 'Email Tujuan', value: data.recipient });
       }
 
-      // Deteksi jika details menyebut pengiriman invoice/email tapi barisnya list bullet
       const bulletRecipients = lines
         .filter(l => l.trim().startsWith('- '))
         .map(l => l.replace(/^[-\s]+/, '').trim());
@@ -453,16 +511,13 @@ function renderDetailTable(log) {
       
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (line.trim().startsWith('- ')) continue; // sudah diproses ke Email Tujuan
-        // Skip header line (yang tidak ada : atau →)
+        if (line.trim().startsWith('- ')) continue;
         if (!line.includes(':') && !line.includes('→')) continue;
         
         if (line.includes('→')) {
-          // Format UPDATE: "Nama: "old" → "new""
           const [label, values] = line.split(':').map(s => s.trim());
           rows.push({ field: label, value: values });
         } else if (line.includes(':')) {
-          // Format CREATE/DELETE: "Nama: value"
           const [label, ...valueParts] = line.split(':');
           const trimmedLabel = label.trim();
           const trimmedValue = valueParts.join(':').trim();
@@ -474,29 +529,31 @@ function renderDetailTable(log) {
       
       if (rows.length === 0) {
         return (
-          <div className="p-4 text-sm text-brand-text">
+          <div className="p-4 text-xs sm:text-sm text-brand-text break-words">
             {data.details}
           </div>
         );
       }
       
       return (
-        <table className="w-full">
-          <thead className="bg-brand-secondary border-b border-brand-border">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-brand-text-muted uppercase tracking-wider w-1/3">Field</th>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-brand-text-muted uppercase tracking-wider">Value</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-brand-border">
-            {rows.map((row, idx) => (
-              <tr key={idx} className="hover:bg-brand-secondary/30 transition">
-                <td className="px-4 py-3 text-sm font-medium text-brand-text">{row.field}</td>
-                <td className="px-4 py-3 text-sm text-brand-text whitespace-pre-wrap break-words">{row.value}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm">
+            <thead className="bg-brand-secondary border-b border-brand-border">
+              <tr>
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider w-1/3">Field</th>
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider">Value</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-brand-border">
+              {rows.map((row, idx) => (
+                <tr key={idx} className="hover:bg-brand-secondary/30 transition">
+                  <td className="px-3.5 py-2.5 font-medium text-brand-text align-top">{row.field}</td>
+                  <td className="px-3.5 py-2.5 text-brand-text whitespace-pre-wrap break-words">{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     }
     
@@ -526,7 +583,7 @@ function renderDetailTable(log) {
     
     if (fields.length === 0) {
       return (
-        <div className="p-4 text-sm text-brand-text-muted">
+        <div className="p-4 text-xs sm:text-sm text-brand-text-muted">
           {action === 'CREATE' && `Menambahkan ${entity} baru`}
           {action === 'UPDATE' && `Mengubah data ${entity}`}
           {action === 'DELETE' && `Menghapus ${entity}`}
@@ -536,26 +593,28 @@ function renderDetailTable(log) {
     }
     
     return (
-      <table className="w-full">
-        <thead className="bg-brand-secondary border-b border-brand-border">
-          <tr>
-            <th className="px-4 py-2 text-left text-xs font-semibold text-brand-text-muted uppercase tracking-wider w-1/3">Field</th>
-            <th className="px-4 py-2 text-left text-xs font-semibold text-brand-text-muted uppercase tracking-wider">Value</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-brand-border">
-          {fields.map((row, idx) => (
-            <tr key={idx} className="hover:bg-brand-secondary/30 transition">
-              <td className="px-4 py-3 text-sm font-medium text-brand-text">{row.field}</td>
-              <td className="px-4 py-3 text-sm text-brand-text whitespace-pre-wrap break-words">{row.value}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs sm:text-sm">
+          <thead className="bg-brand-secondary border-b border-brand-border">
+            <tr>
+              <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider w-1/3">Field</th>
+              <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider">Value</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-brand-border">
+            {fields.map((row, idx) => (
+              <tr key={idx} className="hover:bg-brand-secondary/30 transition">
+                <td className="px-3.5 py-2.5 font-medium text-brand-text align-top">{row.field}</td>
+                <td className="px-3.5 py-2.5 text-brand-text whitespace-pre-wrap break-words">{row.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     );
   } catch (e) {
     return (
-      <div className="p-4 text-sm text-brand-text-muted">
+      <div className="p-4 text-xs sm:text-sm text-brand-text-muted">
         {action === 'CREATE' && `Menambahkan ${entity} baru`}
         {action === 'UPDATE' && `Mengubah data ${entity}`}
         {action === 'DELETE' && `Menghapus ${entity}`}
@@ -579,7 +638,6 @@ function formatDetail(log) {
   try {
     const data = JSON.parse(log.after_data);
     
-    // Prioritaskan details jika ada (dari backend custom audit log)
     if (data.details) {
       return data.details;
     }
@@ -606,7 +664,6 @@ function formatDetail(log) {
     } 
     
     if (action === 'UPDATE') {
-      // Cek ada changes array (dari backend)
       if (data.changes && Array.isArray(data.changes)) {
         return `Mengubah data ${entity}\n\n${data.changes.join('\n')}`;
       }
@@ -642,6 +699,7 @@ function formatDetail(log) {
     return `${action} ${entity}`;
   }
 }
+
 function formatDateTime(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);

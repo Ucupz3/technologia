@@ -214,8 +214,8 @@ export default function CustomerServiceOrderShow({ orderId }) {
             </div>
           </Card>
 
-          {/* Customer Service / Sales Representative */}
-          <Card title="Customer Service / Sales">
+          {/* Customer Service */}
+          <Card title="Customer Service">
             {order.sales_user ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-brand-accent/15 border border-brand-accent/40 rounded-full flex items-center justify-center text-brand-accent font-bold text-sm">
@@ -227,7 +227,7 @@ export default function CustomerServiceOrderShow({ orderId }) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-brand-text-muted">No sales assigned</p>
+              <p className="text-sm text-brand-text-muted">Belum ada Customer Service</p>
             )}
           </Card>
 

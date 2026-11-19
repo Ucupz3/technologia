@@ -18,12 +18,12 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
 
   return (
     <div className="relative">
-      <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">{label}</label>
+      {label && <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">{label}</label>}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <div className="flex items-center gap-2 min-w-0">
           {Icon && <Icon size={14} className="text-brand-text-muted shrink-0" />}
@@ -41,7 +41,7 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
             <button
               type="button"
               onClick={() => { onChange(''); setIsOpen(false); }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${!value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between ${!value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
             >
               <span>{placeholder}</span>
               {!value && <Check size={14} className="text-brand-accent" />}
@@ -56,7 +56,7 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition ${
                   opt.disabled
                     ? 'opacity-40 cursor-not-allowed bg-transparent text-brand-text-muted'
                     : String(value) === String(opt.value)
@@ -177,8 +177,8 @@ export default function OrderCreate() {
       { service_id: '', price_deal: '' } 
     ],
     discount_type: 'fixed',
-    discount: '', // ✅ Diubah jadi string kosong agar tidak muncul 0 di depan
-    tax_rate: '', // ✅ Diubah jadi string kosong agar tidak muncul 0 di depan
+    discount: '',
+    tax_rate: '',
     start_date_project: '',
     end_date_project: '',
     notes: '',
@@ -191,7 +191,7 @@ export default function OrderCreate() {
     Promise.all([
       fetch('/api/v1/orders/options/customers').then((r) => r.json()),
       fetch('/api/v1/orders/options/services').then((r) => r.json()),
-      fetch('/api/v1/orders/options/sales').then((r) => r.json()),
+      fetch('/api/v1/orders/options/customer-service').then((r) => r.json()),
       fetch('/api/v1/orders/options/teams').then((r) => r.json()),
     ])
       .then(([c, s, sa, t]) => {
@@ -206,12 +206,10 @@ export default function OrderCreate() {
       .catch(() => setLoading(false));
   }, []);
 
-  // ✅ KALKULASI SUBTOTAL DISESUAIKAN (TANPA QTY)
   const subtotal = form.services.reduce((acc, curr) => {
     return acc + (Number(curr.price_deal) || 0);
   }, 0);
 
-  // ✅ KALKULASI MENGGUNAKAN Number() AGAR AMAN SAAT INPUT KOSONG
   const discountAmount = form.discount_type === 'percent' 
     ? (subtotal * (Number(form.discount) || 0)) / 100 
     : (Number(form.discount) || 0);
@@ -410,7 +408,7 @@ export default function OrderCreate() {
       name: form.name.trim(),
       customer_id: form.customer_id,
       pic_id: form.pic_id || null,
-      sales_id: form.sales_id || null,
+      customer_service_id: form.sales_id || null,
       team_id: form.team_id || null,
       services: form.services.map(s => ({
         service_id: Number(s.service_id),
@@ -418,8 +416,8 @@ export default function OrderCreate() {
         quantity: 1 
       })),
       discount_type: form.discount_type,
-      discount: Number(form.discount) || 0, // ✅ Konversi aman ke angka
-      tax_rate: Number(form.tax_rate) || 0, // ✅ Konversi aman ke angka
+      discount: Number(form.discount) || 0,
+      tax_rate: Number(form.tax_rate) || 0,
       start_date_project: form.start_date_project || null,
       end_date_project: form.end_date_project || null,
       notes: form.notes || null,
@@ -451,9 +449,9 @@ export default function OrderCreate() {
     return (
       <RoleLayout>
         <Head title="Buat Order" />
-        <div className="p-12 text-center text-brand-text-muted">
+        <div className="p-8 sm:p-12 text-center text-brand-text-muted">
           <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-          Memuat form...
+          <p className="text-xs sm:text-sm">Memuat form...</p>
         </div>
       </RoleLayout>
     );
@@ -463,34 +461,38 @@ export default function OrderCreate() {
     <RoleLayout>
       <Head title="Buat Order Baru" />
 
-      <div className="mb-6">
-        <Link href={`${basePath}/orders`} className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3">
+      {/* Header */}
+      <div className="mb-4 sm:mb-6">
+        <Link href={`${basePath}/orders`} className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-3">
           <ArrowLeft size={16} /> Kembali ke Orders
         </Link>
-        <h1 className="text-2xl font-bold text-brand-text">Buat Order Baru</h1>
-        <p className="text-sm text-brand-text-muted mt-1">Invoice akan otomatis dibuat setelah order tersimpan.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-brand-text">Buat Order Baru</h1>
+        <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5">Invoice akan otomatis dibuat setelah order tersimpan.</p>
       </div>
 
-      <div className="bg-brand-secondary rounded-lg border border-brand-border p-6 w-full">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Main Container Card */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border p-4 sm:p-6 w-full shadow-sm">
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 sm:space-y-6">
 
+          {/* Nama Order */}
           <div>
-            <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-              Nama Order *
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              Nama Order <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="Contoh: Pembuatan Website Company Profile PT ABC"
-              className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition-all ${
+              className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition-all ${
                 errors.name ? 'border-red-500' : 'border-brand-border focus:border-brand-accent'
               }`}
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name[0]}</p>}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Customer & PIC Customer */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <CustomSelect
               label="Customer *"
               placeholder="— Pilih Customer —"
@@ -510,10 +512,11 @@ export default function OrderCreate() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Customer Service & Tim Pengerjaan */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <CustomSelect
-              label="Sales PIC"
-              placeholder="— Pilih Sales —"
+              label="Customer Service"
+              placeholder="— Pilih Customer Service —"
               value={form.sales_id}
               options={options.sales.map(s => ({ value: s.id, label: s.name }))}
               onChange={(val) => setForm({ ...form, sales_id: val })}
@@ -529,22 +532,23 @@ export default function OrderCreate() {
             />
           </div>
 
+          {/* Daftar Layanan */}
           <div className="pt-4 border-t border-brand-border">
-            <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-bold text-brand-text">Daftar Layanan</label>
+            <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
+              <label className="block text-xs sm:text-sm font-bold text-brand-text uppercase sm:normal-case tracking-wider sm:tracking-normal">Daftar Layanan</label>
               <button
                 type="button"
                 onClick={addServiceRow}
-                className="text-xs bg-brand-primary border border-brand-border hover:bg-brand-muted hover:text-brand-accent px-3 py-1.5 rounded-lg flex items-center gap-1 transition font-semibold"
+                className="text-xs bg-brand-primary border border-brand-border hover:bg-brand-muted hover:text-brand-accent px-3 py-1.5 sm:py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-sm shrink-0"
               >
                 <Plus size={14} /> Tambah Layanan
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {form.services.map((svc, index) => (
-                <div key={index} className="flex flex-col md:flex-row gap-4 items-end bg-brand-primary/30 p-4 rounded-xl border border-brand-border relative">
-                  <div className="flex-1 w-full md:w-auto">
+                <div key={index} className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-end bg-brand-primary/30 p-3.5 sm:p-4 rounded-xl border border-brand-border/60 relative">
+                  <div className="flex-1 w-full">
                     <CustomSelect
                       label="Layanan / Service *"
                       placeholder="— Pilih Layanan —"
@@ -554,31 +558,37 @@ export default function OrderCreate() {
                       icon={Package}
                     />
                   </div>
-                  <div className="w-full md:w-64"> 
-                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Harga Deal (Rp) *</label>
+                  <div className="w-full sm:w-64"> 
+                    <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Harga Deal (Rp) *</label>
                     <input
                       type="number"
                       min="0"
                       value={svc.price_deal}
                       onChange={(e) => handleServiceChange(index, 'price_deal', e.target.value)}
-                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all"
+                      placeholder="0"
+                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
                       required
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeServiceRow(index)}
-                    disabled={form.services.length === 1}
-                    className="mb-1 p-2.5 text-red-500 hover:bg-red-500/10 rounded-lg transition disabled:opacity-30"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="flex justify-end sm:block">
+                    <button
+                      type="button"
+                      onClick={() => removeServiceRow(index)}
+                      disabled={form.services.length === 1}
+                      className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition disabled:opacity-30 flex items-center gap-1 text-xs sm:text-sm"
+                      title="Hapus Layanan"
+                    >
+                      <Trash2 size={18} />
+                      <span className="sm:hidden font-medium">Hapus</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-brand-primary/20 p-5 rounded-xl border border-brand-border mt-6">
+          {/* Tipe Diskon, Nilai Diskon, Pajak */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 bg-brand-primary/20 p-4 sm:p-5 rounded-xl border border-brand-border mt-4 sm:mt-6">
             <CustomSelect
               label="Tipe Diskon"
               placeholder="— Pilih Tipe —"
@@ -591,47 +601,57 @@ export default function OrderCreate() {
               icon={Percent}
             />
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Nilai Diskon</label>
-              {/* ✅ value pakai form.discount (string kosong), onChange tidak pakai Number() agar bisa dihapus */}
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Nilai Diskon</label>
               <input 
                 type="number" 
                 min="0" 
                 value={form.discount} 
                 onChange={(e) => setForm({ ...form, discount: e.target.value })} 
                 placeholder="0"
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Pajak / PPN (%)</label>
-              {/* ✅ value pakai form.tax_rate (string kosong), onChange tidak pakai Number() agar bisa dihapus */}
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Pajak / PPN (%)</label>
               <input 
                 type="number" 
                 min="0" 
                 value={form.tax_rate} 
                 onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} 
                 placeholder="0"
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Mulai Proyek & Selesai Proyek */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Mulai Proyek</label>
-              <input type="date" value={form.start_date_project} onChange={(e) => setForm({ ...form, start_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Mulai Proyek</label>
+              <input 
+                type="date" 
+                value={form.start_date_project} 
+                onChange={(e) => setForm({ ...form, start_date_project: e.target.value })} 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Selesai Proyek</label>
-              <input type="date" value={form.end_date_project} onChange={(e) => setForm({ ...form, end_date_project: e.target.value })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Selesai Proyek</label>
+              <input 
+                type="date" 
+                value={form.end_date_project} 
+                onChange={(e) => setForm({ ...form, end_date_project: e.target.value })} 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
+              />
             </div>
           </div>
 
+          {/* Tim Assignments */}
           {form.team_id && Object.keys(form.assignments).length > 0 && (
             <div className="pt-4 border-t border-brand-border">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3">
                 <div>
-                  <label className="block text-xs font-semibold text-brand-text-muted uppercase">
+                  <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest">
                     Atur Posisi & Fase Anggota Tim
                   </label>
                   <p className="text-xs text-brand-text-muted mt-0.5">
@@ -645,7 +665,7 @@ export default function OrderCreate() {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {options.teams.find(t => String(t.id) === String(form.team_id))?.team_members?.map((tm) => {
                   const assign = form.assignments[tm.id] || {};
                   const userJobs = tm.users?.user_jobs || [];
@@ -654,27 +674,27 @@ export default function OrderCreate() {
                   return (
                     <div
                       key={tm.id}
-                      className={`border p-4 rounded-xl space-y-3 transition-all ${
+                      className={`border p-3.5 sm:p-4 rounded-xl space-y-3 transition-all ${
                         isAssigned
                           ? 'bg-brand-primary/40 border-brand-border'
                           : 'bg-brand-primary/10 border-dashed border-brand-border/40 opacity-60'
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/40 pb-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5 flex-wrap">
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input
                               type="checkbox"
                               checked={isAssigned}
                               onChange={(e) => handleAssignmentChange(tm.id, 'is_assigned', e.target.checked)}
-                              className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer"
+                              className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer shrink-0"
                             />
-                            <span className={`text-sm font-semibold flex items-center gap-2 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
-                              <User size={16} className={isAssigned ? 'text-brand-accent' : 'text-brand-text-muted'} />
-                              {tm.users?.name}
+                            <span className={`text-xs sm:text-sm font-semibold flex items-center gap-1.5 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
+                              <User size={15} className={isAssigned ? 'text-brand-accent shrink-0' : 'text-brand-text-muted shrink-0'} />
+                              <span>{tm.users?.name}</span>
                               {userJobs.length === 0 && (
-                                <span className="text-xs text-red-500 font-normal flex items-center gap-1">
-                                  <AlertCircle size={12} /> Belum punya Job di Master Data
+                                <span className="text-[11px] text-red-500 font-normal flex items-center gap-1">
+                                  <AlertCircle size={12} className="shrink-0" /> Belum punya Job
                                 </span>
                               )}
                             </span>
@@ -691,12 +711,12 @@ export default function OrderCreate() {
                         </div>
 
                         {isAssigned && (
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <label className="flex items-center gap-2 cursor-pointer select-none self-start sm:self-auto">
                             <input
                               type="checkbox"
                               checked={assign.is_lead || false}
                               onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
-                              className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer"
+                              className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer shrink-0"
                             />
                             <span className="text-xs font-semibold text-brand-text-muted">Lead Tim</span>
                           </label>
@@ -717,13 +737,13 @@ export default function OrderCreate() {
                           </div>
 
                           <div>
-                            <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                               Urutan Pengerjaan
                             </label>
                             <select
                               value={assign.phase_order || 1}
                               onChange={(e) => handleAssignmentChange(tm.id, 'phase_order', Number(e.target.value))}
-                              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                             >
                               <option value={1}>Fase 1 (Mulai Pertama)</option>
                               <option value={2}>Fase 2 (Setelah Fase 1 Selesai)</option>
@@ -735,7 +755,7 @@ export default function OrderCreate() {
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                              <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
                                 Tgl Mulai
                               </label>
                               <input
@@ -746,7 +766,7 @@ export default function OrderCreate() {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                              <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
                                 Deadline
                               </label>
                               <input
@@ -770,36 +790,52 @@ export default function OrderCreate() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-brand-border">
+          {/* Catatan Tambahan & Summary Order */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-4 sm:pt-6 border-t border-brand-border">
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Catatan Tambahan</label>
-              <textarea rows={5} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Catatan..." className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all resize-none" />
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Catatan Tambahan</label>
+              <textarea 
+                rows={4} 
+                value={form.notes} 
+                onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+                placeholder="Catatan..." 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none" 
+              />
             </div>
 
-            <div className="bg-brand-primary/40 p-6 rounded-xl border border-brand-border space-y-3 flex flex-col justify-center">
-              <div className="flex justify-between text-sm text-brand-text-muted">
+            <div className="bg-brand-primary/40 p-4 sm:p-6 rounded-xl border border-brand-border space-y-2.5 flex flex-col justify-center">
+              <div className="flex justify-between text-xs sm:text-sm text-brand-text-muted">
                 <span>Subtotal Layanan</span>
-                <span>{formatRupiah(subtotal)}</span>
+                <span className="font-medium text-brand-text">{formatRupiah(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm text-red-500">
+              <div className="flex justify-between text-xs sm:text-sm text-red-500">
                 <span>Diskon</span>
-                <span>-{formatRupiah(discountAmount)}</span>
+                <span className="font-medium">-{formatRupiah(discountAmount)}</span>
               </div>
-              <div className="flex justify-between text-sm text-brand-text-muted">
-                {/* ✅ Tampilkan teks 0 jika kosong */}
+              <div className="flex justify-between text-xs sm:text-sm text-brand-text-muted">
                 <span>Pajak ({form.tax_rate || 0}%)</span>
-                <span>+{formatRupiah(taxAmount)}</span>
+                <span className="font-medium text-brand-text">+{formatRupiah(taxAmount)}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold text-brand-accent pt-3 border-t border-brand-border mt-2">
+              <div className="flex justify-between text-base sm:text-lg font-bold text-brand-accent pt-2.5 border-t border-brand-border mt-1">
                 <span>Grand Total</span>
                 <span>{formatRupiah(grandTotal)}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-brand-border">
-            <Link href={`${basePath}/orders`} className="bg-brand-muted text-brand-text px-6 py-2.5 rounded-xl text-sm font-medium transition">Batal</Link>
-            <button type="submit" disabled={submitting} className="bg-brand-accent text-brand-primary px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition disabled:opacity-50">
+          {/* Form Actions */}
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 sm:pt-6 border-t border-brand-border">
+            <Link 
+              href={`${basePath}/orders`} 
+              className="w-full sm:w-auto text-center bg-brand-muted text-brand-text px-6 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition"
+            >
+              Batal
+            </Link>
+            <button 
+              type="submit" 
+              disabled={submitting} 
+              className="w-full sm:w-auto justify-center bg-brand-accent text-brand-primary px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition disabled:opacity-50 shadow-sm"
+            >
               {submitting ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
               {submitting ? 'Menyimpan...' : 'Simpan & Buat Invoice'}
             </button>

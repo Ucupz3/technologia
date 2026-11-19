@@ -99,11 +99,9 @@ export default function RoleLayout({ children }) {
     return true;
   });
 
-  // State untuk kontrol menu drawer di mobile
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Tutup mobile drawer saat pindah halaman
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [url]);
@@ -185,14 +183,14 @@ export default function RoleLayout({ children }) {
       {/* Overlay Backdrop Mobile */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden transition-opacity duration-300"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar (Desktop Collapsible & Mobile Slide-over Drawer) */}
+      {/* Sidebar Container */}
       <aside
-        className={`bg-brand-secondary text-brand-text transition-all duration-300 flex flex-col fixed lg:sticky top-0 h-screen shrink-0 border-r border-brand-border z-50 ${
+        className={`bg-brand-secondary text-brand-text transition-all duration-300 ease-in-out flex flex-col fixed lg:sticky top-0 h-screen shrink-0 border-r border-brand-border z-50 overflow-x-hidden ${
           /* Mobile classes */
           mobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'
         } ${
@@ -200,32 +198,44 @@ export default function RoleLayout({ children }) {
           sidebarOpen ? 'lg:w-64' : 'lg:w-16'
         }`}
       >
-        <div className="h-20 sm:h-24 flex items-center justify-between px-4 border-b border-brand-border/40">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={toggleSidebar}
-              className="hidden lg:flex items-center gap-2 hover:opacity-80 transition"
-              title={sidebarOpen ? "Sembunyikan sidebar" : "Tampilkan sidebar"}
-            >
-              <img src="/logo.webp" alt="ERP Jasa" className="w-12 h-12 sm:w-16 sm:h-16 object-contain shrink-0" />
-            </button>
-            <div className="lg:hidden flex items-center gap-3">
-              <img src="/logo.webp" alt="ERP Jasa" className="w-12 h-12 object-contain shrink-0" />
-              <span className="font-bold text-brand-text text-lg">Tekna.id</span>
-            </div>
+        {/* Header Sidebar (Logo & Toggle) */}
+        <div className={`h-20 sm:h-24 flex items-center border-b border-brand-border/40 overflow-hidden shrink-0 transition-all duration-300 ${
+          sidebarOpen ? 'justify-between px-4' : 'px-4 justify-between lg:justify-center lg:px-0'
+        }`}>
+          {/* Logo Desktop */}
+          <button
+            onClick={toggleSidebar}
+            className={`hidden lg:flex items-center hover:opacity-80 transition-all duration-300 focus:outline-none my-auto ${
+              sidebarOpen ? 'justify-start gap-3 w-full' : 'justify-center w-full'
+            }`}
+            title={sidebarOpen ? "Sembunyikan sidebar" : "Tampilkan sidebar"}
+          >
+            <img 
+              src="/logo.webp" 
+              alt="ERP Jasa" 
+              className={`object-contain shrink-0 transition-all duration-300 ease-in-out ${
+                sidebarOpen ? 'w-12 h-12 sm:w-14 sm:h-14' : 'w-9 h-9'
+              }`} 
+            />
+          </button>
+
+          {/* Logo + Name Mobile */}
+          <div className="lg:hidden flex items-center gap-3">
+            <img src="/logo.webp" alt="ERP Jasa" className="w-10 h-10 object-contain shrink-0" />
           </div>
 
           {/* Tombol Tutup Sidebar Khusus Mobile */}
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="lg:hidden text-brand-text-muted hover:text-brand-text p-1 rounded-lg hover:bg-brand-muted transition"
+            className="lg:hidden text-brand-text-muted hover:text-brand-text p-1.5 rounded-lg hover:bg-brand-muted transition shrink-0"
             title="Tutup Menu"
           >
             <X size={20} />
           </button>
         </div>
 
-        <nav className="p-2 space-y-1 flex-1 overflow-y-auto">
+        {/* Navigation Items */}
+        <nav className="p-2 space-y-1 flex-1 overflow-y-auto overflow-x-hidden">
           {menus.map((item) => {
             const Icon = item.icon;
             const active = url && url.startsWith(item.href);
@@ -235,8 +245,10 @@ export default function RoleLayout({ children }) {
                 href={item.href}
                 title={!sidebarOpen ? item.label : ''}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 sm:py-2 rounded-lg transition text-sm ${
-                  sidebarOpen ? '' : 'lg:justify-center'
+                className={`flex items-center py-2.5 rounded-xl transition-all duration-300 ease-in-out text-sm overflow-hidden whitespace-nowrap ${
+                  sidebarOpen 
+                    ? 'px-3.5 justify-start' 
+                    : 'px-3.5 justify-start lg:px-0 lg:justify-center'
                 } ${
                   active
                     ? 'bg-brand-accent text-brand-primary font-semibold shadow-sm'
@@ -244,24 +256,43 @@ export default function RoleLayout({ children }) {
                 }`}
               >
                 <Icon size={18} className="shrink-0" />
-                <span className="lg:inline">{item.label}</span>
+                <span
+                  className={`truncate transition-all duration-300 ease-in-out ${
+                    sidebarOpen
+                      ? 'opacity-100 max-w-[180px] translate-x-0 ml-3'
+                      : 'max-lg:opacity-100 max-lg:max-w-[180px] max-lg:translate-x-0 max-lg:ml-3 lg:opacity-0 lg:max-w-0 lg:ml-0 lg:-translate-x-2 lg:pointer-events-none'
+                  }`}
+                >
+                  {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-2 border-t border-brand-border">
+        {/* Footer Sidebar (Logout) */}
+        <div className="p-2 border-t border-brand-border shrink-0">
           <Link
             href="/logout"
             method="post"
             as="button"
             title={!sidebarOpen ? 'Logout' : ''}
-            className={`flex items-center gap-3 px-3 py-2.5 sm:py-2 rounded-lg text-brand-text-muted hover:bg-red-500/10 hover:text-red-500 w-full transition text-sm ${
-              sidebarOpen ? '' : 'lg:justify-center'
+            className={`flex items-center py-2.5 rounded-xl text-brand-text-muted hover:bg-red-500/10 hover:text-red-500 w-full transition-all duration-300 ease-in-out text-sm overflow-hidden whitespace-nowrap ${
+              sidebarOpen 
+                ? 'px-3.5 justify-start' 
+                : 'px-3.5 justify-start lg:px-0 lg:justify-center'
             }`}
           >
             <LogOut size={18} className="shrink-0" />
-            <span className="lg:inline">Logout</span>
+            <span
+              className={`truncate transition-all duration-300 ease-in-out ${
+                sidebarOpen
+                  ? 'opacity-100 max-w-[180px] translate-x-0 ml-3'
+                  : 'max-lg:opacity-100 max-lg:max-w-[180px] max-lg:translate-x-0 max-lg:ml-3 lg:opacity-0 lg:max-w-0 lg:ml-0 lg:-translate-x-2 lg:pointer-events-none'
+              }`}
+            >
+              Logout
+            </span>
           </Link>
         </div>
       </aside>

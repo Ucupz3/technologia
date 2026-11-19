@@ -34,7 +34,7 @@ export default function CustomersIndex() {
     setError('');
     Promise.all([
       fetch('/api/v1/customers').then((r) => r.json()),
-      fetch('/api/v1/customers/sales/options').then((r) => r.json()),
+      fetch('/api/v1/customers/customer-service/options').then((r) => r.json()),
     ])
       .then(([c, s]) => {
         if (c.success) setCustomers(c.data || []);
@@ -69,58 +69,64 @@ export default function CustomersIndex() {
     <RoleLayout>
       <Head title="Customers" />
 
+      {/* Toast Notification (Responsif: bawah di Mobile, atas di Desktop) */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${
+        <div className={`fixed bottom-4 left-4 right-4 sm:bottom-auto sm:top-6 sm:left-auto sm:right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border transition ${
           toast.type === 'success'
             ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
             : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
         }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
+          {toast.type === 'success' ? <CheckCircle2 size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
+          <span className="text-xs sm:text-sm font-medium">{toast.message}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-brand-text">Customers</h1>
-        <p className="text-sm text-brand-text-muted mt-1">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-brand-text">Customers</h1>
+        <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5">
           Total {customers.length} customer
         </p>
       </div>
 
-      {/* ============ FILTER BAR (SEJAJAR) ============ */}
+      {/* ============ FILTER BAR (RESPONSIF) ============ */}
       <div className="mb-4 space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           
-          {/* DIV A: Search + Sales Filter */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
-            <div className="relative flex-1 min-w-0 max-w-md">
+          {/* SEARCH + CUSTOMER SERVICE */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-0">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
               <input
                 type="text"
                 placeholder="Cari nama, email, atau phone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+                className="w-full pl-10 pr-9 py-2.5 sm:py-3 bg-brand-primary border border-brand-border rounded-xl text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
               />
               {search && (
-                <button type="button" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition">
+                <button 
+                  type="button" 
+                  onClick={() => setSearch('')} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition p-1"
+                >
                   <X size={14} />
                 </button>
               )}
             </div>
 
-            {/* Custom Dropdown Sales PIC */}
-            <div className="relative sm:w-56 sm:shrink-0">
+            {/* Custom Dropdown Customer Service */}
+            <div className="relative sm:w-56 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsSalesOpen(!isSalesOpen)}
-                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
               >
                 <span className="truncate">
                   {salesFilter 
                     ? salesList.find((s) => String(s.id) === String(salesFilter))?.name 
-                    : 'Semua Sales PIC'}
+                    : 'Semua Customer Service'}
                 </span>
                 <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isSalesOpen ? 'rotate-180 text-brand-accent' : ''}`} />
               </button>
@@ -130,9 +136,9 @@ export default function CustomersIndex() {
                   <button
                     type="button"
                     onClick={() => { setSalesFilter(''); setIsSalesOpen(false); }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${!salesFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition-colors ${!salesFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
                   >
-                    <span>Semua Sales PIC</span>
+                    <span>Semua Customer Service</span>
                     {!salesFilter && <Check size={14} className="text-brand-accent" />}
                   </button>
                   {salesList.map((s) => {
@@ -142,7 +148,7 @@ export default function CustomersIndex() {
                         key={s.id}
                         type="button"
                         onClick={() => { setSalesFilter(s.id); setIsSalesOpen(false); }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${isSelected ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition-colors ${isSelected ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
                       >
                         <span className="truncate">{s.name}</span>
                         {isSelected && <Check size={14} className="text-brand-accent" />}
@@ -154,20 +160,26 @@ export default function CustomersIndex() {
             </div>
           </div>
 
-          {/* DIV B: Refresh + Tambah Customer */}
+          {/* REFRESH + TAMBAH CUSTOMER */}
           <div className="flex items-center gap-2 lg:shrink-0 lg:ml-auto">
-            <button onClick={load} className="bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm">
+            <button 
+              onClick={load} 
+              className="flex-1 sm:flex-initial justify-center bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 sm:py-3 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-xs sm:text-sm font-medium transition shadow-sm"
+            >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /><span>Refresh</span>
             </button>
-            <button onClick={() => setCreateOpen(true)} className="bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-sm transition shadow-sm whitespace-nowrap">
+            <button 
+              onClick={() => setCreateOpen(true)} 
+              className="flex-1 sm:flex-initial justify-center bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 sm:py-3 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-xs sm:text-sm transition shadow-sm whitespace-nowrap"
+            >
               <Plus size={16} /> Tambah Customer
             </button>
           </div>
         </div>
 
-        {/* Info filter aktif */}
+        {/* Info Filter Aktif */}
         {(search || salesFilter) && (
-          <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2 rounded-xl backdrop-blur-sm">
+          <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2.5 rounded-xl backdrop-blur-sm">
             <span>Menampilkan <strong className="text-brand-text font-semibold">{filtered.length}</strong> dari {customers.length} customer</span>
             <button
               onClick={() => { setSearch(''); setSalesFilter(''); setIsSalesOpen(false); }}
@@ -179,102 +191,158 @@ export default function CustomersIndex() {
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
+      {/* ============ DATA VIEW CONTAINER ============ */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border overflow-hidden shadow-sm">
         {loading && (
-          <div className="p-12 text-center text-brand-text-muted">
+          <div className="p-8 sm:p-12 text-center text-brand-text-muted">
             <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-            Loading...
+            <p className="text-xs sm:text-sm">Loading...</p>
           </div>
         )}
 
         {error && (
-          <div className="p-8 text-center">
-            <p className="text-red-600 dark:text-red-400 mb-3">Error: {error}</p>
-            <button onClick={load} className="text-brand-accent underline hover:no-underline">Coba lagi</button>
+          <div className="p-6 sm:p-8 text-center">
+            <p className="text-red-600 dark:text-red-400 mb-3 text-xs sm:text-sm">Error: {error}</p>
+            <button onClick={load} className="text-brand-accent underline hover:no-underline text-xs sm:text-sm font-medium">Coba lagi</button>
           </div>
         )}
 
         {!loading && !error && filtered.length === 0 && (
-          <div className="p-12 text-center">
+          <div className="p-8 sm:p-12 text-center">
             <Contact size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
-            <p className="text-brand-text-muted">
+            <p className="text-brand-text-muted text-xs sm:text-sm">
               {customers.length === 0 ? 'Belum ada customer' : 'Tidak ada yang cocok'}
             </p>
           </div>
         )}
 
         {!loading && !error && filtered.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-brand-muted/40 border-b border-brand-border">
-                <tr>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">No</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Customer</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Contact</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Sales PIC</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Order</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-border/50">
-                {filtered.map((c, i) => (
-                  <tr
-                    key={c.id}
-                    className="hover:bg-brand-muted/40 transition cursor-pointer"
-                    onClick={() => goToDetail(c)}
-                  >
-                    <td className="px-4 py-3 text-sm text-brand-text-muted">{i + 1}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-semibold text-xs shrink-0">
-                          {getInitials(c.name)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-brand-text truncate">{c.name}</div>
-                          <div className="text-xs text-brand-text-muted truncate">ID: {c.id}</div>
-                        </div>
+          <>
+            {/* 1. CARD VIEW (MOBILE - < md) */}
+            <div className="block md:hidden divide-y divide-brand-border/50">
+              {filtered.map((c, i) => (
+                <div
+                  key={c.id}
+                  className="p-4 space-y-3 hover:bg-brand-muted/30 transition cursor-pointer"
+                  onClick={() => goToDetail(c)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-semibold text-xs shrink-0 shadow-sm">
+                        {getInitials(c.name)}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-brand-text flex items-center gap-1.5">
-                        <Mail size={12} className="text-brand-text-muted shrink-0" />
-                        <span className="truncate">{c.email}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-brand-text truncate">{c.name}</div>
+                        <div className="text-[11px] text-brand-text-muted">ID: {c.id}</div>
                       </div>
-                      <div className="text-xs text-brand-text-muted flex items-center gap-1.5 mt-0.5">
-                        <Phone size={12} className="text-brand-text-muted shrink-0" />
-                        <span>{c.phone || '—'}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.sales_name ? (
-                        <span className="text-xs bg-brand-accent/15 text-brand-accent border border-brand-accent/40 px-2 py-0.5 rounded-full font-medium">
-                          {c.sales_name}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-brand-text-muted">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-brand-text-muted">
-                      {c.order_count} order
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end">
-                        {/* ✅ Aksi diubah jadi tulisan "Detail" dengan border */}
-                        <Link
-                          href={`${basePath}/customers/${c.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
-                        >
-                          Detail
-                        </Link>
-                      </div>
-                    </td>
+                    </div>
+                    {c.sales_name ? (
+                      <span className="text-[11px] bg-brand-accent/15 text-brand-accent border border-brand-accent/40 px-2 py-0.5 rounded-full font-medium shrink-0">
+                        {c.sales_name}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-brand-text-muted shrink-0">—</span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 bg-brand-primary/40 rounded-xl p-2.5 border border-brand-border/40 text-xs">
+                    <div className="text-brand-text flex items-center gap-2 truncate">
+                      <Mail size={13} className="text-brand-text-muted shrink-0" />
+                      <span className="truncate">{c.email}</span>
+                    </div>
+                    <div className="text-brand-text-muted flex items-center gap-2">
+                      <Phone size={13} className="text-brand-text-muted shrink-0" />
+                      <span>{c.phone || '—'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-brand-text-muted">
+                      <strong className="text-brand-text font-semibold">{c.order_count}</strong> order
+                    </span>
+                    <Link
+                      href={`${basePath}/customers/${c.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
+                    >
+                      Detail
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. TABLE VIEW (DESKTOP - >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-brand-muted/40 border-b border-brand-border">
+                  <tr>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">No</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Customer</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Contact</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Customer Service</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Order</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-brand-border/50">
+                  {filtered.map((c, i) => (
+                    <tr
+                      key={c.id}
+                      className="hover:bg-brand-muted/40 transition cursor-pointer"
+                      onClick={() => goToDetail(c)}
+                    >
+                      <td className="px-4 py-3 text-sm text-brand-text-muted">{i + 1}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-semibold text-xs shrink-0">
+                            {getInitials(c.name)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-brand-text truncate">{c.name}</div>
+                            <div className="text-xs text-brand-text-muted truncate">ID: {c.id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm text-brand-text flex items-center gap-1.5">
+                          <Mail size={12} className="text-brand-text-muted shrink-0" />
+                          <span className="truncate">{c.email}</span>
+                        </div>
+                        <div className="text-xs text-brand-text-muted flex items-center gap-1.5 mt-0.5">
+                          <Phone size={12} className="text-brand-text-muted shrink-0" />
+                          <span>{c.phone || '—'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.sales_name ? (
+                          <span className="text-xs bg-brand-accent/15 text-brand-accent border border-brand-accent/40 px-2 py-0.5 rounded-full font-medium">
+                            {c.sales_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-brand-text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-brand-text-muted">
+                        {c.order_count} order
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end">
+                          <Link
+                            href={`${basePath}/customers/${c.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
+                          >
+                            Detail
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {!loading && !error && filtered.length > 0 && (
@@ -284,6 +352,7 @@ export default function CustomersIndex() {
         )}
       </div>
 
+      {/* FORM MODAL CREATE */}
       {createOpen && (
         <CustomerFormModal
           mode="create"
@@ -297,6 +366,7 @@ export default function CustomersIndex() {
   );
 }
 
+// ============ FORM MODAL (RESPONSIF) ============
 function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onError }) {
   const isEdit = mode === 'edit';
   const [form, setForm] = useState({
@@ -343,16 +413,18 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between">
-          <h2 className="text-xl font-bold text-brand-text">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-brand-secondary rounded-2xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header Modal */}
+        <div className="px-5 py-4 border-b border-brand-border flex items-center justify-between shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-brand-text">
             {isEdit ? 'Edit Customer' : 'Tambah Customer Baru'}
           </h2>
-          <button onClick={onClose} className="text-brand-text-muted hover:text-brand-accent text-2xl leading-none transition">×</button>
+          <button type="button" onClick={onClose} className="text-brand-text-muted hover:text-brand-accent p-1 text-xl leading-none">×</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* Body Modal Scrollable */}
+        <form onSubmit={handleSubmit} autoComplete="off" className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           <FormField label="Nama Customer" value={form.name}
             onChange={(v) => setForm({ ...form, name: v })}
             error={errors.name} placeholder="PT Maju Bersama" required />
@@ -365,12 +437,12 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
 
           <div>
             <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-              Sales PIC
+              Customer Service
             </label>
             <select
               value={form.sales_id}
               onChange={(e) => setForm({ ...form, sales_id: e.target.value })}
-              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition"
             >
               <option value="">— Tidak ada —</option>
               {salesList.map((s) => (
@@ -385,7 +457,7 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               rows={2}
-              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
+              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition resize-none"
             />
           </div>
 
@@ -395,18 +467,19 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
+              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition resize-none"
             />
           </div>
         </form>
 
-        <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
+        {/* Footer Modal Fixed */}
+        <div className="px-5 py-4 border-t border-brand-border flex justify-end gap-2 shrink-0 bg-brand-secondary">
           <button type="button" onClick={onClose}
-            className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
+            className="flex-1 sm:flex-initial bg-brand-muted text-brand-text px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition">
             Batal
           </button>
           <button onClick={handleSubmit} disabled={submitting}
-            className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+            className="flex-1 sm:flex-initial justify-center bg-brand-accent text-brand-primary px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition">
             {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
             {submitting ? 'Menyimpan...' : 'Buat'}
           </button>
@@ -427,8 +500,8 @@ function FormField({ label, type = 'text', value, onChange, error, placeholder, 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full bg-brand-primary border rounded-lg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none transition ${
-          error ? 'border-red-500/50' : 'border-brand-border focus:border-brand-accent/60'
+        className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition ${
+          error ? 'border-red-500/50' : 'border-brand-border focus:border-brand-accent'
         }`}
       />
       {error && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{error[0]}</p>}

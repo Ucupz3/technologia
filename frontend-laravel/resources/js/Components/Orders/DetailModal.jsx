@@ -85,7 +85,7 @@ export default function OrderDetailModal({ orderId, onClose, onStatusChanged }) 
                   <div className="text-xs text-brand-text-muted">{order.customers?.phone || '—'}</div>
                 </InfoBlock>
 
-                <InfoBlock icon={User} label="Sales PIC">
+                <InfoBlock icon={User} label="Customer Service">
                   <div className="text-brand-text font-medium">{order.users?.name || '—'}</div>
                   <div className="text-xs text-brand-text-muted">{order.users?.email || '—'}</div>
                 </InfoBlock>

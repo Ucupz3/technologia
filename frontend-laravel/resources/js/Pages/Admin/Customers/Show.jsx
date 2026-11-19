@@ -62,7 +62,7 @@ export default function CustomerShow({ customerId }) {
   };
 
   const loadSales = () => {
-    fetch('/api/v1/customers/sales/options')
+    fetch('/api/v1/customers/customer-service/options')
       .then((r) => r.json())
       .then((d) => { if (d.success) setSalesList(d.data || []); })
       .catch(() => {});
@@ -163,7 +163,7 @@ export default function CustomerShow({ customerId }) {
             <InfoRow icon={MapPin} label="Alamat" value={data.address || '—'} />
           </Card>
 
-          <Card title="Sales PIC">
+          <Card title="Customer Service">
             {data.sales_name ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-brand-accent/15 border border-brand-accent/40 rounded-full flex items-center justify-center text-brand-accent font-semibold text-sm">
@@ -175,7 +175,7 @@ export default function CustomerShow({ customerId }) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-brand-text-muted">Belum ada Sales PIC</p>
+              <p className="text-sm text-brand-text-muted">Belum ada Customer Service</p>
             )}
           </Card>
 
@@ -414,7 +414,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
           error={errors.phone} placeholder="08123456789" />
 
         <div>
-          <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Sales PIC</label>
+          <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Customer Service</label>
           <select
             value={form.sales_id}
             onChange={(e) => setForm({ ...form, sales_id: e.target.value })}

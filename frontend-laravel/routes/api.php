@@ -36,7 +36,7 @@ Route::any('{path}', function ($path) {
         $headers['Authorization'] = $auth;
     }
 
-    // Kirim user context untuk filtering (Sales hanya lihat data mereka)
+    // Kirim user context untuk filtering (CS hanya melihat data mereka)
     if (auth()->check()) {
         $headers['X-User-Id'] = auth()->id();
         $headers['X-User-Role'] = auth()->user()->role?->name ?? '';

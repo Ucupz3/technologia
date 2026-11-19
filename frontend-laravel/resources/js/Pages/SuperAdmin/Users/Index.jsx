@@ -419,7 +419,7 @@ function FormField({ label, type = 'text', value, onChange, error, required, ico
 }
 
 function RoleBadge({ role }) {
-  const isCsOrSales = role === 'CS' || role === 'Sales' || role === 'Customer Service';
+  const isCustomerService = role === 'CS';
   
   const colors = { 
     'Super Admin': 'bg-orange-500/15 text-orange-500 dark:text-orange-400 border-orange-500/40', 
@@ -427,7 +427,7 @@ function RoleBadge({ role }) {
   };
   
   let colorClass = colors[role];
-  if (isCsOrSales) {
+  if (isCustomerService) {
     colorClass = 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border-emerald-500/40';
   }
   

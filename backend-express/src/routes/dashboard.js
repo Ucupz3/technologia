@@ -83,7 +83,7 @@ async function handleSuperAdminDashboard(_req, res, next) {
       count: g._count._all,
     }));
 
-    // ===== TOP 5 SALES =====
+    // ===== TOP 5 CUSTOMER SERVICE =====
     const salesGroups = await prisma.orders.groupBy({
       by: ['sales_id'],
       where: { deleted_at: null, sales_id: { not: null } },
@@ -108,6 +108,7 @@ async function handleSuperAdminDashboard(_req, res, next) {
       order_count: g._count._all,
       total_revenue: Number(g._sum.grand_total || 0),
     }));
+    const top_customer_service = top_sales;
 
     // ===== TOP 5 SERVICES =====
     const serviceGroups = await prisma.order_services.groupBy({
@@ -179,6 +180,7 @@ async function handleSuperAdminDashboard(_req, res, next) {
         revenue_chart,
         order_status_chart,
         top_sales,
+        top_customer_service,
         top_services,
         recent_audit_logs,
       },

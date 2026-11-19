@@ -127,18 +127,18 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* Top Sales & Services Row */}
+      {/* Top Customer Service & Services Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="bg-brand-secondary rounded-lg border border-brand-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Award size={16} className="text-brand-accent" />
-            <h2 className="text-sm font-semibold text-brand-text">Top 5 Sales</h2>
+            <h2 className="text-sm font-semibold text-brand-text">Top 5 Customer Service</h2>
           </div>
-          {data.top_sales.length === 0 ? (
-            <EmptyState label="Belum ada data sales" />
+          {(data.top_customer_service || data.top_sales).length === 0 ? (
+            <EmptyState label="Belum ada data customer service" />
           ) : (
             <div className="space-y-3">
-              {data.top_sales.map((s, i) => (
+              {(data.top_customer_service || data.top_sales).map((s, i) => (
                 <RankRow
                   key={s.id}
                   rank={i + 1}
@@ -190,7 +190,7 @@ export default function SuperAdminDashboard() {
                   <th className="px-3 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Waktu</th>
                   <th className="px-3 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">User</th>
                   <th className="px-3 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Aksi</th>
-                  <th className="px-3 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Entity</th>
+                  <th className="px-3 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Entitas</th>
                   <th className="px-3 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">IP</th>
                 </tr>
               </thead>

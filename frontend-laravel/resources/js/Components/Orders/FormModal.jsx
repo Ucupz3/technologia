@@ -93,10 +93,10 @@ export default function OrderFormModal({ mode, order, options, onClose, onSucces
             />
           </div>
 
-          {/* Sales & Team */}
+          {/* Customer Service & Team */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <SelectField
-              label="Sales PIC (opsional)"
+              label="Customer Service (opsional)"
               value={form.sales_id}
               onChange={(v) => setForm({ ...form, sales_id: v })}
               options={options.sales.map((s) => ({ value: s.id, label: s.name }))}

@@ -37,7 +37,7 @@ export default function CustomerServiceCustomersIndex() {
     setError('');
     Promise.all([
       fetch('/api/v1/customers').then((r) => r.json()),
-      fetch('/api/v1/customers/sales/options').then((r) => r.json()),
+      fetch('/api/v1/customers/customer-service/options').then((r) => r.json()),
     ])
       .then(([c, s]) => {
         if (c.success) setCustomers(c.data || []);
@@ -100,7 +100,7 @@ export default function CustomerServiceCustomersIndex() {
       <div className="mb-4 space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           
-          {/* Search + Sales PIC Filter */}
+          {/* Search + Customer Service Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
             <div className="relative flex-1 min-w-0 max-w-md">
               <Search
@@ -125,7 +125,7 @@ export default function CustomerServiceCustomersIndex() {
               )}
             </div>
 
-            {/* Custom Dropdown Sales PIC */}
+            {/* Custom Dropdown Customer Service */}
             <div className="relative sm:w-56 sm:shrink-0">
               <button
                 type="button"
@@ -135,7 +135,7 @@ export default function CustomerServiceCustomersIndex() {
                 <span className="truncate">
                   {salesFilter
                     ? salesList.find((s) => String(s.id) === String(salesFilter))?.name
-                    : 'Semua Sales PIC'}
+                    : 'Semua Customer Service'}
                 </span>
                 <ChevronDown
                   size={16}
@@ -159,7 +159,7 @@ export default function CustomerServiceCustomersIndex() {
                         : 'text-brand-text hover:bg-brand-border/40'
                     }`}
                   >
-                    <span>Semua Sales PIC</span>
+                    <span>Semua Customer Service</span>
                     {!salesFilter && <Check size={14} className="text-brand-accent" />}
                   </button>
                   {salesList.map((s) => {
@@ -269,7 +269,7 @@ export default function CustomerServiceCustomersIndex() {
                     Kontak
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">
-                    Sales PIC
+                    Customer Service
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">
                     Order
@@ -452,7 +452,7 @@ function CustomerFormModal({ mode, customer, defaultSalesId, salesList, onClose,
 
           <div>
             <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-              Sales PIC
+              Customer Service
             </label>
             <select
               value={form.sales_id}

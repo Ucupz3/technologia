@@ -34,7 +34,7 @@ export default function CustomersIndex() {
     setError('');
     Promise.all([
       fetch('/api/v1/customers').then((r) => r.json()),
-      fetch('/api/v1/customers/sales/options').then((r) => r.json()),
+      fetch('/api/v1/customers/customer-service/options').then((r) => r.json()),
     ])
       .then(([c, s]) => {
         if (c.success) setCustomers(c.data || []);
@@ -92,7 +92,7 @@ export default function CustomersIndex() {
       <div className="mb-4 space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           
-          {/* DIV A: Search + Sales Filter */}
+          {/* DIV A: Search + Customer Service Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
             <div className="relative flex-1 min-w-0 max-w-md">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
@@ -110,7 +110,7 @@ export default function CustomersIndex() {
               )}
             </div>
 
-            {/* Custom Dropdown Sales PIC */}
+            {/* Custom Dropdown Customer Service */}
             <div className="relative sm:w-56 sm:shrink-0">
               <button
                 type="button"
@@ -120,7 +120,7 @@ export default function CustomersIndex() {
                 <span className="truncate">
                   {salesFilter 
                     ? salesList.find((s) => String(s.id) === String(salesFilter))?.name 
-                    : 'Semua Sales PIC'}
+                    : 'Semua Customer Service'}
                 </span>
                 <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isSalesOpen ? 'rotate-180 text-brand-accent' : ''}`} />
               </button>
@@ -132,7 +132,7 @@ export default function CustomersIndex() {
                     onClick={() => { setSalesFilter(''); setIsSalesOpen(false); }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${!salesFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
                   >
-                    <span>Semua Sales PIC</span>
+                    <span>Semua Customer Service</span>
                     {!salesFilter && <Check size={14} className="text-brand-accent" />}
                   </button>
                   {salesList.map((s) => {
@@ -212,7 +212,7 @@ export default function CustomersIndex() {
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">No</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Customer</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Contact</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Sales PIC</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Customer Service</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Order</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Aksi</th>
                 </tr>
@@ -365,7 +365,7 @@ function CustomerFormModal({ mode, customer, salesList, onClose, onSuccess, onEr
 
           <div>
             <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-              Sales PIC
+              Customer Service
             </label>
             <select
               value={form.sales_id}

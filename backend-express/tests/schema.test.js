@@ -18,7 +18,7 @@ describe('Prisma Schema Model Verification', () => {
 
     const fieldMap = new Map(ordersModel.fields.map(f => [f.name, f]));
 
-    // Check parent_order_id, customer_id, pic_id, sales_id, team_id, discount_type, tax_rate, cancelled_by
+    // Check parent_order_id, customer_id, pic_id, sales_id (database alias lama), team_id, discount_type, tax_rate, cancelled_by
     assert.equal(fieldMap.get('parent_order_id')?.isRequired, false, 'parent_order_id should be nullable');
     assert.equal(fieldMap.get('customer_id')?.isRequired, true, 'customer_id should be required');
     assert.equal(fieldMap.get('pic_id')?.isRequired, false, 'pic_id should be nullable');

@@ -95,7 +95,7 @@ export default function OrderCreate() {
     Promise.all([
       fetch('/api/v1/orders/options/customers').then((r) => r.json()),
       fetch('/api/v1/orders/options/services').then((r) => r.json()),
-      fetch('/api/v1/orders/options/sales').then((r) => r.json()),
+      fetch('/api/v1/orders/options/customer-service').then((r) => r.json()),
       fetch('/api/v1/orders/options/teams').then((r) => r.json()),
     ])
       .then(([c, s, sa, t]) => {
@@ -180,7 +180,7 @@ export default function OrderCreate() {
     const payload = {
       customer_id: form.customer_id,
       pic_id: form.pic_id || null,
-      sales_id: form.sales_id || null,
+      customer_service_id: form.sales_id || null,
       team_id: form.team_id || null,
       service_id: form.service_id,
       price_deal: Number(form.price_deal),
@@ -264,11 +264,11 @@ export default function OrderCreate() {
             />
           </div>
 
-          {/* BARIS 2: SALES & TIM */}
+          {/* BARIS 2: CUSTOMER SERVICE & TIM */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CustomSelect
-              label="Sales PIC"
-              placeholder="— Pilih Sales —"
+              label="Customer Service"
+              placeholder="— Pilih Customer Service —"
               value={form.sales_id}
               options={options.sales.map(s => ({ value: s.id, label: s.name }))}
               onChange={(val) => setForm({ ...form, sales_id: val })}

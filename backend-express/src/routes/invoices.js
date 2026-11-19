@@ -52,8 +52,8 @@ invoicesRouter.get('/', async (req, res, next) => {
     const userId = req.header('X-User-Id');
     const where = { deleted_at: null };
 
-    // Sales/CS hanya lihat invoice dari customer mereka
-    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+    // CS hanya melihat invoice dari customer yang ditangani sendiri
+    if (userRole === 'CS' && userId) {
       where.customers = {
         sales_id: BigInt(userId)
       };
@@ -95,8 +95,8 @@ invoicesRouter.get('/:id', async (req, res, next) => {
     const userId = req.header('X-User-Id');
     const where = { id: BigInt(req.params.id), deleted_at: null };
 
-    // Sales/CS hanya lihat invoice dari customer mereka
-    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+    // CS hanya melihat invoice dari customer yang ditangani sendiri
+    if (userRole === 'CS' && userId) {
       where.customers = {
         sales_id: BigInt(userId)
       };

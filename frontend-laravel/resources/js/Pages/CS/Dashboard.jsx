@@ -190,7 +190,7 @@ export default function CustomerServiceDashboard() {
             <div className="flex items-center gap-2">
               <TrendingUp size={16} className="text-brand-accent" />
               <h2 className="text-sm font-semibold text-brand-text">
-                {chartMode === 'orders' ? '30-Day Sales Trend (Order Value)' : '30-Day Revenue (Paid Invoices)'}
+                {chartMode === 'orders' ? '30-Day Customer Service Trend (Order Value)' : '30-Day Revenue (Paid Invoices)'}
               </h2>
             </div>
             <div className="flex items-center bg-brand-primary border border-brand-border rounded-lg p-0.5">

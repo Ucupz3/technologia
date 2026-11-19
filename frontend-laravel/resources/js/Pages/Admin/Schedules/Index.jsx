@@ -18,7 +18,7 @@ const EVENT_ROW_GAP = 2;
 const HEADER_PAD_TOP = 28;
 const CELL_PAD = 4;
 
-// ✅ FUNGSI UNTUK MENDAPATKAN BASE PATH (super-admin, admin, atau sales)
+// ✅ FUNGSI UNTUK MENDAPATKAN BASE PATH (super-admin, admin, atau cs)
 function getBasePath() {
   // Jika URL saat ini '/super-admin/schedules', hasilnya '/super-admin'
   return window.location.pathname.replace(/\/schedules.*$/, '');

@@ -43,7 +43,7 @@ export default function MasterDataIndex() {
         </div>
       )}
 
-      <div className="mb-14">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-brand-text">Management</h1>
         <p className="text-sm text-brand-text-muted mt-1">
           Kelola data dasar layanan dan tim untuk mendukung operasional.

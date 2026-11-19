@@ -334,7 +334,7 @@ export default function AdminOrderShow({ orderId }) {
 
       {/* Grid Informasi Persis Super Admin (3 Kolom: 1 Kiri, 2 Kanan) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* ================= KIRI: INFO CUSTOMER & SALES ================= */}
+        {/* ================= KIRI: INFO CUSTOMER & CUSTOMER SERVICE ================= */}
         <div className="lg:col-span-1 space-y-4">
           <Card title="Informasi Customer">
             <div className="space-y-3">
@@ -360,7 +360,7 @@ export default function AdminOrderShow({ orderId }) {
             </div>
           </Card>
 
-          <Card title="Sales PIC">
+          <Card title="Customer Service">
             {order.sales_user ? (
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-brand-accent/15 border border-brand-accent/40 rounded-full flex items-center justify-center text-brand-accent font-semibold text-xs">
@@ -372,7 +372,7 @@ export default function AdminOrderShow({ orderId }) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-brand-text-muted">Tidak ada sales</p>
+              <p className="text-sm text-brand-text-muted">Tidak ada Customer Service</p>
             )}
           </Card>
 

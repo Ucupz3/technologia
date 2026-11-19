@@ -66,7 +66,7 @@ export default function CustomerServiceCustomerShow({ customerId }) {
   };
 
   const loadSales = () => {
-    fetch('/api/v1/customers/sales/options')
+    fetch('/api/v1/customers/customer-service/options')
       .then((r) => r.json())
       .then((d) => {
         if (d.success) setSalesList(d.data || []);
@@ -173,7 +173,7 @@ export default function CustomerServiceCustomerShow({ customerId }) {
 
       {/* Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Kolom Kiri: Informasi Customer & Sales */}
+        {/* Kolom Kiri: Informasi Customer & Customer Service */}
         <div className="lg:col-span-1 space-y-4">
           <Card title="Informasi Customer">
             <InfoRow icon={Mail} label="Email" value={data.email} />
@@ -181,7 +181,7 @@ export default function CustomerServiceCustomerShow({ customerId }) {
             <InfoRow icon={MapPin} label="Alamat" value={data.address || '—'} />
           </Card>
 
-          <Card title="Sales PIC">
+          <Card title="Customer Service">
             {data.sales_name ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-brand-accent/15 border border-brand-accent/40 rounded-full flex items-center justify-center text-brand-accent font-semibold text-sm">
@@ -193,7 +193,7 @@ export default function CustomerServiceCustomerShow({ customerId }) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-brand-text-muted">Belum ada Sales PIC</p>
+              <p className="text-sm text-brand-text-muted">Belum ada Customer Service</p>
             )}
           </Card>
 
@@ -497,7 +497,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
 
           <div>
             <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-              Sales PIC
+              Customer Service
             </label>
             <select
               value={form.sales_id}

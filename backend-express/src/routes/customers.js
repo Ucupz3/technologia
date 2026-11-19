@@ -14,8 +14,8 @@ customersRouter.get('/', async (req, res, next) => {
 
     const where = { deleted_at: null };
     
-    // Sales/CS hanya lihat customer mereka sendiri
-    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+    // CS hanya melihat customer yang ditangani sendiri
+    if (userRole === 'CS' && userId) {
       where.sales_id = BigInt(userId);
     }
 
@@ -52,8 +52,11 @@ customersRouter.get('/', async (req, res, next) => {
       address: c.address,
       notes: c.notes,
       sales_id: c.sales_id,
+      customer_service_id: c.sales_id,
       sales_name: c.sales_user?.name || null,
       sales_email: c.sales_user?.email || null,
+      customer_service_name: c.sales_user?.name || null,
+      customer_service_email: c.sales_user?.email || null,
       order_count: c._count.orders,
       created_at: c.created_at,
     }));
@@ -62,8 +65,8 @@ customersRouter.get('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/v1/customers/sales/options
-customersRouter.get('/sales/options', async (_req, res, next) => {
+// GET /api/v1/customers/customer-service/options
+customersRouter.get(['/customer-service/options', '/sales/options'], async (_req, res, next) => {
   try {
     const salesUsers = await prisma.users.findMany({
       where: {
@@ -85,8 +88,8 @@ customersRouter.get('/:id', async (req, res, next) => {
     const userId = req.header('X-User-Id');
     const where = { id: BigInt(req.params.id), deleted_at: null };
 
-    // Sales/CS hanya lihat customer mereka sendiri
-    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+    // CS hanya melihat customer yang ditangani sendiri
+    if (userRole === 'CS' && userId) {
       where.sales_id = BigInt(userId);
     }
 
@@ -131,8 +134,11 @@ customersRouter.get('/:id', async (req, res, next) => {
         address: customer.address,
         notes: customer.notes,
         sales_id: customer.sales_id,
+        customer_service_id: customer.sales_id,
         sales_name: customer.sales_user?.name || null,
         sales_email: customer.sales_user?.email || null,
+        customer_service_name: customer.sales_user?.name || null,
+        customer_service_email: customer.sales_user?.email || null,
         created_at: customer.created_at,
 
         // ✅ TAMBAHAN: kirim ke frontend sebagai `pics`
@@ -151,6 +157,7 @@ const createSchema = z.object({
   phone: z.string().max(30).optional().nullable(),
   address: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  customer_service_id: z.coerce.number().int().positive().optional().nullable(),
   sales_id: z.coerce.number().int().positive().optional().nullable(),
 });
 
@@ -165,7 +172,8 @@ customersRouter.post('/', async (req, res, next) => {
       });
     }
 
-    const { name, email, phone, address, notes, sales_id } = parsed.data;
+    const { name, email, phone, address, notes } = parsed.data;
+    const sales_id = parsed.data.customer_service_id ?? parsed.data.sales_id;
 
     const existing = await prisma.customers.findUnique({ where: { email } });
 
@@ -201,7 +209,7 @@ customersRouter.post('/', async (req, res, next) => {
     const detailText = `Menambahkan customer baru.
 Nama: ${name}
 Email: ${email}
-Telepon: ${phone || '-'}${address ? '\nAlamat: ' + address : ''}${sales_id ? '\nSales ID: ' + sales_id : ''}`;
+Telepon: ${phone || '-'}${address ? '\nAlamat: ' + address : ''}${sales_id ? '\nCustomer Service ID: ' + sales_id : ''}`;
     
     await createAuditLog({
       userId,
@@ -225,6 +233,7 @@ const updateSchema = z.object({
   phone: z.string().max(30).optional().nullable(),
   address: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  customer_service_id: z.coerce.number().int().positive().optional().nullable(),
   sales_id: z.coerce.number().int().positive().optional().nullable(),
 });
 
@@ -243,7 +252,7 @@ customersRouter.put('/:id', async (req, res, next) => {
     const userRole = req.header('X-User-Role');
     const userId = req.header('X-User-Id');
     const where = { id, deleted_at: null };
-    if ((userRole === 'Sales' || userRole === 'CS') && userId) {
+    if (userRole === 'CS' && userId) {
       where.sales_id = BigInt(userId);
     }
 
@@ -258,6 +267,10 @@ customersRouter.put('/:id', async (req, res, next) => {
     }
 
     const data = { ...parsed.data };
+    if (data.customer_service_id !== undefined && data.sales_id === undefined) {
+      data.sales_id = data.customer_service_id;
+    }
+    delete data.customer_service_id;
     if (data.sales_id !== undefined) {
       data.sales_id = data.sales_id ? BigInt(data.sales_id) : null;
     }
@@ -278,7 +291,7 @@ customersRouter.put('/:id', async (req, res, next) => {
     if (parsed.data.sales_id !== undefined) {
       const oldSalesId = existing.sales_id ? existing.sales_id.toString() : '-';
       const newSalesId = parsed.data.sales_id ? parsed.data.sales_id.toString() : '-';
-      if (oldSalesId !== newSalesId) changes.push(`Sales ID: "${oldSalesId}" → "${newSalesId}"`);
+      if (oldSalesId !== newSalesId) changes.push(`Customer Service ID: "${oldSalesId}" → "${newSalesId}"`);
     }
 
     const detailText = changes.length > 0 

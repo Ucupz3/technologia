@@ -19,25 +19,25 @@ const getStatusBadge = (status) => {
         case 'scheduled':
             return {
                 label: 'Scheduled',
-                className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+                className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
                 icon: <Clock size={13} />
             };
         case 'in_progress':
             return {
                 label: 'In Progress',
-                className: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+                className: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
                 icon: <Wrench size={13} />
             };
         case 'completed':
             return {
                 label: 'Completed',
-                className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+                className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
                 icon: <CheckCircle2 size={13} />
             };
         case 'cancelled':
             return {
                 label: 'Cancelled',
-                className: 'bg-red-500/15 text-red-400 border-red-500/30',
+                className: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30',
                 icon: <AlertCircle size={13} />
             };
         default:
@@ -76,7 +76,6 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                                 ? 'in_progress'
                                 : res.data.status || 'in_progress');
 
-                    // Jangan prefill catatan evaluasi Super Admin dengan catatan penugasan awal developer
                     const adminNotes =
                         res.data.notes && !res.data.notes.startsWith('Ditugaskan ke')
                             ? res.data.notes
@@ -132,9 +131,9 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
         return (
             <RoleLayout>
                 <Head title="Detail Maintenance" />
-                <div className="p-16 text-center text-brand-text-muted">
+                <div className="p-8 sm:p-16 text-center text-brand-text-muted">
                     <ClipboardClock size={32} className="animate-pulse mx-auto mb-3 text-brand-accent" />
-                    Memuat rincian tiket maintenance...
+                    <p className="text-xs sm:text-sm">Memuat rincian tiket maintenance...</p>
                 </div>
             </RoleLayout>
         );
@@ -144,13 +143,13 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
         return (
             <RoleLayout>
                 <Head title="Detail Maintenance" />
-                <div className="p-8 max-w-xl mx-auto bg-red-500/10 border border-red-500/30 rounded-2xl text-center">
+                <div className="p-6 sm:p-8 max-w-xl mx-auto bg-red-500/10 border border-red-500/30 rounded-2xl text-center">
                     <AlertCircle size={36} className="mx-auto mb-2 text-red-500" />
-                    <h3 className="font-bold text-brand-text">Tidak Dapat Memuat Data</h3>
-                    <p className="text-xs text-red-400 mt-1">{error || 'Data tidak ditemukan.'}</p>
+                    <h3 className="font-bold text-brand-text text-base sm:text-lg">Tidak Dapat Memuat Data</h3>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error || 'Data tidak ditemukan.'}</p>
                     <Link
                         href="/super-admin/maintenance"
-                        className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 bg-brand-secondary border border-brand-border text-brand-text rounded-xl text-xs font-semibold hover:bg-brand-muted"
+                        className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 bg-brand-secondary border border-brand-border text-brand-text rounded-xl text-xs font-semibold hover:bg-brand-muted transition"
                     >
                         <ChevronLeft size={14} /> Kembali ke Maintenance
                     </Link>
@@ -167,8 +166,8 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
         <RoleLayout>
             <Head title={`Super Admin — Detail Maintenance ${data.title}`} />
 
-            {/* BREADCRUMB */}
-            <div className="mb-6 flex items-center justify-between">
+            {/* BREADCRUMB & BADGE HEADER */}
+            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                 <Link
                     href="/super-admin/maintenance"
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-text-muted hover:text-brand-text transition"
@@ -176,96 +175,98 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                     <ChevronLeft size={16} />
                     Kembali ke Daftar Maintenance
                 </Link>
-                <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border flex items-center gap-1.5 ${badge.className}`}>
+                <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border flex items-center gap-1.5 shrink-0 ${badge.className}`}>
                     {badge.icon} {badge.label}
                 </span>
             </div>
 
-            {/* HEADER UTAMA */}
-            <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 mb-8 shadow-sm">
+            {/* HEADER UTAMA CARD */}
+            <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
+                            <span className="font-mono text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text truncate">
                                 Order Pemeliharaan: {data.child_order.order_number}
                             </span>
                             {parent && (
-                                <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                                    Lanjutan dari Order Induk: <strong>{parent.order_number}</strong>
+                                <span className="text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 truncate">
+                                    Lanjutan dari: <strong>{parent.order_number}</strong>
                                 </span>
                             )}
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand-accent/10 text-brand-accent border border-brand-accent/20">
+                            <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded bg-brand-accent/10 text-brand-accent border border-brand-accent/20 shrink-0">
                                 {data.assigned_developer?.job || 'Maintenance'}
                             </span>
                         </div>
-                        <h1 className="text-2xl font-bold text-brand-text">
+                        <h1 className="text-xl sm:text-2xl font-bold text-brand-text break-words">
                             {data.title}
                         </h1>
-                        <p className="text-xs text-brand-text-muted mt-1">
-                            Klien: <strong className="text-brand-text">{cust.name}</strong> • Dilaporkan pada {data.created_at}
+                        <p className="text-xs text-brand-text-muted mt-1 truncate">
+                            Klien: <strong className="text-brand-text">{cust.name}</strong> &bull; Dilaporkan pada {data.created_at}
                         </p>
                     </div>
 
-                    <div className="bg-brand-primary/60 border border-brand-border/60 p-3.5 rounded-xl text-right shrink-0">
-                        <span className="text-[11px] text-brand-text-muted uppercase block font-medium">Jadwal Perbaikan</span>
+                    <div className="bg-brand-primary/60 border border-brand-border/60 p-3 sm:p-3.5 rounded-xl text-left md:text-right shrink-0">
+                        <span className="text-[10px] sm:text-[11px] text-brand-text-muted uppercase tracking-widest block font-semibold">Jadwal Perbaikan</span>
                         <span className="text-xs font-semibold text-brand-text flex items-center gap-1.5 mt-0.5 md:justify-end">
-                            <Calendar size={13} className="text-brand-accent" />
-                            {data.start_datetime} s/d {data.end_datetime}
+                            <Calendar size={13} className="text-brand-accent shrink-0" />
+                            <span>{data.start_datetime} s/d {data.end_datetime}</span>
                         </span>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* KOLOM KIRI (2 KOLOM): DETAIL ERROR, CATATAN DEVELOPER, FORM PENGESAHAN SUPER ADMIN */}
-                <div className="lg:col-span-2 space-y-6">
+            {/* MAIN GRID LAYOUT */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                {/* KOLOM KIRI (2 KOLOM): DETAIL ERROR, CATATAN DEVELOPER, FORM PENGESAHAN */}
+                <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+                    
                     {/* CARD 1: RINCIAN KENDALA & KOMPLAIN KLIEN */}
-                    <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-base font-bold text-brand-text flex items-center gap-2 mb-4 pb-3 border-b border-brand-border">
-                            <AlertCircle size={18} className="text-amber-500" />
-                            Laporan Kendala / Komplain Klien
+                    <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+                        <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-brand-border">
+                            <AlertCircle size={18} className="text-amber-500 shrink-0" />
+                            <span>Laporan Kendala / Komplain Klien</span>
                         </h2>
-                        <div className="bg-brand-primary/40 border border-brand-border/60 rounded-xl p-4 text-sm text-brand-text whitespace-pre-wrap leading-relaxed">
+                        <div className="bg-brand-primary/40 border border-brand-border/60 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm text-brand-text whitespace-pre-wrap leading-relaxed break-words">
                             {data.description || 'Tidak ada keterangan rincian keluhan.'}
                         </div>
                     </div>
 
                     {/* CARD 2: STATUS & LAPORAN PROGRES DEVELOPER */}
-                    <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
-                        <div className="flex items-center justify-between pb-3 border-b border-brand-border mb-4">
-                            <h2 className="text-base font-bold text-brand-text flex items-center gap-2">
-                                <FileText size={18} className="text-blue-400" />
-                                Status & Laporan Progres Developer
+                    <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-brand-border mb-3 sm:mb-4 gap-1">
+                            <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2">
+                                <FileText size={18} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                                <span>Status & Laporan Progres Developer</span>
                             </h2>
-                            <span className="text-xs text-brand-text-muted">
+                            <span className="text-xs text-brand-text-muted truncate">
                                 Developer: <strong className="text-brand-text">{data.assigned_developer?.name || '-'}</strong>
                             </span>
                         </div>
 
                         {/* Indikator Status Setoran Progres Developer */}
                         {data.developer_progress?.status === 'completed' || data.developer_progress?.progress_percentage === 100 ? (
-                            <div className="p-4 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-                                <div className="flex items-start gap-3">
-                                    <CheckCircle2 size={24} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                            <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                                <div className="flex items-start gap-2.5 sm:gap-3">
+                                    <CheckCircle2 size={22} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-sm text-emerald-950 dark:text-emerald-100">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-bold text-xs sm:text-sm text-emerald-950 dark:text-emerald-100">
                                                 {data.status === 'completed'
                                                     ? 'Pengerjaan & Tiket Selesai (Completed)'
                                                     : 'Setoran Developer: Sudah Dikerjakan (100% Selesai)'}
                                             </span>
-                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-500/30">
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-500/30 shrink-0">
                                                 100% Selesai
                                             </span>
                                         </div>
                                         <p className="text-xs text-emerald-800 dark:text-emerald-200/90 mt-1 leading-relaxed">
                                             {data.status === 'completed' ? (
                                                 <span>
-                                                    Developer telah menyelesaikan perbaikan kendala dan tiket maintenance ini telah disahkan selesai (Completed) oleh Super Admin.
+                                                    Developer telah menyelesaikan perbaikan dan tiket maintenance ini telah disahkan selesai (Completed) oleh Super Admin.
                                                 </span>
                                             ) : (
                                                 <span>
-                                                    Developer telah menyetorkan bahwa kendala teknis telah selesai diperbaiki. <strong>Status tiket pusat saat ini masih {data.status === 'in_progress' ? 'In Progress' : data.status}.</strong> Silakan verifikasi catatan teknis di bawah, lalu ubah status ke <strong>Completed</strong> pada form kontrol di bawah untuk mengesahkan penyelesaian.
+                                                    Developer menyetorkan bahwa kendala teknis telah selesai diperbaiki. Status tiket pusat saat ini masih {data.status === 'in_progress' ? 'In Progress' : data.status}. Ubah status ke <strong>Completed</strong> pada form kontrol untuk mengesahkan.
                                                 </span>
                                             )}
                                         </p>
@@ -275,38 +276,38 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                                     <button
                                         type="button"
                                         onClick={() => setForm(prev => ({ ...prev, status: 'completed' }))}
-                                        className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow flex items-center gap-1.5"
+                                        className="w-full sm:w-auto shrink-0 justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2.5 sm:py-2 rounded-xl transition shadow flex items-center gap-1.5"
                                     >
                                         <Check size={14} /> Pilih Status Completed
                                     </button>
                                 )}
                             </div>
                         ) : data.developer_progress?.status === 'in_progress' || (data.developer_progress?.progress_percentage > 0 && data.developer_progress?.progress_percentage < 100) ? (
-                            <div className="p-4 rounded-xl bg-blue-500/10 dark:bg-blue-500/15 border border-blue-500/30 dark:border-blue-500/40 mb-4 flex items-start gap-3">
+                            <div className="p-3.5 sm:p-4 rounded-xl bg-blue-500/10 dark:bg-blue-500/15 border border-blue-500/30 dark:border-blue-500/40 mb-4 flex items-start gap-2.5 sm:gap-3">
                                 <Wrench size={20} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold text-sm text-blue-950 dark:text-blue-100">Setoran Developer: Sedang Dikerjakan</span>
-                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 dark:bg-blue-500/25 text-blue-800 dark:text-blue-300 font-semibold border border-blue-500/30">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-xs sm:text-sm text-blue-950 dark:text-blue-100">Setoran Developer: Sedang Dikerjakan</span>
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 dark:bg-blue-500/25 text-blue-800 dark:text-blue-300 font-semibold border border-blue-500/30 shrink-0">
                                             {data.developer_progress?.progress_percentage || 50}% Pengerjaan
                                         </span>
                                     </div>
-                                    <p className="text-xs text-blue-800 dark:text-blue-200/90 mt-1">
+                                    <p className="text-xs text-blue-800 dark:text-blue-200/90 mt-1 leading-relaxed">
                                         Developer sedang aktif melakukan proses debugging dan perbaikan teknis.
                                     </p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-4 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 dark:border-amber-500/40 mb-4 flex items-start gap-3">
+                            <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 dark:border-amber-500/40 mb-4 flex items-start gap-2.5 sm:gap-3">
                                 <Clock size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold text-sm text-amber-950 dark:text-amber-100">Setoran Developer: Belum Dikerjakan</span>
-                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 dark:bg-amber-500/25 text-amber-800 dark:text-amber-300 font-semibold border border-amber-500/30">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-xs sm:text-sm text-amber-950 dark:text-amber-100">Setoran Developer: Belum Dikerjakan</span>
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 dark:bg-amber-500/25 text-amber-800 dark:text-amber-300 font-semibold border border-amber-500/30 shrink-0">
                                             0% Menunggu
                                         </span>
                                     </div>
-                                    <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-1">
+                                    <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-1 leading-relaxed">
                                         Menunggu developer penanggung jawab memulai penanganan kendala atau menyetorkan progres.
                                     </p>
                                 </div>
@@ -315,11 +316,11 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
 
                         {/* Catatan / Laporan Teknis Developer */}
                         <div>
-                            <div className="text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                            <div className="text-[11px] sm:text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                                 Catatan & Rincian Solusi dari Developer:
                             </div>
                             {data.developer_progress?.notes ? (
-                                <div className="bg-brand-primary/50 border border-brand-border/60 rounded-xl p-4 text-sm text-brand-text whitespace-pre-wrap leading-relaxed">
+                                <div className="bg-brand-primary/50 border border-brand-border/60 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm text-brand-text whitespace-pre-wrap leading-relaxed break-words">
                                     {data.developer_progress.notes}
                                 </div>
                             ) : (
@@ -328,7 +329,7 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                                 </p>
                             )}
                             {data.developer_progress?.updated_at && (
-                                <span className="text-[11px] text-brand-text-muted block mt-2">
+                                <span className="text-[10px] sm:text-[11px] text-brand-text-muted block mt-2">
                                     Pembaruan Setoran Developer: {formatDateTime(data.developer_progress.updated_at)}
                                 </span>
                             )}
@@ -336,33 +337,33 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                     </div>
 
                     {/* CARD 3: FORM KONTROL STATUS SUPER ADMIN */}
-                    <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
+                    <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
                         <div className="pb-3 border-b border-brand-border mb-4">
-                            <h2 className="text-base font-bold text-brand-text flex items-center gap-2">
-                                <ShieldCheck size={18} className="text-emerald-500" />
-                                Kontrol & Pengesahan Status Pusat (Super Admin)
+                            <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2">
+                                <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
+                                <span>Kontrol & Pengesahan Status Pusat (Super Admin)</span>
                             </h2>
-                            <p className="text-xs text-brand-text-muted mt-1">
+                            <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
                                 Wewenang penuh pengesahan status tiket & order turunan berada di tangan Super Admin. Status tidak berubah menjadi <strong>Completed</strong> secara otomatis sebelum Anda mengesahkannya di sini.
                             </p>
                         </div>
 
                         {saveSuccess && (
-                            <div className="mb-4 p-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs flex items-center gap-2">
-                                <Check size={16} />
-                                Perubahan status order pusat & catatan evaluasi berhasil disimpan!
+                            <div className="mb-4 p-3 sm:p-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs flex items-center gap-2">
+                                <Check size={16} className="shrink-0" />
+                                <span>Perubahan status order pusat & catatan evaluasi berhasil disimpan!</span>
                             </div>
                         )}
 
                         <form onSubmit={handleSave} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                                     Status Tiket & Order Turunan Pusat
                                 </label>
                                 <select
                                     value={form.status}
                                     onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                 >
                                     <option value="scheduled">Scheduled (Terjadwal / Antri)</option>
                                     <option value="in_progress">In Progress (Sedang Dikerjakan Developer)</option>
@@ -372,7 +373,7 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                                     Catatan / Evaluasi Pengesahan Super Admin
                                 </label>
                                 <textarea
@@ -380,7 +381,7 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                                     value={form.notes}
                                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                                     placeholder="Tuliskan evaluasi pengesahan atau instruksi tambahan untuk penanganan kendala..."
-                                    className="w-full bg-brand-primary border border-brand-border rounded-xl p-3 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
+                                    className="w-full bg-brand-primary border border-brand-border rounded-xl p-3 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
                                 />
                             </div>
 
@@ -388,7 +389,7 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="bg-brand-accent text-brand-secondary font-semibold px-5 py-2.5 rounded-xl text-sm hover:bg-brand-accent/90 transition shadow-sm flex items-center gap-2 disabled:opacity-50"
+                                    className="w-full sm:w-auto justify-center bg-brand-accent text-brand-primary font-semibold px-5 py-2.5 rounded-xl text-xs sm:text-sm hover:bg-brand-accent2 transition shadow-sm flex items-center gap-2 disabled:opacity-50"
                                 >
                                     <Save size={15} />
                                     {submitting ? 'Menyimpan...' : 'Sahkan Status Order Pusat'}
@@ -399,21 +400,21 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
 
                     {/* CARD 4: RIWAYAT STATUS ORDER */}
                     {data.history?.length > 0 && (
-                        <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
-                            <h2 className="text-base font-bold text-brand-text flex items-center gap-2 mb-4 pb-3 border-b border-brand-border">
-                                <History size={18} className="text-brand-accent" />
-                                Riwayat Log Perubahan Status
+                        <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+                            <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-brand-border">
+                                <History size={18} className="text-brand-accent shrink-0" />
+                                <span>Riwayat Log Perubahan Status</span>
                             </h2>
-                            <div className="space-y-3">
+                            <div className="space-y-2.5 sm:space-y-3">
                                 {data.history.map((h) => (
-                                    <div key={h.id} className="p-3.5 bg-brand-primary/40 border border-brand-border/60 rounded-xl text-xs space-y-1">
-                                        <div className="flex items-center justify-between">
+                                    <div key={h.id} className="p-3 sm:p-3.5 bg-brand-primary/40 border border-brand-border/60 rounded-xl text-xs space-y-1">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-brand-text-muted">
                                             <span className="font-semibold text-brand-text">
                                                 {h.from_status ? `${h.from_status} → ${h.to_status}` : h.to_status}
                                             </span>
-                                            <span className="text-brand-text-muted">{h.created_at}</span>
+                                            <span className="text-[10px] sm:text-xs">{h.created_at}</span>
                                         </div>
-                                        <p className="text-brand-text-muted leading-relaxed">{h.notes}</p>
+                                        <p className="text-brand-text-muted leading-relaxed break-words">{h.notes}</p>
                                     </div>
                                 ))}
                             </div>
@@ -422,21 +423,21 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                 </div>
 
                 {/* KOLOM KANAN (1 KOLOM): INFO KLIEN, ORDER INDUK, DEVELOPER, TIM AWAL */}
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     {/* INFO DEVELOPER PENANGGUNG JAWAB */}
-                    <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-base font-bold text-brand-text flex items-center gap-2 mb-4 pb-3 border-b border-brand-border">
-                            <User size={18} className="text-brand-accent" />
-                            Developer Penanggung Jawab
+                    <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+                        <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-brand-border">
+                            <User size={18} className="text-brand-accent shrink-0" />
+                            <span>Developer Penanggung Jawab</span>
                         </h2>
                         <div className="space-y-2 text-xs">
                             <div>
-                                <span className="text-brand-text-muted block">Nama Developer:</span>
-                                <span className="font-bold text-sm text-brand-text">{data.assigned_developer?.name || '-'}</span>
+                                <span className="text-brand-text-muted text-[11px] uppercase tracking-wider block font-semibold">Nama Developer:</span>
+                                <span className="font-bold text-xs sm:text-sm text-brand-text">{data.assigned_developer?.name || '-'}</span>
                             </div>
                             <div>
-                                <span className="text-brand-text-muted block">Posisi / Job:</span>
-                                <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-brand-accent/10 text-brand-accent font-semibold border border-brand-accent/20">
+                                <span className="text-brand-text-muted text-[11px] uppercase tracking-wider block font-semibold">Posisi / Job:</span>
+                                <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-brand-accent/10 text-brand-accent font-semibold border border-brand-accent/20 text-xs">
                                     {data.assigned_developer?.job || '-'}
                                 </span>
                             </div>
@@ -444,25 +445,25 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
                     </div>
 
                     {/* INFO KLIEN */}
-                    <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-base font-bold text-brand-text flex items-center gap-2 mb-4 pb-3 border-b border-brand-border">
-                            <Building2 size={18} className="text-purple-400" />
-                            Informasi Klien
+                    <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+                        <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-brand-border">
+                            <Building2 size={18} className="text-purple-500 dark:text-purple-400 shrink-0" />
+                            <span>Informasi Klien</span>
                         </h2>
                         <div className="space-y-3 text-xs">
                             <div>
-                                <span className="text-brand-text-muted block">Nama Klien / Perusahaan:</span>
-                                <span className="font-bold text-sm text-brand-text">{cust.name}</span>
+                                <span className="text-brand-text-muted text-[11px] uppercase tracking-wider block font-semibold">Nama Klien / Perusahaan:</span>
+                                <span className="font-bold text-xs sm:text-sm text-brand-text">{cust.name}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-brand-text">
-                                <Mail size={13} className="text-brand-text-muted" />
-                                <span>{cust.email || '-'}</span>
+                            <div className="flex items-center gap-2 text-brand-text truncate">
+                                <Mail size={13} className="text-brand-text-muted shrink-0" />
+                                <span className="truncate">{cust.email || '-'}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-brand-text">
-                                <Phone size={13} className="text-brand-text-muted" />
-                                <span>{cust.phone || '-'}</span>
+                            <div className="flex items-center gap-2 text-brand-text truncate">
+                                <Phone size={13} className="text-brand-text-muted shrink-0" />
+                                <span className="truncate">{cust.phone || '-'}</span>
                             </div>
-                            <div className="flex items-start gap-2 text-brand-text">
+                            <div className="flex items-start gap-2 text-brand-text break-words">
                                 <MapPin size={13} className="text-brand-text-muted shrink-0 mt-0.5" />
                                 <span>{cust.address || '-'}</span>
                             </div>
@@ -471,23 +472,23 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
 
                     {/* INFO ORDER INDUK */}
                     {parent && (
-                        <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
-                            <h2 className="text-base font-bold text-brand-text flex items-center gap-2 mb-4 pb-3 border-b border-brand-border">
-                                <ClipboardClock size={18} className="text-blue-400" />
-                                Order Induk (Proyek Awal)
+                        <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+                            <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-brand-border">
+                                <ClipboardClock size={18} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                                <span>Order Induk (Proyek Awal)</span>
                             </h2>
                             <div className="space-y-3 text-xs">
                                 <div>
-                                    <span className="text-brand-text-muted block">Nomor Order:</span>
-                                    <span className="font-mono font-bold text-brand-text text-sm">{parent.order_number}</span>
+                                    <span className="text-brand-text-muted text-[11px] uppercase tracking-wider block font-semibold">Nomor Order:</span>
+                                    <span className="font-mono font-bold text-brand-text text-xs sm:text-sm">{parent.order_number}</span>
                                 </div>
                                 <div>
-                                    <span className="text-brand-text-muted block">Jadwal Proyek:</span>
+                                    <span className="text-brand-text-muted text-[11px] uppercase tracking-wider block font-semibold">Jadwal Proyek:</span>
                                     <span className="text-brand-text">{parent.start_date} s/d {parent.end_date}</span>
                                 </div>
                                 {parent.services?.length > 0 && (
                                     <div>
-                                        <span className="text-brand-text-muted block mb-1">Layanan yang Dipesan:</span>
+                                        <span className="text-brand-text-muted text-[11px] uppercase tracking-wider block font-semibold mb-1">Layanan yang Dipesan:</span>
                                         <div className="flex flex-wrap gap-1">
                                             {parent.services.map((s, idx) => (
                                                 <span key={idx} className="px-2 py-0.5 bg-brand-primary border border-brand-border rounded text-[11px] text-brand-text">
@@ -503,19 +504,19 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
 
                     {/* TIM AWAL PROYEK INDUK */}
                     {data.original_team?.length > 0 && (
-                        <div className="bg-brand-secondary border border-brand-border rounded-2xl p-6 shadow-sm">
-                            <h2 className="text-base font-bold text-brand-text flex items-center gap-2 mb-4 pb-3 border-b border-brand-border">
-                                <Users size={18} className="text-emerald-400" />
-                                Tim Awal Proyek Induk
+                        <div className="bg-brand-secondary border border-brand-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+                            <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest flex items-center gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-brand-border">
+                                <Users size={18} className="text-emerald-500 dark:text-emerald-400 shrink-0" />
+                                <span>Tim Awal Proyek Induk</span>
                             </h2>
-                            <div className="space-y-2.5">
+                            <div className="space-y-2">
                                 {data.original_team.map((m, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-2 bg-brand-primary/40 border border-brand-border/50 rounded-xl text-xs">
-                                        <div>
-                                            <p className="font-semibold text-brand-text">{m.name}</p>
-                                            <p className="text-[11px] text-brand-text-muted">{m.email}</p>
+                                    <div key={idx} className="flex items-center justify-between p-2.5 bg-brand-primary/40 border border-brand-border/50 rounded-xl text-xs gap-2">
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-brand-text truncate">{m.name}</p>
+                                            <p className="text-[10px] sm:text-[11px] text-brand-text-muted truncate">{m.email}</p>
                                         </div>
-                                        <span className="px-2 py-0.5 rounded bg-brand-muted text-brand-text text-[10px] font-semibold border border-brand-border">
+                                        <span className="px-2 py-0.5 rounded bg-brand-muted text-brand-text text-[10px] font-semibold border border-brand-border shrink-0">
                                             {m.job}
                                         </span>
                                     </div>
@@ -528,4 +529,3 @@ export default function SuperAdminMaintenanceShow({ maintenanceId }) {
         </RoleLayout>
     );
 }
-

@@ -78,7 +78,7 @@ describe('Swagger UI & OpenAPI Documentation Verification', () => {
       '/api/v1/services/categories/options',
       '/api/v1/services/{id}',
       '/api/v1/customers',
-      '/api/v1/customers/sales/options',
+      '/api/v1/customers/customer-service/options',
       '/api/v1/customers/{id}',
       '/api/v1/customers/{id}/pics',
       '/api/v1/dashboard',
