@@ -81,7 +81,7 @@ export default function InvoicesIndex() {
                   <tr key={inv.id} className="hover:bg-brand-muted/40 transition">
                     <td className="px-4 py-3">
                       <div className="font-mono text-sm text-brand-text font-semibold">{inv.invoice_number}</div>
-                      <div className="text-xs text-brand-text-muted">{inv.order_number}</div>
+                      <div className="text-xs text-brand-text-muted">{inv.project_name}</div>
                     </td>
                     <td className="px-4 py-3 text-sm text-brand-text">{inv.customer_name}</td>
                     <td className="px-4 py-3 text-sm font-medium">{formatRupiah(inv.grand_total)}</td>

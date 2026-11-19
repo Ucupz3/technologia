@@ -26,9 +26,11 @@ function detectConflicts(items) {
           conflicts.push({
             orderA_id: a.id.toString(),
             orderA_number: a.order_number,
+            orderA_project: a.name,
             orderA_customer: a.customer_name_snapshot,
             orderB_id: b.id.toString(),
             orderB_number: b.order_number,
+            orderB_project: b.name,
             orderB_customer: b.customer_name_snapshot,
             team_id: a.team_id.toString(),
             team_name: a.teams?.name || 'Tim Lapangan',
@@ -128,6 +130,7 @@ schedulesRouter.get('/', async (_req, res, next) => {
       return {
         id: Number(o.id),
         order_number: o.order_number,
+        project_name: o.name || '-',
         customer_name: o.customer_name_snapshot || o.customers?.name || 'Klien Tekna',
         customer_address: o.customer_address_snapshot || o.customers?.address || 'Lokasi Klien',
         customer_pic: o.pic_name_snapshot || o.customers?.contact_person || 'PIC Klien',
@@ -162,6 +165,7 @@ schedulesRouter.get('/', async (_req, res, next) => {
       orders: orders.map(o => ({
         id: Number(o.id),
         order_number: o.order_number,
+        project_name: o.name,
         customer_name: o.customer_name_snapshot || o.customers?.name,
         customer_address: o.customer_address_snapshot || o.customers?.address,
         services: o.order_services.map(s => s.service_name_snapshot).join(', ') || 'Layanan IT',
@@ -265,6 +269,7 @@ schedulesRouter.get('/developer', async (req, res, next) => {
       return {
         id: Number(o.id),
         order_number: o.order_number,
+        project_name: o.name || '-',
         customer_name: o.customer_name_snapshot || o.customers?.name || 'Klien Tekna',
         customer_name_snapshot: o.customer_name_snapshot,
         status: o.status,

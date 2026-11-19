@@ -41,13 +41,11 @@ export default function OrderShow({ orderId }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // State untuk Dropdown Status Pusat (Super Admin Only)
+
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // State Modal Detail Setoran Progres Developer
   const [selectedAssignment, setSelectedAssignment] = useState(null);
 
   const showToast = (type, message) => {
@@ -75,7 +73,6 @@ export default function OrderShow({ orderId }) {
     load();
   }, [orderId]);
 
-  // Hanya Super Admin yang berwenang mengubah status order di pusat
   const handleStatusChange = async (newStatus) => {
     setIsStatusOpen(false);
     if (!order || newStatus === order.status) return;
@@ -135,7 +132,6 @@ export default function OrderShow({ orderId }) {
   const services = order.order_services || [];
   const assignments = order.order_assignments || [];
 
-  // Pengecekan apakah seluruh developer yang ditugaskan telah menyelesaikan tugasnya (100% / completed)
   const allTasksFinished = assignments.length > 0 && assignments.every((a) => {
     const latestProgress = a.progress_order?.[0];
     return latestProgress && (latestProgress.status === 'completed' || Number(latestProgress.progress_percentage) === 100);
@@ -143,7 +139,7 @@ export default function OrderShow({ orderId }) {
 
   return (
     <RoleLayout>
-      <Head title={`Detail Order — ${order.order_number}`} />
+      <Head title={`Detail Order — ${order.name || order.order_number}`} />
 
       {toast && (
         <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'bg-red-500/15 border-red-500/40 text-red-400'}`}>
@@ -153,8 +149,8 @@ export default function OrderShow({ orderId }) {
       )}
 
       <div className="mb-6">
-        <button 
-          onClick={handleBack} 
+        <button
+          onClick={handleBack}
           className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
         >
           <ArrowLeft size={16} /> Kembali
@@ -163,8 +159,9 @@ export default function OrderShow({ orderId }) {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-3 flex-wrap">
+              {/* ✅ Tampilkan Nama Order sebagai judul utama */}
               <h1 className="text-2xl font-bold text-brand-text">
-                {order.order_number}
+                {order.name || order.order_number}
               </h1>
               {order.parent_order_id && (
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30">
@@ -173,12 +170,11 @@ export default function OrderShow({ orderId }) {
               )}
             </div>
             <p className="text-sm text-brand-text-muted mt-1">
-              Dibuat pada {formatDate(order.created_at)}
+              <span className="font-mono">{order.order_number}</span> &bull; Dibuat pada {formatDate(order.created_at)}
             </p>
           </div>
-          
+
           <div className="flex gap-2 items-center flex-wrap">
-            {/* Dropdown Status Kontrol Otoritas Super Admin */}
             <div className="relative">
               <button
                 type="button"
@@ -282,7 +278,6 @@ export default function OrderShow({ orderId }) {
 
         {/* KANAN: Layanan & Setoran Progres Tim Developer */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Layanan */}
           <Card title="Layanan yang Dipesan">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -299,9 +294,11 @@ export default function OrderShow({ orderId }) {
                     <tr key={s.id} className="hover:bg-brand-muted/20">
                       <td className="px-3 py-2">
                         <div className="font-medium text-brand-text">{s.service_name_snapshot}</div>
+                        {s.category_name_snapshot && <div className="text-xs text-brand-text-muted/80">{s.category_name_snapshot}</div>}
                         {s.notes && <div className="text-xs text-brand-text-muted">{s.notes}</div>}
                       </td>
-                      <td className="px-3 py-2 text-right text-brand-text">{formatRupiah(s.unit_price)}</td>
+                      {/* ✅ BACKEND SIMPAN price_deal, BUKAN unit_price */}
+                      <td className="px-3 py-2 text-right text-brand-text">{formatRupiah(s.price_deal)}</td>
                       <td className="px-3 py-2 text-center text-brand-text">{s.quantity}</td>
                       <td className="px-3 py-2 text-right font-medium text-brand-text">{formatRupiah(s.subtotal)}</td>
                     </tr>
@@ -330,9 +327,7 @@ export default function OrderShow({ orderId }) {
             </div>
           </Card>
 
-          {/* Tim Pengerjaan & Setoran Progres Developer */}
           <Card title="Tim Pengerjaan & Setoran Progres Developer">
-            {/* Banner Khusus: Jika semua tugas developer sudah tuntas 100% dan order belum completed */}
             {allTasksFinished && order.status !== 'completed' && (
               <div className="mb-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
                 <div className="flex items-start gap-3">
@@ -474,13 +469,9 @@ export default function OrderShow({ orderId }) {
         </div>
       </div>
 
-      {/* =========================================================
-          MODAL DETAIL SETORAN PROGRES DEVELOPER
-         ========================================================= */}
       {selectedAssignment && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            {/* Header Modal */}
             <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-brand-primary/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-brand-accent/15 border border-brand-accent/40 flex items-center justify-center text-brand-accent font-bold">
@@ -509,9 +500,7 @@ export default function OrderShow({ orderId }) {
               </button>
             </div>
 
-            {/* Body Modal (Scrollable) */}
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
-              {/* Ringkasan Status & Progres */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-brand-primary/60 border border-brand-border rounded-xl p-3.5">
                   <div className="text-[11px] font-medium text-brand-text-muted uppercase">Status Tugas</div>
@@ -570,7 +559,6 @@ export default function OrderShow({ orderId }) {
                 </div>
               </div>
 
-              {/* Catatan / Laporan Setoran Developer Terkini */}
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-muted mb-2 flex items-center gap-2">
                   <FileText size={14} className="text-brand-accent" />
@@ -588,7 +576,6 @@ export default function OrderShow({ orderId }) {
                 )}
               </div>
 
-              {/* Riwayat Log Setoran (Jika ada beberapa kali update) */}
               {selectedAssignment.progress_order && selectedAssignment.progress_order.length > 1 && (
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-muted mb-2 flex items-center gap-2">
@@ -611,7 +598,6 @@ export default function OrderShow({ orderId }) {
                 </div>
               )}
 
-              {/* Info Hak Otoritas Super Admin */}
               <div className="p-3.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-xs text-blue-300 flex items-start gap-2.5">
                 <AlertCircle size={16} className="text-blue-400 shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
@@ -620,7 +606,6 @@ export default function OrderShow({ orderId }) {
               </div>
             </div>
 
-            {/* Footer Modal */}
             <div className="px-6 py-3.5 border-t border-brand-border flex items-center justify-between bg-brand-primary/30">
               <span className="text-xs text-brand-text-muted">ID Assignment: #{selectedAssignment.id}</span>
               <button

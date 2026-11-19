@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import {
   Home, Users, Shield, Package,
-  Calendar, LogOut, Menu,
+  Calendar, LogOut, Menu, X,
   Sun, Moon, Contact, Database, Newspaper, ClipboardClock,
   Code, Check, Briefcase, Headset,
 } from 'lucide-react';
@@ -26,12 +26,12 @@ const menuByRole = {
   ],
   admin: [
     { label: 'Dashboard', href: '/dashboard', icon: Home },
-    { label: 'Services', href: '/admin/services', icon: Database },
+    { label: 'Management', href: '/admin/services', icon: Database },
     { label: 'Customers', href: '/admin/customers', icon: Contact },
     { label: 'Orders', href: '/admin/orders', icon: Package },
     { label: 'Maintenance', href: '/admin/maintenance', icon: ClipboardClock },
-    { label: 'Schedules', href: '/admin/schedules', icon: Calendar },
     { label: 'Invoices', href: '/admin/invoices', icon: Newspaper },
+    { label: 'Schedules', href: '/admin/schedules', icon: Calendar },
   ],
   cs: [
     { label: 'Dashboard', href: '/dashboard',      icon: Home },
@@ -99,7 +99,14 @@ export default function RoleLayout({ children }) {
     return true;
   });
 
+  // State untuk kontrol menu drawer di mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Tutup mobile drawer saat pindah halaman
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [url]);
 
   useEffect(() => {
     if (!role) return;
@@ -145,8 +152,8 @@ export default function RoleLayout({ children }) {
 
   if (!role) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-primary">
-        <div className="text-center max-w-md bg-brand-secondary p-8 rounded-lg shadow border border-brand-border">
+      <div className="min-h-screen flex items-center justify-center bg-brand-primary p-4">
+        <div className="text-center max-w-md w-full bg-brand-secondary p-8 rounded-lg shadow border border-brand-border">
           <h1 className="text-2xl font-bold text-red-400 mb-3">Akun Tidak Terdaftar</h1>
           <p className="text-brand-text-muted mb-4">
             Email <strong className="text-brand-text">{user?.email}</strong> belum terdaftar di sistem Tekna.id.
@@ -155,7 +162,7 @@ export default function RoleLayout({ children }) {
             href="/logout"
             method="post"
             as="button"
-            className="bg-brand-accent text-brand-primary px-4 py-2 rounded hover:bg-brand-accent2 transition font-semibold"
+            className="bg-brand-accent text-brand-primary px-4 py-2 rounded hover:bg-brand-accent2 transition font-semibold w-full sm:w-auto"
           >
             Logout
           </Link>
@@ -174,21 +181,48 @@ export default function RoleLayout({ children }) {
   const roleMeta = MODE_META[role] || MODE_META.super_admin;
 
   return (
-    <div className="min-h-screen bg-brand-primary flex">
+    <div className="min-h-screen bg-brand-primary flex relative">
+      {/* Overlay Backdrop Mobile */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar (Desktop Collapsible & Mobile Slide-over Drawer) */}
       <aside
-        className={`bg-brand-secondary text-brand-text transition-all duration-200 flex flex-col sticky top-0 h-screen shrink-0 border-r border-brand-border ${sidebarOpen ? 'w-64' : 'w-16'
-          }`}
+        className={`bg-brand-secondary text-brand-text transition-all duration-300 flex flex-col fixed lg:sticky top-0 h-screen shrink-0 border-r border-brand-border z-50 ${
+          /* Mobile classes */
+          mobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'
+        } ${
+          /* Desktop classes */
+          sidebarOpen ? 'lg:w-64' : 'lg:w-16'
+        }`}
       >
-        <div className="h-24 flex items-center relative px-4 border-b border-brand-border/40">
-          {sidebarOpen ? (
-            <button onClick={toggleSidebar} className="flex items-center gap-2 min-w-0 hover:opacity-80 transition" title="Sembunyikan sidebar">
-              <img src="/logo.webp" alt="ERP Jasa" className="w-16 h-16 object-contain shrink-0" />
+        <div className="h-20 sm:h-24 flex items-center justify-between px-4 border-b border-brand-border/40">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={toggleSidebar}
+              className="hidden lg:flex items-center gap-2 hover:opacity-80 transition"
+              title={sidebarOpen ? "Sembunyikan sidebar" : "Tampilkan sidebar"}
+            >
+              <img src="/logo.webp" alt="ERP Jasa" className="w-12 h-12 sm:w-16 sm:h-16 object-contain shrink-0" />
             </button>
-          ) : (
-            <button onClick={toggleSidebar} className="text-brand-text-muted hover:text-brand-accent transition shrink-0 mx-auto" title="Tampilkan sidebar">
-              <Menu size={20} />
-            </button>
-          )}
+            <div className="lg:hidden flex items-center gap-3">
+              <img src="/logo.webp" alt="ERP Jasa" className="w-12 h-12 object-contain shrink-0" />
+              <span className="font-bold text-brand-text text-lg">Tekna.id</span>
+            </div>
+          </div>
+
+          {/* Tombol Tutup Sidebar Khusus Mobile */}
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden text-brand-text-muted hover:text-brand-text p-1 rounded-lg hover:bg-brand-muted transition"
+            title="Tutup Menu"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="p-2 space-y-1 flex-1 overflow-y-auto">
@@ -200,14 +234,17 @@ export default function RoleLayout({ children }) {
                 key={item.href}
                 href={item.href}
                 title={!sidebarOpen ? item.label : ''}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-sm ${sidebarOpen ? '' : 'justify-center'
-                  } ${active
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 sm:py-2 rounded-lg transition text-sm ${
+                  sidebarOpen ? '' : 'lg:justify-center'
+                } ${
+                  active
                     ? 'bg-brand-accent text-brand-primary font-semibold shadow-sm'
                     : 'text-brand-text-muted hover:bg-brand-muted hover:text-brand-text'
-                  }`}
+                }`}
               >
                 <Icon size={18} className="shrink-0" />
-                {sidebarOpen && <span>{item.label}</span>}
+                <span className="lg:inline">{item.label}</span>
               </Link>
             );
           })}
@@ -219,35 +256,48 @@ export default function RoleLayout({ children }) {
             method="post"
             as="button"
             title={!sidebarOpen ? 'Logout' : ''}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-brand-text-muted hover:bg-red-500/10 hover:text-red-500 w-full transition text-sm ${sidebarOpen ? '' : 'justify-center'
-              }`}
+            className={`flex items-center gap-3 px-3 py-2.5 sm:py-2 rounded-lg text-brand-text-muted hover:bg-red-500/10 hover:text-red-500 w-full transition text-sm ${
+              sidebarOpen ? '' : 'lg:justify-center'
+            }`}
           >
             <LogOut size={18} className="shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
+            <span className="lg:inline">Logout</span>
           </Link>
         </div>
       </aside>
 
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-brand-secondary shadow-sm px-6 py-3 flex items-center justify-between border-b border-brand-border sticky top-0 z-20">
-          <div className="flex items-center gap-2">
-            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${meta.badge}`}>
+        <header className="bg-brand-secondary shadow-sm px-4 sm:px-6 py-3 flex items-center justify-between border-b border-brand-border sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            {/* Hamburger Button Mobile */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden text-brand-text-muted hover:text-brand-text p-1.5 rounded-lg hover:bg-brand-muted transition"
+              title="Buka Menu"
+            >
+              <Menu size={22} />
+            </button>
+
+            {/* Mode Badge */}
+            <div className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-xs font-semibold ${meta.badge}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
               <ModeIcon size={13} />
-              <span className="uppercase tracking-wide">{meta.label}</span>
+              <span className="uppercase tracking-wide text-[11px] sm:text-xs">{meta.label}</span>
             </div>
           </div>
 
+          {/* User Menu & Profile Dropdown */}
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-3 hover:bg-brand-muted rounded-lg px-2 py-1 transition"
+              className="flex items-center gap-2 sm:gap-3 hover:bg-brand-muted rounded-lg px-2 py-1 transition"
             >
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-semibold text-brand-text leading-tight">{user?.name}</div>
                 <div className="text-xs text-brand-text-muted leading-tight">{user?.email}</div>
               </div>
-              <div className="w-9 h-9 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-semibold text-sm">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-semibold text-xs sm:text-sm">
                 {initials}
               </div>
             </button>
@@ -255,7 +305,7 @@ export default function RoleLayout({ children }) {
             {userMenuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
-                <div className="absolute right-0 mt-3 mr-2 w-72 bg-brand-tertiary rounded-xl shadow-2xl border border-brand-border z-20 overflow-hidden">
+                <div className="absolute right-0 mt-3 w-72 max-w-[calc(100vw-2rem)] bg-brand-tertiary rounded-xl shadow-2xl border border-brand-border z-20 overflow-hidden">
                   <div className="px-4 py-3 border-b border-brand-border">
                     <div className="text-sm font-semibold text-brand-text truncate">{user?.name}</div>
                     <div className="text-xs text-brand-text-muted truncate">{user?.email}</div>
@@ -313,7 +363,7 @@ export default function RoleLayout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );
@@ -327,8 +377,9 @@ function WorkspaceButton({ active, icon: Icon, label, description, onClick, acce
   return (
     <button
       onClick={onClick}
-      className={`group w-full text-left rounded-lg px-3 py-2.5 transition border ${active ? `border-transparent ring-2 ${accentRing} ${accentBg}` : 'border-transparent hover:bg-brand-muted'
-        }`}
+      className={`group w-full text-left rounded-lg px-3 py-2.5 transition border ${
+        active ? `border-transparent ring-2 ${accentRing} ${accentBg}` : 'border-transparent hover:bg-brand-muted'
+      }`}
     >
       <div className="flex items-start gap-3">
         <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? `${accentBg} ${accentText}` : 'bg-brand-muted text-brand-text-muted'}`}>

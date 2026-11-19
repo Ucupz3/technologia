@@ -79,20 +79,34 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 // ADMIN
 // ========================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/services', fn() => Inertia::render('Admin/Services/Index'))->name('services.index');
-    Route::get('/services/{id}', fn($id) => Inertia::render('Admin/Services/Show', ['serviceId' => (int) $id]))->name('services.show');
+    // MASTER DATA
+    Route::get('/master-data', fn() => Inertia::render('Admin/MasterData/Index'))->name('master-data.index');
+    
+    // Services Redirects & Show
+    Route::get('/services', fn() => redirect('/admin/master-data?tab=services'))->name('services.index');
+    Route::get('/master-data/services', fn() => redirect('/admin/master-data?tab=services'))->name('master-data.services');
+    Route::get('/master-data/services/{id}', fn($id) => Inertia::render('Admin/MasterData/Services/Show', ['serviceId' => (int) $id]))->name('master-data.services.show');
+    
+    // Teams Redirects & Show
+    Route::get('/teams', fn() => redirect('/admin/master-data?tab=teams'))->name('teams.index');
+    Route::get('/master-data/teams', fn() => redirect('/admin/master-data?tab=teams'))->name('master-data.teams');
+    Route::get('/master-data/teams/{id}', fn($id) => Inertia::render('Admin/MasterData/Teams/Show', ['teamId' => (int) $id]))->name('master-data.teams.show');
 
     // Customers
     Route::get('/customers', fn() => Inertia::render('Admin/Customers/Index'))->name('customers.index');
     Route::get('/customers/{id}', fn($id) => Inertia::render('Admin/Customers/Show', ['customerId' => (int) $id]))->name('customers.show');
 
+    // Orders
     Route::get('/orders', fn() => Inertia::render('Admin/Orders/Index'))->name('orders.index');
     Route::get('/orders/create', fn() => Inertia::render('Admin/Orders/Create'))->name('orders.create');
     Route::get('/orders/{id}', fn($id) => Inertia::render('Admin/Orders/Show', ['orderId' => (int) $id]))->name('orders.show');
+    
+    // Maintenance & Schedules
     Route::get('/maintenance', fn() => Inertia::render('Admin/Maintenance/Index'))->name('maintenance.index');
-    Route::get('/maintenance/{id}', fn($id) => Inertia::render('SuperAdmin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
+    Route::get('/maintenance/{id}', fn($id) => Inertia::render('Admin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
     Route::get('/schedules', fn() => Inertia::render('Admin/Schedules/Index'))->name('schedules.index');
 
+    // Invoices
     Route::get('/invoices', fn() => Inertia::render('Admin/Invoices/Index'))->name('invoices.index');
     Route::get('/invoices/{id}', fn($id) => Inertia::render('Admin/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 });

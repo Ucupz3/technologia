@@ -118,6 +118,7 @@ ordersRouter.get('/:id', async (req, res, next) => {
 
 // ============ CREATE ORDER + AUTO INVOICE ============
 const createSchema = z.object({
+  name: z.string().min(1, 'Nama order wajib diisi'), // 👈 TAMBAHAN KOLOM NAME
   customer_id: z.coerce.number().int().positive(),
   pic_id: z.coerce.number().int().positive().optional().nullable(),
   sales_id: z.coerce.number().int().positive().optional().nullable(),
@@ -165,7 +166,7 @@ ordersRouter.post('/', async (req, res, next) => {
     if (!parsed.success) return res.status(422).json({ success: false, message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors });
 
     const {
-      customer_id, pic_id, sales_id, team_id, services,
+      name, customer_id, pic_id, sales_id, team_id, services, // 👈 DESTRUCTURE NAME
       discount_type, discount, tax_rate,
       start_date_project, end_date_project, notes, assignments
     } = parsed.data;
@@ -215,6 +216,7 @@ ordersRouter.post('/', async (req, res, next) => {
       const newOrder = await tx.orders.create({
         data: {
           order_number: orderNum,
+          name, // 👈 INSERT KOLOM NAME KE DATABASE
           customer_id: BigInt(customer_id),
           pic_id: pic ? pic.id : null,
           sales_id: sales_id ? BigInt(sales_id) : null,
@@ -309,9 +311,8 @@ ordersRouter.post('/', async (req, res, next) => {
     const userId = req.headers['x-user-id'];
     const detailText = `Menambahkan order baru.
 Order Number: ${order.order_number}
+Nama Order: ${order.name}
 Customer: ${customer.name}${pic ? '\nPIC: ' + pic.name : ''}
-Service: ${service.name}
-Quantity: ${quantity}
 Grand Total: Rp ${grandTotal.toLocaleString('id-ID')}`;
 
     await createAuditLog({
@@ -323,9 +324,9 @@ Grand Total: Rp ${grandTotal.toLocaleString('id-ID')}`;
       details: detailText,
       data: {
         order_number: order.order_number,
+        name: order.name,
         customer: customer.name,
-        service: service.name,
-        quantity,
+        services_count: servicesData.length,
         grand_total: grandTotal
       },
       req,

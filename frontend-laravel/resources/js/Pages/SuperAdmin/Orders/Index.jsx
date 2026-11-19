@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link } from '@inertiajs/react';
 import {
-  RefreshCw, Search, Plus, FileText, 
+  RefreshCw, Search, Plus, FileText,
   CheckCircle2, AlertCircle, Users, ChevronDown, Check, X
 } from 'lucide-react';
 
@@ -74,7 +74,10 @@ export default function OrdersIndex() {
 
   const filtered = orders.filter((o) => {
     const q = search.toLowerCase();
-    const matchSearch = !q || o.order_number?.toLowerCase().includes(q) || o.customer_name_snapshot?.toLowerCase().includes(q);
+    const matchSearch = !q
+      || o.order_number?.toLowerCase().includes(q)
+      || o.name?.toLowerCase().includes(q)                 // ✅ cari nama order juga
+      || o.customer_name_snapshot?.toLowerCase().includes(q);
     const matchStatus = !statusFilter || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -102,7 +105,7 @@ export default function OrdersIndex() {
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
               <input
                 type="text"
-                placeholder="Cari no order atau customer..."
+                placeholder="Cari nama order, no order, atau customer..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
@@ -170,6 +173,7 @@ export default function OrdersIndex() {
               <thead className="bg-brand-muted/40 border-b border-brand-border">
                 <tr>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">No Order</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Nama Order</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Customer</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Tim</th>
                   <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase">Total</th>
@@ -183,6 +187,9 @@ export default function OrdersIndex() {
                     <td className="px-4 py-3">
                       <div className="font-medium text-brand-text text-sm font-mono">{o.order_number}</div>
                       <div className="text-xs text-brand-text-muted">{formatDate(o.created_at)}</div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-brand-text font-medium">
+                      {o.name || <span className="text-brand-text-muted italic">—</span>}
                     </td>
                     <td className="px-4 py-3 text-sm text-brand-text">{o.customer_name_snapshot}</td>
                     <td className="px-4 py-3 text-sm text-brand-text-muted">

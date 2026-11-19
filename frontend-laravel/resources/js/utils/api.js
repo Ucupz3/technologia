@@ -1,7 +1,3 @@
-/**
- * Helper function untuk fetch API dengan auto-inject headers
- * X-User-Id dan X-User-Role dari auth user
- */
 export function apiFetch(url, options = {}, auth = null) {
   const headers = {
     'Content-Type': 'application/json',

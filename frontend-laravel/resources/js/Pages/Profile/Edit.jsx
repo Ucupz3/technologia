@@ -71,16 +71,6 @@ export default function Edit({ mustVerifyEmail, status }) {
                         </div>
                     </div>
 
-                    {/* Card Hapus Akun (Danger Zone) */}
-                    <div className="bg-brand-secondary border border-red-500/20 p-6 rounded-xl shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <ShieldAlert size={80} className="text-red-500" />
-                        </div>
-                        <div className="relative z-10">
-                            <DeleteUserForm />
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </RoleLayout>

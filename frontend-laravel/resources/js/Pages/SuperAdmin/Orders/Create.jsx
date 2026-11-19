@@ -168,16 +168,17 @@ export default function OrderCreate() {
   const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
+    name: '',              
     customer_id: '',
     pic_id: '',
     sales_id: '',
     team_id: '',
     services: [
-      { service_id: '', price_deal: '', quantity: 1 }
+      { service_id: '', price_deal: '' } 
     ],
     discount_type: 'fixed',
-    discount: 0,
-    tax_rate: 0,
+    discount: '', // ✅ Diubah jadi string kosong agar tidak muncul 0 di depan
+    tax_rate: '', // ✅ Diubah jadi string kosong agar tidak muncul 0 di depan
     start_date_project: '',
     end_date_project: '',
     notes: '',
@@ -205,12 +206,17 @@ export default function OrderCreate() {
       .catch(() => setLoading(false));
   }, []);
 
+  // ✅ KALKULASI SUBTOTAL DISESUAIKAN (TANPA QTY)
   const subtotal = form.services.reduce((acc, curr) => {
-    return acc + (Number(curr.price_deal) || 0) * (Number(curr.quantity) || 1);
+    return acc + (Number(curr.price_deal) || 0);
   }, 0);
 
-  const discountAmount = form.discount_type === 'percent' ? (subtotal * form.discount) / 100 : Number(form.discount);
-  const taxAmount = ((subtotal - discountAmount) * form.tax_rate) / 100;
+  // ✅ KALKULASI MENGGUNAKAN Number() AGAR AMAN SAAT INPUT KOSONG
+  const discountAmount = form.discount_type === 'percent' 
+    ? (subtotal * (Number(form.discount) || 0)) / 100 
+    : (Number(form.discount) || 0);
+    
+  const taxAmount = ((subtotal - discountAmount) * (Number(form.tax_rate) || 0)) / 100;
   const grandTotal = subtotal - discountAmount + taxAmount;
 
   const handleCustomerChange = (val) => {
@@ -272,7 +278,7 @@ export default function OrderCreate() {
   const addServiceRow = () => {
     setForm({
       ...form,
-      services: [...form.services, { service_id: '', price_deal: '', quantity: 1 }]
+      services: [...form.services, { service_id: '', price_deal: '' }]
     });
   };
 
@@ -369,7 +375,14 @@ export default function OrderCreate() {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!form.customer_id) return setErrors({ customer_id: ['Customer wajib dipilih'] });
+
+    const newErrors = {};
+    if (!form.name.trim()) newErrors.name = ['Nama order wajib diisi'];
+    if (!form.customer_id) newErrors.customer_id = ['Customer wajib dipilih'];
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
     const hasEmptyService = form.services.some(s => !s.service_id || !s.price_deal);
     if (hasEmptyService) return alert('Harap lengkapi semua layanan dan harganya.');
@@ -394,6 +407,7 @@ export default function OrderCreate() {
     setErrors({});
 
     const payload = {
+      name: form.name.trim(),
       customer_id: form.customer_id,
       pic_id: form.pic_id || null,
       sales_id: form.sales_id || null,
@@ -401,11 +415,11 @@ export default function OrderCreate() {
       services: form.services.map(s => ({
         service_id: Number(s.service_id),
         price_deal: Number(s.price_deal),
-        quantity: Number(s.quantity || 1)
+        quantity: 1 
       })),
       discount_type: form.discount_type,
-      discount: Number(form.discount),
-      tax_rate: Number(form.tax_rate),
+      discount: Number(form.discount) || 0, // ✅ Konversi aman ke angka
+      tax_rate: Number(form.tax_rate) || 0, // ✅ Konversi aman ke angka
       start_date_project: form.start_date_project || null,
       end_date_project: form.end_date_project || null,
       notes: form.notes || null,
@@ -459,6 +473,23 @@ export default function OrderCreate() {
 
       <div className="bg-brand-secondary rounded-lg border border-brand-border p-6 w-full">
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+              Nama Order *
+            </label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Contoh: Pembuatan Website Company Profile PT ABC"
+              className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition-all ${
+                errors.name ? 'border-red-500' : 'border-brand-border focus:border-brand-accent'
+              }`}
+            />
+            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name[0]}</p>}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CustomSelect
               label="Customer *"
@@ -498,12 +529,11 @@ export default function OrderCreate() {
             />
           </div>
 
-          {/* UI MULTIPLE SERVICES */}
           <div className="pt-4 border-t border-brand-border">
             <div className="flex items-center justify-between mb-4">
               <label className="block text-sm font-bold text-brand-text">Daftar Layanan</label>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={addServiceRow}
                 className="text-xs bg-brand-primary border border-brand-border hover:bg-brand-muted hover:text-brand-accent px-3 py-1.5 rounded-lg flex items-center gap-1 transition font-semibold"
               >
@@ -524,29 +554,19 @@ export default function OrderCreate() {
                       icon={Package}
                     />
                   </div>
-                  <div className="w-full md:w-48">
+                  <div className="w-full md:w-64"> 
                     <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Harga Deal (Rp) *</label>
-                    <input 
-                      type="number" 
-                      min="0" 
-                      value={svc.price_deal} 
-                      onChange={(e) => handleServiceChange(index, 'price_deal', e.target.value)} 
-                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
+                    <input
+                      type="number"
+                      min="0"
+                      value={svc.price_deal}
+                      onChange={(e) => handleServiceChange(index, 'price_deal', e.target.value)}
+                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all"
                       required
                     />
                   </div>
-                  <div className="w-full md:w-24">
-                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Qty</label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      value={svc.quantity} 
-                      onChange={(e) => handleServiceChange(index, 'quantity', e.target.value)} 
-                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
-                    />
-                  </div>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => removeServiceRow(index)}
                     disabled={form.services.length === 1}
                     className="mb-1 p-2.5 text-red-500 hover:bg-red-500/10 rounded-lg transition disabled:opacity-30"
@@ -572,11 +592,27 @@ export default function OrderCreate() {
             />
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Nilai Diskon</label>
-              <input type="number" min="0" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
+              {/* ✅ value pakai form.discount (string kosong), onChange tidak pakai Number() agar bisa dihapus */}
+              <input 
+                type="number" 
+                min="0" 
+                value={form.discount} 
+                onChange={(e) => setForm({ ...form, discount: e.target.value })} 
+                placeholder="0"
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Pajak / PPN (%)</label>
-              <input type="number" min="0" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })} className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" />
+              {/* ✅ value pakai form.tax_rate (string kosong), onChange tidak pakai Number() agar bisa dihapus */}
+              <input 
+                type="number" 
+                min="0" 
+                value={form.tax_rate} 
+                onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} 
+                placeholder="0"
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all" 
+              />
             </div>
           </div>
 
@@ -591,7 +627,6 @@ export default function OrderCreate() {
             </div>
           </div>
 
-          {/* ATUR POSISI & FASE ANGGOTA TIM */}
           {form.team_id && Object.keys(form.assignments).length > 0 && (
             <div className="pt-4 border-t border-brand-border">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
@@ -740,7 +775,7 @@ export default function OrderCreate() {
               <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">Catatan Tambahan</label>
               <textarea rows={5} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Catatan..." className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-accent transition-all resize-none" />
             </div>
-            
+
             <div className="bg-brand-primary/40 p-6 rounded-xl border border-brand-border space-y-3 flex flex-col justify-center">
               <div className="flex justify-between text-sm text-brand-text-muted">
                 <span>Subtotal Layanan</span>
@@ -751,7 +786,8 @@ export default function OrderCreate() {
                 <span>-{formatRupiah(discountAmount)}</span>
               </div>
               <div className="flex justify-between text-sm text-brand-text-muted">
-                <span>Pajak ({form.tax_rate}%)</span>
+                {/* ✅ Tampilkan teks 0 jika kosong */}
+                <span>Pajak ({form.tax_rate || 0}%)</span>
                 <span>+{formatRupiah(taxAmount)}</span>
               </div>
               <div className="flex justify-between text-lg font-bold text-brand-accent pt-3 border-t border-brand-border mt-2">

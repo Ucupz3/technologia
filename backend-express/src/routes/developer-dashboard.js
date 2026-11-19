@@ -22,10 +22,12 @@ router.get('/', async (req, res, next) => {
           select: {
             id: true,
             order_number: true,
+            name: true, // nama project
             customer_name_snapshot: true,
             start_date_project: true,
             end_date_project: true,
             status: true,
+            created_at: true,
             order_services: {
               select: {
                 service_name_snapshot: true
@@ -76,6 +78,7 @@ router.get('/', async (req, res, next) => {
         projectsMap.set(orderIdStr, {
           order_id: orderIdStr,
           order_number: order.order_number,
+          project_name: order.name || '-',
           customer_name: order.customer_name_snapshot || '-',
           service_name: serviceName,
           status: order.status,
@@ -141,6 +144,7 @@ router.get('/', async (req, res, next) => {
         title: latestProgress?.title || `Pengerjaan ${assignment.jobs.name}`,
         job_name: assignment.jobs.name,
         order_number: order.order_number,
+        project_name: order.name || '-',
         customer: order.customer_name_snapshot || '-',
         phase_order: phaseOrder,
         start_date: startDateStr,
@@ -229,7 +233,7 @@ router.get('/', async (req, res, next) => {
       include: {
         orders: {
           include: {
-            parent_order: { select: { order_number: true } }
+            parent_order: { select: { order_number: true, name: true } }
           }
         }
       },
@@ -242,7 +246,9 @@ router.get('/', async (req, res, next) => {
       title: m.title,
       status: m.status,
       order_number: m.orders?.order_number,
+      project_name: m.orders?.name || '-',
       parent_order_number: m.orders?.parent_order?.order_number || null,
+      parent_project_name: m.orders?.parent_order?.name || null,
       created_at: m.created_at ? new Date(m.created_at).toISOString().split('T')[0] : '-'
     }));
 

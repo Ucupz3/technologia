@@ -18,7 +18,7 @@ const EVENT_ROW_GAP = 2;
 const HEADER_PAD_TOP = 28;
 const CELL_PAD = 4;
 
-// ✅ FUNGSI UNTUK MENDAPATKAN BASE PATH (super-admin, admin, atau sales)
+// Mendapatkan base path (super-admin, admin, atau sales)
 function getBasePath() {
   // Jika URL saat ini '/super-admin/schedules', hasilnya '/super-admin'
   return window.location.pathname.replace(/\/schedules.*$/, '');
@@ -45,7 +45,6 @@ export default function SchedulesCalendar() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
 
-  // ✅ AMBIL BASE PATH UNTUK LINK
   const basePath = getBasePath();
 
   const load = () => {
@@ -218,6 +217,12 @@ export default function SchedulesCalendar() {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-4 p-3 rounded-lg border border-red-500/40 bg-red-500/10 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3">
           <div className="bg-brand-secondary border border-brand-border rounded-xl shadow-sm w-full">
@@ -295,13 +300,12 @@ export default function SchedulesCalendar() {
                               }}
                               className="pointer-events-auto px-0.5"
                             >
-                              {/* ✅ LINK DINAMIS MENGGUNAKAN basePath */}
                               <Link
                                 href={`${basePath}/orders/${event.id}`}
                                 className={`block w-full h-full px-1.5 text-[10px] leading-[18px] font-medium rounded shadow-sm truncate ${colorClass}`}
-                                title={`${event.order_number} - ${event.customer_name_snapshot}`}
+                                title={`${event.project_name} (${event.order_number}) - ${event.customer_name}`}
                               >
-                                {event.order_number}
+                                {event.project_name}
                               </Link>
                             </div>
                           );
@@ -335,15 +339,19 @@ export default function SchedulesCalendar() {
                   const isOverdue = daysLeft < 0;
 
                   return (
-                    /* ✅ LINK DINAMIS MENGGUNAKAN basePath */
                     <Link
                       key={order.id}
                       href={`${basePath}/orders/${order.id}`}
                       className="block bg-brand-primary/40 border border-brand-border rounded-lg p-3 hover:border-brand-accent/50 transition group"
                     >
                       <div className="flex justify-between items-start mb-1">
-                        <div className="font-mono text-xs font-bold text-brand-text group-hover:text-brand-accent transition">{order.order_number}</div>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-brand-text group-hover:text-brand-accent transition truncate">
+                            {order.project_name}
+                          </div>
+                          <div className="font-mono text-[10px] text-brand-text-muted">{order.order_number}</div>
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ml-2 ${
                           isOverdue ? 'bg-red-500/20 text-red-600' :
                           daysLeft <= 3 ? 'bg-amber-500/20 text-amber-600' :
                           'bg-emerald-500/20 text-emerald-600'
@@ -351,7 +359,7 @@ export default function SchedulesCalendar() {
                           {isOverdue ? 'Lewat' : `${daysLeft} Hari`}
                         </span>
                       </div>
-                      <div className="text-xs text-brand-text-muted truncate mb-2">{order.customer_name_snapshot}</div>
+                      <div className="text-xs text-brand-text-muted truncate mb-2">{order.customer_name}</div>
                       <div className="text-[11px] text-brand-text-muted flex items-center gap-1">
                         <Clock size={10} /> Selesai: {formatDateShort(order.end_date_project)}
                       </div>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import RoleLayout from '@/Layouts/RoleLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import {
   RefreshCw, Search, Plus, Eye, X,
   Briefcase, CheckCircle2, AlertCircle, Save, Clock,
@@ -12,12 +11,7 @@ const STATUS_OPTIONS = [
   { value: 'inactive', label: 'Inactive' },
 ];
 
-export default function ServicesIndex() {
-  const [toast, setToast] = useState(null);
-  const showToast = (type, message) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
-  };
+export default function ServicesIndex({ showToast }) {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,27 +63,6 @@ export default function ServicesIndex() {
   });
 
   return (
-    <RoleLayout>
-      <Head title="Master Data Services" />
-
-      {toast && (
-        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border transition ${
-          toast.type === 'success'
-            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-            : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
-
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-brand-text">Master Data Services</h1>
-        <p className="text-sm text-brand-text-muted mt-1">
-          Kelola katalog layanan, harga dasar, estimasi durasi, dan status operasional.
-        </p>
-      </div>
-
     <div>
       {/* ============ FILTER BAR ============ */}
       <div className="mb-4 space-y-3">
@@ -303,7 +276,7 @@ export default function ServicesIndex() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Link
-                          href={`/admin/services/${srv.id}`}
+                          href={`/super-admin/master-data/services/${srv.id}`}
                           title="Detail"
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition flex items-center gap-1"
                         >
@@ -337,7 +310,6 @@ export default function ServicesIndex() {
         />
       )}
     </div>
-    </RoleLayout>
   );
 }
 

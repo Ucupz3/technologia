@@ -63,7 +63,7 @@ export default function ServiceShow({ serviceId }) {
         <Head title="Detail Service" />
         <div className="p-8 text-center">
           <p className="text-red-600 dark:text-red-400 mb-3">Error: {error || 'Data tidak ditemukan'}</p>
-          <Link href="/admin/services" className="text-brand-accent underline">← Kembali ke daftar</Link>
+          <Link href="/super-admin/master-data?tab=services" className="text-brand-accent underline">← Kembali ke daftar</Link>
         </div>
       </RoleLayout>
     );
@@ -86,7 +86,7 @@ export default function ServiceShow({ serviceId }) {
 
       <div className="mb-6">
         <Link
-          href="/admin/services"
+          href="/super-admin/master-data?tab=services"
           className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
         >
           <ArrowLeft size={16} /> Kembali ke Services
@@ -161,7 +161,7 @@ export default function ServiceShow({ serviceId }) {
           onClose={() => setDeleteOpen(false)}
           onSuccess={() => {
             showToast('success', 'Service berhasil dihapus');
-            router.visit('/admin/services');
+            router.visit('/super-admin/master-data?tab=services');
           }}
           onError={(msg) => showToast('error', msg)}
         />

@@ -6,7 +6,7 @@ import { RefreshCw, FileText } from 'lucide-react';
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 
 function getBasePath() {
-  return window.location.pathname.replace(/\/invoices.*$/, '') || '/admin';
+  return window.location.pathname.replace(/\/invoices.*$/, '');
 }
 
 function PaymentStatusBadge({ status }) {
@@ -14,7 +14,6 @@ function PaymentStatusBadge({ status }) {
     unpaid: 'bg-red-500/15 text-red-600 border-red-500/40',
     partial: 'bg-amber-500/15 text-amber-600 border-amber-500/40',
     paid: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/40',
-    overdue: 'bg-orange-500/15 text-orange-600 border-orange-500/40',
     cancelled: 'bg-gray-500/15 text-gray-600 border-gray-500/40',
   };
   return <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium border ${colors[status] || colors.unpaid}`}>{status}</span>;
@@ -47,7 +46,7 @@ export default function InvoicesIndex() {
 
   return (
     <RoleLayout>
-      <Head title="Invoices — Admin" />
+      <Head title="Invoices" />
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-brand-text">Invoices</h1>
@@ -56,7 +55,7 @@ export default function InvoicesIndex() {
 
       <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
         {loading && <div className="p-12 text-center"><RefreshCw size={24} className="animate-spin mx-auto text-brand-accent" /></div>}
-
+        
         {error && <div className="p-8 text-center"><p className="text-red-500 mb-3">{error}</p><button onClick={load} className="text-brand-accent underline">Coba lagi</button></div>}
 
         {!loading && !error && invoices.length === 0 && (
@@ -82,7 +81,7 @@ export default function InvoicesIndex() {
                   <tr key={inv.id} className="hover:bg-brand-muted/40 transition">
                     <td className="px-4 py-3">
                       <div className="font-mono text-sm text-brand-text font-semibold">{inv.invoice_number}</div>
-                      <div className="text-xs text-brand-text-muted">{inv.order_number}</div>
+                      <div className="text-xs text-brand-text-muted">{inv.project_name}</div>
                     </td>
                     <td className="px-4 py-3 text-sm text-brand-text">{inv.customer_name}</td>
                     <td className="px-4 py-3 text-sm font-medium">{formatRupiah(inv.grand_total)}</td>
@@ -90,23 +89,21 @@ export default function InvoicesIndex() {
                     <td className="px-4 py-3 text-sm text-red-500">{formatRupiah(inv.remaining)}</td>
                     <td className="px-4 py-3"><PaymentStatusBadge status={inv.status} /></td>
                     <td className="px-4 py-3 text-right">
-
-                      {/* ✅ Mengarah ke halaman Show Admin */}
+                      {/* ✅ Mengarah ke halaman Show */}
                       <Link
                         href={`${basePath}/invoices/${inv.id}`}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
                       >
                         Detail
                       </Link>
-                    </td >
-                  </tr >
-                ))
-                }
-              </tbody >
-            </table >
-          </div >
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div >
-    </RoleLayout >
+      </div>
+    </RoleLayout>
   );
 }

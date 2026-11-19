@@ -64,7 +64,7 @@ invoicesRouter.get('/', async (req, res, next) => {
       select: {
         id: true, invoice_number: true, total_paid: true, status: true,
         due_date: true, issued_at: true, paid_at: true, created_at: true,
-        orders: { select: { id: true, order_number: true, grand_total: true, payment_status: true } },
+        orders: { select: { id: true, name: true, order_number: true, grand_total: true, payment_status: true} },
         customers: { select: { id: true, name: true, email: true } },
       },
       orderBy: { created_at: 'desc' },
@@ -78,6 +78,7 @@ invoicesRouter.get('/', async (req, res, next) => {
       due_date: inv.due_date,
       order_id: inv.orders?.id?.toString(),
       order_number: inv.orders?.order_number,
+      project_name: inv.orders?.name,
       grand_total: Number(inv.orders?.grand_total || 0),
       remaining: Number(inv.orders?.grand_total || 0) - Number(inv.total_paid),
       customer_name: inv.customers?.name,

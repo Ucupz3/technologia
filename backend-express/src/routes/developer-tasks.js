@@ -33,8 +33,16 @@ router.get('/', async (req, res, next) => {
       },
       include: {
         jobs: true,
-        orders: { select: { order_number: true, customer_name_snapshot: true, end_date_project: true, status: true } },
-        progress_order: { 
+        orders: {
+          select: {
+            order_number: true,
+            name: true, // nama project
+            customer_name_snapshot: true,
+            end_date_project: true,
+            status: true
+          }
+        },
+        progress_order: {
           orderBy: { created_at: 'desc' },
           include: { progress_attachments: true }
         }
@@ -59,6 +67,7 @@ router.get('/', async (req, res, next) => {
 
     assignments.forEach(assignment => {
       const orderStatus = assignment.orders?.status || 'pending';
+      const projectName = assignment.orders?.name || '-';
       const phaseOrder = assignment.phase_order || 1;
 
       let isLocked = false;
@@ -93,6 +102,7 @@ router.get('/', async (req, res, next) => {
             job_name: assignment.jobs.name,
             order_id: assignment.order_id,
             order_number: assignment.orders?.order_number || '-',
+            project_name: projectName,
             customer: assignment.orders?.customer_name_snapshot || '-',
             order_status: orderStatus,
             phase_order: phaseOrder,
@@ -116,6 +126,7 @@ router.get('/', async (req, res, next) => {
           job_name: assignment.jobs.name,
           order_id: assignment.order_id,
           order_number: assignment.orders?.order_number || '-',
+          project_name: projectName,
           customer: assignment.orders?.customer_name_snapshot || '-',
           order_status: orderStatus,
           phase_order: phaseOrder,

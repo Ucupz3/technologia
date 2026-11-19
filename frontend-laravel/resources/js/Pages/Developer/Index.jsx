@@ -2,15 +2,27 @@ import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-  PlayCircle, CheckCircle2, Clock, AlertCircle,
+  PlayCircle, CheckCircle2, Clock,
   Briefcase, FolderKanban, ChevronDown, RefreshCw,
   Lock, Calendar, Search, X, Check, FileText,
-  TrendingUp, BarChart3, Wrench, ArrowRight, Layers
+  TrendingUp, BarChart3, Wrench, ArrowRight
 } from 'lucide-react';
 
-// Format helper
+// ============ HELPERS ============
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+const getDaysLeft = (d) => Math.ceil((new Date(d) - new Date()) / 86400000);
+
+// Nama yang ditampilkan: nama project dari order (bukan kode order)
+const getTitle = (item) => item.project_name || item.name || 'Tanpa nama project';
+
+// Rata-rata progres dari semua job milik developer di proyek tersebut
+const getAvgProgress = (jobs = []) => {
+  if (!jobs || jobs.length === 0) return 0;
+  const total = jobs.reduce((acc, j) => acc + (j.progress || 0), 0);
+  return Math.round(total / jobs.length);
+};
 
 // Opsi filter status proyek
 const STATUS_OPTIONS = [
@@ -42,39 +54,17 @@ function OrderStatusBadge({ status }) {
   );
 }
 
-function DeveloperProjectProgressBadge({ jobs = [] }) {
-  if (!jobs || jobs.length === 0) {
-    return (
-      <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-gray-500/15 text-gray-400 border border-gray-500/40">
-        Belum Ada Job
-      </span>
-    );
-  }
-
-  const allCompleted = jobs.every((j) => j.status === 'completed' || j.progress === 100);
-  if (allCompleted) {
-    return (
-      <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/40">
-        100% Selesai
-      </span>
-    );
-  }
-
-  const totalProgress = jobs.reduce((acc, j) => acc + (j.progress || 0), 0);
-  const avg = Math.round(totalProgress / jobs.length);
-
-  if (avg > 0) {
-    return (
-      <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-blue-500/15 text-blue-400 border border-blue-500/40">
-        {avg}% Pengerjaan
-      </span>
-    );
-  }
-
+// Progress bar mini: satu bar + persen
+function MiniProgress({ value = 0, status }) {
+  const color =
+    value === 100 ? 'bg-emerald-500' : status === 'in_progress' || value > 0 ? 'bg-blue-500' : 'bg-amber-500';
   return (
-    <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-amber-500/15 text-amber-400 border border-amber-500/40">
-      Belum Dikerjakan
-    </span>
+    <div className="flex items-center gap-2 w-32">
+      <div className="flex-1 bg-brand-muted rounded-full h-1.5 overflow-hidden">
+        <div className={`h-full ${color} transition-all duration-300`} style={{ width: `${value}%` }} />
+      </div>
+      <span className="font-mono text-xs font-semibold text-brand-text w-9 text-right">{value}%</span>
+    </div>
   );
 }
 
@@ -141,16 +131,18 @@ export default function DeveloperDashboard() {
 
   const filteredProjects = projects.filter((p) => {
     const q = search.toLowerCase();
+    const projectName = (p.project_name || '').toLowerCase();
     const customer = (p.customer_name || '').toLowerCase();
     const service = (p.service_name || '').toLowerCase();
     const orderNumber = (p.order_number || '').toLowerCase();
     const hasMatchingJob = p.jobs?.some((j) => (j.job_name || '').toLowerCase().includes(q));
-    const matchSearch = !q || customer.includes(q) || service.includes(q) || orderNumber.includes(q) || hasMatchingJob;
+    const matchSearch =
+      !q || projectName.includes(q) || customer.includes(q) || service.includes(q) || orderNumber.includes(q) || hasMatchingJob;
     const matchStatus = !statusFilter || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
-  // Tampilkan 5 penugasan proyek terbaru saja untuk tampilan ringkas dashboard
+  // Tampilkan 5 penugasan terbaru saja
   const displayedProjects = filteredProjects.slice(0, 5);
 
   // Ambil 4 tugas dengan deadline terdekat
@@ -163,7 +155,7 @@ export default function DeveloperDashboard() {
     <RoleLayout>
       <Head title="Developer — Dashboard" />
 
-      {/* HEADER UTAMA PERSIS GAYA HALAMAN DASHBOARD LAIN */}
+      {/* HEADER UTAMA */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-brand-text">Dashboard Developer</h1>
@@ -188,7 +180,7 @@ export default function DeveloperDashboard() {
         </div>
       )}
 
-      {/* 1. STAT CARDS (4 KARTU RINGKASAN PERSIS SUPER ADMIN & ADMIN) */}
+      {/* 1. STAT CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           icon={FolderKanban}
@@ -220,9 +212,8 @@ export default function DeveloperDashboard() {
         />
       </div>
 
-      {/* 2. CHARTS ROW (PERSIS SUPER ADMIN: GRAFIK AKTIVITAS 30 HARI & DISTRIBUSI STATUS) */}
+      {/* 2. CHARTS ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* KIRI: GRAFIK AKTIVITAS SETORAN PROGRES 30 HARI */}
         <div className="lg:col-span-2 bg-brand-secondary rounded-xl border border-brand-border p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -234,7 +225,6 @@ export default function DeveloperDashboard() {
           <ActivityBarChart data={activityChart} />
         </div>
 
-        {/* KANAN: DISTRIBUSI STATUS JOB PENUGASAN */}
         <div className="bg-brand-secondary rounded-xl border border-brand-border p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 size={18} className="text-brand-accent" />
@@ -244,14 +234,14 @@ export default function DeveloperDashboard() {
         </div>
       </div>
 
-      {/* 3. ROW SECONDARY: TENGGAT DEADLINE & MAINTENANCE KENDALA */}
+      {/* 3. ROW SECONDARY: DEADLINE & MAINTENANCE */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        {/* PANEL DEADLINE TERDEKAT */}
+        {/* PANEL DEADLINE TERDEKAT (DISEDERHANAKAN) */}
         <div className="bg-brand-secondary rounded-xl border border-brand-border p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Clock size={18} className="text-amber-400" />
-              <h2 className="text-sm font-semibold text-brand-text">Tenggat Waktu / Deadline Terdekat</h2>
+              <h2 className="text-sm font-semibold text-brand-text">Deadline Terdekat</h2>
             </div>
             <Link
               href="/developer/tasks"
@@ -263,51 +253,37 @@ export default function DeveloperDashboard() {
 
           {upcomingTasks.length === 0 ? (
             <div className="py-8 text-center text-brand-text-muted text-xs">
-              Tidak ada tugas yang memiliki tenggat waktu mendesak.
+              Tidak ada tugas dengan deadline mendesak.
             </div>
           ) : (
-            <div className="space-y-3">
-              {upcomingTasks.map((t, idx) => (
-                <div
-                  key={t.id || idx}
-                  className="p-3 bg-brand-primary/40 border border-brand-border/60 rounded-xl text-xs space-y-2 hover:border-brand-accent/40 transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-brand-muted border border-brand-border text-brand-text">
-                        {t.order_number}
-                      </span>
-                      <span className="font-semibold text-brand-text truncate">{t.job_name}</span>
+            <div className="divide-y divide-brand-border/50">
+              {upcomingTasks.map((t, idx) => {
+                const daysLeft = getDaysLeft(t.deadline);
+                const isOverdue = t.is_overdue || daysLeft < 0;
+                const badgeText = isOverdue ? 'Terlambat' : daysLeft === 0 ? 'Hari ini' : `${daysLeft} hari lagi`;
+                const badgeColor = isOverdue
+                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                  : daysLeft <= 3
+                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+
+                return (
+                  <div key={t.id || idx} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-brand-text truncate">{getTitle(t)}</div>
+                      <div className="text-xs text-brand-text-muted mt-0.5">{formatDate(t.deadline)}</div>
                     </div>
-                    <span className={`px-2 py-0.5 rounded font-medium text-[10px] uppercase border ${
-                      t.is_overdue
-                        ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                        : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                    }`}>
-                      {t.is_overdue ? 'Terlambat' : `Target: ${formatDate(t.deadline)}`}
+                    <span className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium border ${badgeColor}`}>
+                      {badgeText}
                     </span>
                   </div>
-
-                  <div className="flex items-center justify-between text-brand-text-muted text-[11px]">
-                    <span>Klien: {t.customer}</span>
-                    <span className="font-mono font-semibold text-brand-text">{t.progress || 0}%</span>
-                  </div>
-
-                  <div className="w-full bg-brand-muted rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        t.status === 'in_progress' ? 'bg-blue-500' : 'bg-amber-500'
-                      }`}
-                      style={{ width: `${t.progress || 0}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* PANEL MAINTENANCE & ORDER TURUNAN */}
+        {/* PANEL MAINTENANCE */}
         <div className="bg-brand-secondary rounded-xl border border-brand-border p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -369,130 +345,114 @@ export default function DeveloperDashboard() {
         </div>
       </div>
 
-      {/* 4. DAFTAR PENUGASAN PROYEK TERKINI (5 TERBARU) */}
-      <div className="mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <Briefcase size={20} className="text-brand-accent" />
-            <h2 className="font-bold text-brand-text text-lg">Daftar Penugasan Terbaru (5 Terkini)</h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-brand-text-muted">
-              Menampilkan {displayedProjects.length} dari {projects.length} penugasan
-            </span>
-            <Link
-              href="/developer/tasks"
-              className="text-xs font-semibold text-brand-accent hover:underline flex items-center gap-1 shrink-0"
+      {/* 4. PENUGASAN TERBARU (DISEDERHANAKAN) */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Briefcase size={20} className="text-brand-accent" />
+          <h2 className="font-bold text-brand-text text-lg">Penugasan Terbaru</h2>
+        </div>
+        <Link
+          href="/developer/tasks"
+          className="text-xs font-semibold text-brand-accent hover:underline flex items-center gap-1 shrink-0"
+        >
+          Lihat Semua ({projects.length}) <ArrowRight size={13} />
+        </Link>
+      </div>
+
+      {/* Toolbar Pencarian & Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+        <div className="relative flex-1 min-w-0 max-w-md">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+          <input
+            type="text"
+            placeholder="Cari proyek, customer, atau job..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition"
             >
-              Lihat Semua Tugas <ArrowRight size={13} />
-            </Link>
-          </div>
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        {/* Toolbar Pencarian & Filter */}
-        <div className="mb-3 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="relative flex-1 min-w-0 max-w-md">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
-              <input
-                type="text"
-                placeholder="Cari no order, customer, layanan, atau nama job..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+        {/* Dropdown Filter Status */}
+        <div className="relative sm:w-44 sm:shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsStatusOpen(!isStatusOpen)}
+            className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+          >
+            <span className="truncate">
+              {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'Semua Status'}
+            </span>
+            <ChevronDown
+              size={16}
+              className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${
+                isStatusOpen ? 'rotate-180 text-brand-accent' : ''
+              }`}
+            />
+          </button>
 
-            {/* Dropdown Filter Status */}
-            <div className="relative sm:w-44 sm:shrink-0">
+          {isStatusOpen && (
+            <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
               <button
                 type="button"
-                onClick={() => setIsStatusOpen(!isStatusOpen)}
-                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
-              >
-                <span className="truncate">
-                  {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'Semua Status'}
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${
-                    isStatusOpen ? 'rotate-180 text-brand-accent' : ''
-                  }`}
-                />
-              </button>
-
-              {isStatusOpen && (
-                <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter('');
-                      setIsStatusOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
-                      !statusFilter
-                        ? 'bg-brand-accent/15 text-brand-accent font-medium'
-                        : 'text-brand-text hover:bg-brand-border/40'
-                    }`}
-                  >
-                    <span>Semua Status</span>
-                    {!statusFilter && <Check size={14} className="text-brand-accent" />}
-                  </button>
-                  {STATUS_OPTIONS.map((s) => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => {
-                        setStatusFilter(s.value);
-                        setIsStatusOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
-                        statusFilter === s.value
-                          ? 'bg-brand-accent/15 text-brand-accent font-medium'
-                          : 'text-brand-text hover:bg-brand-border/40'
-                      }`}
-                    >
-                      <span className="truncate">{s.label}</span>
-                      {statusFilter === s.value && <Check size={14} className="text-brand-accent" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Filter Counter */}
-          {(search || statusFilter) && (
-            <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2 rounded-xl backdrop-blur-sm">
-              <span>
-                Menampilkan <strong className="text-brand-text font-semibold">{displayedProjects.length}</strong> dari{' '}
-                {filteredProjects.length} hasil pencarian (maksimal 5 penugasan)
-              </span>
-              <button
                 onClick={() => {
-                  setSearch('');
                   setStatusFilter('');
                   setIsStatusOpen(false);
                 }}
-                className="text-brand-accent hover:text-brand-accent/80 flex items-center gap-1.5 font-medium transition"
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
+                  !statusFilter
+                    ? 'bg-brand-accent/15 text-brand-accent font-medium'
+                    : 'text-brand-text hover:bg-brand-border/40'
+                }`}
               >
-                <X size={13} /> Reset Filter
+                <span>Semua Status</span>
+                {!statusFilter && <Check size={14} className="text-brand-accent" />}
               </button>
+              {STATUS_OPTIONS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(s.value);
+                    setIsStatusOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
+                    statusFilter === s.value
+                      ? 'bg-brand-accent/15 text-brand-accent font-medium'
+                      : 'text-brand-text hover:bg-brand-border/40'
+                  }`}
+                >
+                  <span className="truncate">{s.label}</span>
+                  {statusFilter === s.value && <Check size={14} className="text-brand-accent" />}
+                </button>
+              ))}
             </div>
           )}
         </div>
+
+        {(search || statusFilter) && (
+          <button
+            onClick={() => {
+              setSearch('');
+              setStatusFilter('');
+              setIsStatusOpen(false);
+            }}
+            className="text-xs text-brand-accent hover:text-brand-accent/80 flex items-center gap-1.5 font-medium transition w-fit"
+          >
+            <X size={13} /> Reset
+          </button>
+        )}
       </div>
 
-      {/* TABEL DATA PROYEK PENUGASAN DEVELOPER (5 TERBARU) */}
+      {/* TABEL PENUGASAN (4 KOLOM) */}
       <div className="bg-brand-secondary rounded-xl border border-brand-border overflow-hidden shadow-sm">
         {loading && (
           <div className="p-12 text-center text-brand-text-muted">
@@ -504,8 +464,8 @@ export default function DeveloperDashboard() {
         {!loading && displayedProjects.length === 0 && (
           <div className="p-12 text-center">
             <FileText size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
-            <p className="text-brand-text-muted font-medium">Tidak ada penugasan proyek ditemukan</p>
-            <p className="text-xs text-brand-text-muted/70 mt-1">Coba sesuaikan kata kunci pencarian atau filter status Anda.</p>
+            <p className="text-brand-text-muted font-medium">Tidak ada penugasan ditemukan</p>
+            <p className="text-xs text-brand-text-muted/70 mt-1">Coba ubah kata kunci atau filter status.</p>
           </div>
         )}
 
@@ -514,72 +474,37 @@ export default function DeveloperDashboard() {
             <table className="w-full text-left">
               <thead className="bg-brand-primary/50 border-b border-brand-border text-brand-text-muted">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">No Order</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">Customer</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">Layanan</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">Job Anda</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">Status Proyek</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase">Progres Saya</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase">Proyek</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase">Progres</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/50">
                 {displayedProjects.map((project) => (
                   <tr key={project.order_id} className="hover:bg-brand-primary/40 transition">
-                    {/* 1. No Order & Periode Proyek */}
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-brand-text text-sm font-mono whitespace-nowrap">
-                        {project.order_number}
+                      <div className="text-sm font-semibold text-brand-text truncate max-w-xs">
+                        {getTitle(project)}
                       </div>
-                      <div className="text-xs text-brand-text-muted mt-0.5 whitespace-nowrap">
-                        {project.start_date_project && project.end_date_project
-                          ? `${formatDate(project.start_date_project)} – ${formatDate(project.end_date_project)}`
-                          : project.end_date_project
-                          ? `Deadline: ${formatDate(project.end_date_project)}`
-                          : '—'}
+                      <div className="text-xs text-brand-text-muted mt-0.5 truncate max-w-xs">
+                        {project.customer_name}
                       </div>
                     </td>
 
-                    {/* 2. Customer */}
-                    <td className="px-4 py-3 text-sm font-medium text-brand-text whitespace-nowrap">
-                      {project.customer_name}
-                    </td>
-
-                    {/* 3. Layanan */}
-                    <td className="px-4 py-3 text-sm text-brand-text-muted whitespace-nowrap">
-                      {project.service_name}
-                    </td>
-
-                    {/* 4. Job Penugasan Developer */}
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {project.jobs?.map((j) => (
-                          <span
-                            key={j.assignment_id}
-                            className="inline-block px-2.5 py-0.5 rounded bg-brand-accent/10 text-brand-accent text-xs font-semibold border border-brand-accent/20 whitespace-nowrap"
-                          >
-                            {j.job_name}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-
-                    {/* 5. Status Proyek Pusat */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <OrderStatusBadge status={project.status} />
                     </td>
 
-                    {/* 6. Progres Tugas Saya */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <DeveloperProjectProgressBadge jobs={project.jobs} />
+                      <MiniProgress value={getAvgProgress(project.jobs)} status={project.status} />
                     </td>
 
-                    {/* 7. Tombol Aksi Detail */}
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <button
                         type="button"
                         onClick={() => setSelectedProject(project)}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition shadow-sm inline-block"
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition shadow-sm"
                       >
                         Detail
                       </button>
@@ -588,51 +513,36 @@ export default function DeveloperDashboard() {
                 ))}
               </tbody>
             </table>
-
-            {/* Banner Footer Jika Total Proyek Lebih Dari 5 */}
-            {projects.length > 5 && (
-              <div className="p-3 bg-brand-primary/50 border-t border-brand-border text-xs text-brand-text-muted flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4">
-                <span>
-                  Menampilkan 5 penugasan proyek terbaru. Buka menu tugas untuk memantau dan mengupdate seluruh pekerjaan Anda.
-                </span>
-                <Link
-                  href="/developer/tasks"
-                  className="text-brand-accent hover:underline font-semibold flex items-center gap-1 shrink-0"
-                >
-                  Buka Semua Tugas ({projects.length} Proyek) <ArrowRight size={13} />
-                </Link>
-              </div>
-            )}
           </div>
         )}
       </div>
 
-      {/* MODAL DETAIL PROYEK DEVELOPER */}
+      {/* MODAL DETAIL PROYEK (semua info lengkap ada di sini) */}
       {selectedProject && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
             {/* Header Modal */}
             <div className="p-5 border-b border-brand-border flex items-center justify-between bg-brand-primary/40">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-brand-accent/10 border border-brand-accent/20 text-brand-accent">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-brand-accent/10 border border-brand-accent/20 text-brand-accent shrink-0">
                   <Briefcase size={20} />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-brand-text">
-                      {selectedProject.order_number}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-brand-text truncate">
+                      {getTitle(selectedProject)}
                     </span>
                     <OrderStatusBadge status={selectedProject.status} />
                   </div>
-                  <p className="text-xs text-brand-text-muted mt-0.5">
-                    {selectedProject.customer_name} &bull; {selectedProject.service_name}
+                  <p className="text-xs text-brand-text-muted mt-0.5 truncate">
+                    <span className="font-mono">{selectedProject.order_number}</span> &bull; {selectedProject.customer_name} &bull; {selectedProject.service_name}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedProject(null)}
-                className="p-1.5 text-brand-text-muted hover:text-brand-text hover:bg-brand-muted rounded-lg transition"
+                className="p-1.5 text-brand-text-muted hover:text-brand-text hover:bg-brand-muted rounded-lg transition shrink-0"
               >
                 <X size={18} />
               </button>
@@ -640,7 +550,6 @@ export default function DeveloperDashboard() {
 
             {/* Isi Modal */}
             <div className="p-6 overflow-y-auto space-y-5 flex-1 text-sm">
-              {/* Ringkasan Proyek */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 bg-brand-primary/50 border border-brand-border/60 rounded-xl">
                   <span className="text-brand-text-muted block text-[11px]">Jadwal Periode Proyek:</span>
@@ -661,7 +570,6 @@ export default function DeveloperDashboard() {
                 </div>
               </div>
 
-              {/* Rincian Job Anda di Proyek Ini */}
               <div>
                 <h3 className="text-xs font-bold text-brand-text uppercase tracking-wider mb-3 flex items-center justify-between">
                   <span>Daftar Pekerjaan (Job) Anda di Proyek Ini</span>
@@ -714,7 +622,6 @@ export default function DeveloperDashboard() {
                         </div>
                       )}
 
-                      {/* Progress Bar & Deadline */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-brand-border/40 text-xs">
                         <span className="text-brand-text-muted flex items-center gap-1.5">
                           <Calendar size={12} className="text-brand-accent" />
@@ -786,7 +693,7 @@ function StatCard({ icon: Icon, label, value, color, bg }) {
   );
 }
 
-// Vertical Bar Chart untuk Aktivitas 30 Hari (Persis SuperAdmin RevenueChart)
+// Vertical Bar Chart untuk Aktivitas 30 Hari
 function ActivityBarChart({ data = [] }) {
   if (!data || data.length === 0) {
     return <div className="py-12 text-center text-brand-text-muted text-xs">Belum ada aktivitas setoran dalam 30 hari terakhir</div>;
@@ -812,7 +719,6 @@ function ActivityBarChart({ data = [] }) {
                 }`}
                 style={{ height: `${Math.max(height, 5)}%` }}
               />
-              {/* Tooltip Hover */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-brand-primary border border-brand-border text-brand-text text-xs rounded-lg px-2.5 py-1 whitespace-nowrap z-20 shadow-xl pointer-events-none">
                 <div className="font-bold text-brand-accent">{d.count} Setoran</div>
                 <div className="text-brand-text-muted text-[10px]">{formatDate(d.date)}</div>
@@ -830,7 +736,7 @@ function ActivityBarChart({ data = [] }) {
   );
 }
 
-// Horizontal Progress Bar per Status (Persis SuperAdmin OrderStatusChart)
+// Horizontal Progress Bar per Status
 function JobStatusProgressChart({ stats, totalTasks }) {
   const total = totalTasks || 1;
 

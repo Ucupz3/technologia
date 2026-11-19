@@ -21,7 +21,7 @@ const formatDate = (d) =>
     : '—';
 
 function getBasePath() {
-  return window.location.pathname.replace(/\/invoices.*$/, '') || '/admin';
+  return window.location.pathname.replace(/\/invoices.*$/, '');
 }
 
 function PaymentStatusBadge({ status }) {
