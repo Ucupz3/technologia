@@ -24,13 +24,13 @@ function MaintenanceStatusBadge({ status }) {
         cancelled:   'Cancelled',
     };
     const colors = {
-        scheduled:   'bg-amber-500/15 text-amber-400 border-amber-500/40',
-        in_progress: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
-        completed:   'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
-        cancelled:   'bg-red-500/15 text-red-400 border-red-500/40',
+        scheduled:   'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40',
+        in_progress: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40',
+        completed:   'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
+        cancelled:   'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
     };
     return (
-        <span className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium border ${colors[status] || colors.scheduled}`}>
+        <span className={`inline-block text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 rounded-full font-medium border shrink-0 ${colors[status] || colors.scheduled}`}>
             {labels[status] || status}
         </span>
     );
@@ -39,26 +39,26 @@ function MaintenanceStatusBadge({ status }) {
 function DeveloperProgressBadge({ status, percentage }) {
     if (status === 'completed' || percentage === 100) {
         return (
-            <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/40">
+            <span className="inline-block text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 rounded-full font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shrink-0">
                 100% Selesai
             </span>
         );
     }
     if (status === 'in_progress' || (percentage > 0 && percentage < 100)) {
         return (
-            <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-blue-500/15 text-blue-400 border border-blue-500/40">
+            <span className="inline-block text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 rounded-full font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/40 shrink-0">
                 {percentage || 50}% Pengerjaan
             </span>
         );
     }
     return (
-        <span className="inline-block text-xs px-2.5 py-1 rounded-full font-medium bg-amber-500/15 text-amber-400 border border-amber-500/40">
+        <span className="inline-block text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 rounded-full font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/40 shrink-0">
             Belum Dikerjakan
         </span>
     );
 }
 
-export default function AdminMaintenanceIndex() {
+export default function SuperAdminMaintenanceIndex() {
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState([]);
     const [completedOrders, setCompletedOrders] = useState([]);
@@ -188,45 +188,53 @@ export default function AdminMaintenanceIndex() {
 
     return (
         <RoleLayout>
-            <Head title="Admin — Maintenance Orders" />
+            <Head title="Super Admin — Maintenance" />
 
-            {/* Toast Notification */}
+            {/* Toast Notification (Responsif: Bawah di Mobile, Atas di Desktop) */}
             {toast && (
-                <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border ${
-                    toast.type === 'success'
-                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                        : 'bg-red-500/15 border-red-500/40 text-red-400'
-                }`}>
-                    {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                    <span className="text-sm font-medium">{toast.message}</span>
-                </div>
+              <div
+                className={`fixed bottom-5 right-5 z-[100] max-w-sm flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 ${
+                  toast.type === 'success'
+                    ? 'bg-emerald-500/15 dark:bg-emerald-950/90 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
+                    : 'bg-red-500/15 dark:bg-red-950/90 border-red-500/40 text-red-600 dark:text-red-300'
+                }`}
+              >
+                {toast.type === 'success' ? (
+                  <CheckCircle2 size={18} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
+                ) : (
+                  <AlertCircle size={18} className="shrink-0 text-red-500 dark:text-red-400" />
+                )}
+                <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug break-words">
+                  {toast.message}
+                </span>
+              </div>
             )}
 
-            {/* HEADER SIMPEL PERSIS HALAMAN ORDER */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-brand-text">Order Maintenance</h1>
-                <p className="text-sm text-brand-text-muted mt-1">Total {items.length} order maintenance</p>
+            {/* Header */}
+            <div className="mb-4 sm:mb-6">
+                <h1 className="text-xl sm:text-2xl font-bold text-brand-text">Order Maintenance</h1>
+                <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5">Total {items.length} order maintenance</p>
             </div>
 
-            {/* TOOLBAR: SEARCH, FILTER STATUS, REFRESH, TAMBAH */}
+            {/* Toolbar: Search, Filter Status, Refresh, Tambah */}
             <div className="mb-4 space-y-3">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
                         {/* Input Search */}
-                        <div className="relative flex-1 min-w-0 max-w-md">
+                        <div className="relative flex-1 min-w-0">
                             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
                             <input
                                 type="text"
                                 placeholder="Cari no order, kendala, customer, atau developer..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+                                className="w-full pl-10 pr-9 py-2.5 sm:py-3 bg-brand-primary border border-brand-border rounded-xl text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
                             />
                             {search && (
                                 <button
                                     type="button"
                                     onClick={() => setSearch('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition p-1"
                                 >
                                     <X size={14} />
                                 </button>
@@ -234,11 +242,11 @@ export default function AdminMaintenanceIndex() {
                         </div>
 
                         {/* Dropdown Filter Status */}
-                        <div className="relative sm:w-44 sm:shrink-0">
+                        <div className="relative sm:w-44 shrink-0">
                             <button
                                 type="button"
                                 onClick={() => setIsStatusOpen(!isStatusOpen)}
-                                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+                                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
                             >
                                 <span className="truncate">
                                     {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'Semua Status'}
@@ -259,7 +267,7 @@ export default function AdminMaintenanceIndex() {
                                             setStatusFilter('');
                                             setIsStatusOpen(false);
                                         }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
+                                        className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition-colors ${
                                             !statusFilter
                                                 ? 'bg-brand-accent/15 text-brand-accent font-medium'
                                                 : 'text-brand-text hover:bg-brand-border/40'
@@ -276,7 +284,7 @@ export default function AdminMaintenanceIndex() {
                                                 setStatusFilter(s.value);
                                                 setIsStatusOpen(false);
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
+                                            className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition-colors ${
                                                 statusFilter === s.value
                                                     ? 'bg-brand-accent/15 text-brand-accent font-medium'
                                                     : 'text-brand-text hover:bg-brand-border/40'
@@ -296,14 +304,14 @@ export default function AdminMaintenanceIndex() {
                         <button
                             onClick={loadData}
                             disabled={loading}
-                            className="bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm disabled:opacity-50"
+                            className="flex-1 sm:flex-initial justify-center bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 sm:py-3 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-xs sm:text-sm font-medium transition shadow-sm disabled:opacity-50"
                         >
                             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                             <span>Refresh</span>
                         </button>
                         <button
                             onClick={() => setShowModal(true)}
-                            className="bg-brand-accent text-brand-secondary font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-accent/90 flex items-center gap-1.5 text-sm transition shadow-sm whitespace-nowrap"
+                            className="flex-1 sm:flex-initial justify-center bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 sm:py-3 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-xs sm:text-sm transition shadow-sm whitespace-nowrap"
                         >
                             <Plus size={16} /> Tambah Maintenance
                         </button>
@@ -312,7 +320,7 @@ export default function AdminMaintenanceIndex() {
 
                 {/* Ringkasan Filter Aktif */}
                 {(search || statusFilter) && (
-                    <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2 rounded-xl backdrop-blur-sm">
+                    <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2.5 rounded-xl backdrop-blur-sm">
                         <span>
                             Menampilkan <strong className="text-brand-text font-semibold">{filtered.length}</strong> dari{' '}
                             {items.length} order maintenance
@@ -323,7 +331,7 @@ export default function AdminMaintenanceIndex() {
                                 setStatusFilter('');
                                 setIsStatusOpen(false);
                             }}
-                            className="text-brand-accent hover:text-brand-accent/80 flex items-center gap-1.5 font-medium transition"
+                            className="text-brand-accent hover:text-brand-accent2 flex items-center gap-1.5 font-medium transition"
                         >
                             <X size={13} /> Reset Filter
                         </button>
@@ -331,137 +339,198 @@ export default function AdminMaintenanceIndex() {
                 )}
             </div>
 
-            {/* TABEL DATA ORDER MAINTENANCE (PERSIS HALAMAN ORDER) */}
+            {/* Data View Container */}
             <div className="bg-brand-secondary rounded-xl border border-brand-border overflow-hidden shadow-sm">
                 {loading && (
-                    <div className="p-12 text-center text-brand-text-muted">
+                    <div className="p-8 sm:p-12 text-center text-brand-text-muted">
                         <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-                        Memuat data order maintenance...
+                        <p className="text-xs sm:text-sm">Memuat data order maintenance...</p>
                     </div>
                 )}
 
                 {!loading && filtered.length === 0 && (
-                    <div className="p-12 text-center">
+                    <div className="p-8 sm:p-12 text-center">
                         <FileText size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
-                        <p className="text-brand-text-muted font-medium">Tidak ada order maintenance ditemukan</p>
+                        <p className="text-brand-text-muted font-medium text-xs sm:text-sm">Tidak ada order maintenance ditemukan</p>
                         <p className="text-xs text-brand-text-muted/70 mt-1">Coba sesuaikan kata kunci pencarian atau filter status Anda.</p>
                     </div>
                 )}
 
                 {!loading && filtered.length > 0 && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-brand-primary/50 border-b border-brand-border text-brand-text-muted">
-                                <tr>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase">No Order</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase">Order Induk</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase">Customer</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase">Developer PIC</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase">Status Tiket</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase">Setoran Dev</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-brand-border/50">
-                                {filtered.map((item) => (
-                                    <tr key={item.id} className="hover:bg-brand-primary/40 transition">
-                                        {/* 1. No Order Maintenance & Tanggal */}
-                                        <td className="px-4 py-3">
-                                            <div className="font-semibold text-brand-text text-sm font-mono whitespace-nowrap">
+                    <>
+                        {/* 1. CARD VIEW (MOBILE - < md) */}
+                        <div className="block md:hidden divide-y divide-brand-border/50">
+                            {filtered.map((item) => (
+                                <div key={item.id} className="p-4 space-y-3 hover:bg-brand-muted/30 transition">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <span className="font-mono font-bold text-xs sm:text-sm text-brand-text block truncate">
                                                 {item.order_number || `MNT-#${item.id}`}
-                                            </div>
-                                            <div className="text-xs text-brand-text-muted mt-0.5">
+                                            </span>
+                                            <span className="text-[11px] text-brand-text-muted block mt-0.5">
                                                 {formatDate(item.created_at)}
-                                            </div>
-                                        </td>
+                                            </span>
+                                        </div>
+                                        <MaintenanceStatusBadge status={item.status} />
+                                    </div>
 
-                                        {/* 2. Order Induk */}
-                                        <td className="px-4 py-3 text-sm">
+                                    {/* Sub-Card Detail Maintenance */}
+                                    <div className="bg-brand-primary/40 rounded-xl p-3 border border-brand-border/40 space-y-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-brand-text-muted text-[10px] uppercase tracking-wider font-semibold">Order Induk</span>
                                             {item.parent_order_number ? (
-                                                <span className="inline-block font-mono text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                                                <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 truncate max-w-[160px]">
                                                     {item.parent_order_number}
                                                 </span>
                                             ) : (
-                                                <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-gray-500/10 text-gray-400 border border-gray-500/20 whitespace-nowrap" title="Tiket dibuat langsung pada order utama (data awal)">
-                                                    Order Utama (Mandiri)
+                                                <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-500/10 text-gray-500 dark:text-gray-400 border border-gray-500/20">
+                                                    Order Utama
                                                 </span>
                                             )}
-                                        </td>
+                                        </div>
 
-                                        {/* 3. Customer */}
-                                        <td className="px-4 py-3 text-sm font-medium text-brand-text whitespace-nowrap">
-                                            {item.customer_name}
-                                        </td>
+                                        <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-brand-border/30">
+                                            <div>
+                                                <span className="text-brand-text-muted text-[10px] uppercase tracking-wider block font-semibold">Customer</span>
+                                                <span className="text-brand-text truncate block font-medium">{item.customer_name || '—'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-brand-text-muted text-[10px] uppercase tracking-wider block font-semibold">Developer PIC</span>
+                                                <span className="text-brand-text truncate block font-medium">{item.assigned_developer || '—'}</span>
+                                                <span className="text-[10px] text-brand-text-muted truncate block">{item.assigned_job || ''}</span>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        {/* 4. Developer PIC */}
-                                        <td className="px-4 py-3 text-sm whitespace-nowrap">
-                                            <div className="font-medium text-brand-text">{item.assigned_developer}</div>
-                                            <div className="text-xs text-brand-text-muted">{item.assigned_job}</div>
-                                        </td>
+                                    <div className="flex items-center justify-between pt-1">
+                                        <div>
+                                            <span className="text-[10px] text-brand-text-muted uppercase tracking-wider block font-semibold">Setoran Dev</span>
+                                            <div className="mt-0.5">
+                                                <DeveloperProgressBadge
+                                                    status={item.developer_progress_status}
+                                                    percentage={item.developer_progress_percentage}
+                                                />
+                                            </div>
+                                        </div>
+                                        <Link
+                                            href={`/admin/maintenance/${item.id}`}
+                                            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
+                                        >
+                                            Detail Order
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
-                                        {/* 5. Status Tiket Pusat */}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <MaintenanceStatusBadge status={item.status} />
-                                        </td>
-
-                                        {/* 6. Setoran Progres Developer */}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <DeveloperProgressBadge
-                                                status={item.developer_progress_status}
-                                                percentage={item.developer_progress_percentage}
-                                            />
-                                        </td>
-
-                                        {/* 7. Tombol Aksi (Langsung Navigasi ke Halaman Kontrol Penuh) */}
-                                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                                            <Link
-                                                href={`/admin/maintenance/${item.id}`}
-                                                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition shadow-sm"
-                                            >
-                                                Detail
-                                            </Link>
-                                        </td>
+                        {/* 2. TABLE VIEW (DESKTOP - >= md) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-brand-muted/40 border-b border-brand-border text-brand-text-muted">
+                                    <tr>
+                                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest">No Order</th>
+                                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest">Order Induk</th>
+                                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest">Customer</th>
+                                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest">Developer PIC</th>
+                                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest">Status Tiket</th>
+                                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest">Setoran Dev</th>
+                                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-right">Aksi</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-brand-border/50">
+                                    {filtered.map((item) => (
+                                        <tr key={item.id} className="hover:bg-brand-muted/40 transition">
+                                            <td className="px-4 py-3">
+                                                <div className="font-semibold text-brand-text text-sm font-mono whitespace-nowrap">
+                                                    {item.order_number || `MNT-#${item.id}`}
+                                                </div>
+                                                <div className="text-xs text-brand-text-muted mt-0.5">
+                                                    {formatDate(item.created_at)}
+                                                </div>
+                                            </td>
+
+                                            <td className="px-4 py-3 text-sm">
+                                                {item.parent_order_number ? (
+                                                    <span className="inline-block font-mono text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                                                        {item.parent_order_number}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-gray-500/10 text-gray-500 dark:text-gray-400 border border-gray-500/20 whitespace-nowrap" title="Tiket dibuat langsung pada order utama (data awal)">
+                                                        Order Utama (Mandiri)
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-sm font-medium text-brand-text whitespace-nowrap">
+                                                {item.customer_name}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-sm whitespace-nowrap">
+                                                <div className="font-medium text-brand-text">{item.assigned_developer}</div>
+                                                <div className="text-xs text-brand-text-muted">{item.assigned_job}</div>
+                                            </td>
+
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <MaintenanceStatusBadge status={item.status} />
+                                            </td>
+
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <DeveloperProgressBadge
+                                                    status={item.developer_progress_status}
+                                                    percentage={item.developer_progress_percentage}
+                                                />
+                                            </td>
+
+                                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                                                <Link
+                                                    href={`/admin/maintenance/${item.id}`}
+                                                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition shadow-sm inline-block"
+                                                >
+                                                    Detail
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* MODAL TAMBAH MAINTENANCE */}
+            {/* Modal Tambah Maintenance (Responsif Mobile) */}
             {showModal && (
-                <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
                     <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                        <div className="p-5 border-b border-brand-border flex items-center justify-between shrink-0">
+                        <div className="p-4 sm:p-5 border-b border-brand-border flex items-center justify-between shrink-0">
                             <div>
-                                <h3 className="font-bold text-brand-text text-lg flex items-center gap-2">
-                                    <Plus size={18} className="text-brand-accent" />
-                                    Tambah Tiket Maintenance & Order Turunan
+                                <h3 className="font-bold text-brand-text text-base sm:text-lg flex items-center gap-2">
+                                    <Plus size={18} className="text-brand-accent shrink-0" />
+                                    <span>Tambah Tiket Maintenance & Order Turunan</span>
                                 </h3>
                                 <p className="text-xs text-brand-text-muted mt-0.5">
-                                    Daftarkan keluhan komplain untuk order yang sudah selesai dan tugaskan developer untuk perbaikan.
+                                    Daftarkan keluhan komplain untuk order yang telah selesai.
                                 </p>
                             </div>
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="text-brand-text-muted hover:text-brand-text p-1.5 rounded-lg"
+                                className="text-brand-text-muted hover:text-brand-text p-1.5 rounded-lg shrink-0"
                             >
                                 <X size={18} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateMaintenance} className="p-6 space-y-4 overflow-y-auto flex-1">
-                            {/* PILIH ORDER INDUK (HANYA COMPLETED) */}
+                        <form onSubmit={handleCreateMaintenance} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                            {/* Pilih Order Induk */}
                             <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                    Pilih Order Induk (Hanya Status Selesai) *
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+                                    Pilih Order Induk (Hanya Status Selesai) <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     required
                                     value={form.parent_order_id}
                                     onChange={(e) => handleParentOrderChange(e.target.value)}
-                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                 >
                                     <option value="">-- Pilih Order yang Selesai --</option>
                                     {completedOrders.map((ord) => (
@@ -472,9 +541,9 @@ export default function AdminMaintenanceIndex() {
                                 </select>
                             </div>
 
-                            {/* RINGKASAN ORDER INDUK */}
+                            {/* Ringkasan Order Induk */}
                             {selectedParentOrder && (
-                                <div className="p-3.5 bg-brand-primary/60 border border-brand-border/60 rounded-xl space-y-2 text-xs">
+                                <div className="p-3 sm:p-3.5 bg-brand-primary/60 border border-brand-border/60 rounded-xl space-y-1.5 sm:space-y-2 text-xs">
                                     <div className="flex items-center justify-between">
                                         <span className="text-brand-text-muted">Klien:</span>
                                         <span className="font-semibold text-brand-text">{selectedParentOrder.customer_name}</span>
@@ -485,23 +554,23 @@ export default function AdminMaintenanceIndex() {
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-brand-text-muted">Layanan:</span>
-                                        <span className="text-brand-text truncate max-w-[280px]">{selectedParentOrder.services.join(', ')}</span>
+                                        <span className="text-brand-text truncate max-w-[180px] sm:max-w-[280px]">{selectedParentOrder.services.join(', ')}</span>
                                     </div>
                                 </div>
                             )}
 
-                            {/* PILIH JOB & DEVELOPER */}
+                            {/* Pilih Job & Developer */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                        Posisi / Role yang Error *
+                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+                                        Posisi / Role yang Error <span className="text-red-500">*</span>
                                     </label>
                                     <select
                                         required
                                         value={form.job_id}
                                         onChange={(e) => handleJobChange(e.target.value)}
                                         disabled={!selectedParentOrder}
-                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 disabled:opacity-50"
+                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 disabled:opacity-50"
                                     >
                                         <option value="">-- Pilih Posisi --</option>
                                         {availableJobs.map((m) => (
@@ -513,15 +582,15 @@ export default function AdminMaintenanceIndex() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                        Developer Penanggung Jawab *
+                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+                                        Developer Penanggung Jawab <span className="text-red-500">*</span>
                                     </label>
                                     <select
                                         required
                                         value={form.developer_user_id}
                                         onChange={(e) => setForm({ ...form, developer_user_id: e.target.value })}
                                         disabled={!selectedParentOrder}
-                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 disabled:opacity-50"
+                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 disabled:opacity-50"
                                     >
                                         <option value="">-- Pilih Developer --</option>
                                         {availableJobs.map((m) => (
@@ -533,10 +602,10 @@ export default function AdminMaintenanceIndex() {
                                 </div>
                             </div>
 
-                            {/* JUDUL KENDALA */}
+                            {/* Judul Kendala */}
                             <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                    Judul Kendala / Laporan Error *
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+                                    Judul Kendala / Laporan Error <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -544,14 +613,14 @@ export default function AdminMaintenanceIndex() {
                                     placeholder="Contoh: Perbaikan Error 500 API Checkout / Bug Tampilan Mobile"
                                     value={form.title}
                                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                    className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                 />
                             </div>
 
-                            {/* DESKRIPSI KENDALA */}
+                            {/* Deskripsi Kendala */}
                             <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
-                                    Rincian Kendala & Komplain Klien *
+                                <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+                                    Rincian Kendala & Komplain Klien <span className="text-red-500">*</span>
                                 </label>
                                 <textarea
                                     required
@@ -559,48 +628,48 @@ export default function AdminMaintenanceIndex() {
                                     placeholder="Tuliskan keluhan klien secara spesifik, alur terjadinya error, atau ekspektasi perbaikan..."
                                     value={form.description}
                                     onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                    className="w-full bg-brand-primary border border-brand-border rounded-xl p-3 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
+                                    className="w-full bg-brand-primary border border-brand-border rounded-xl p-3 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
                                 />
                             </div>
 
-                            {/* JADWAL PERBAIKAN */}
+                            {/* Jadwal Perbaikan */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                                         Tanggal Mulai Perbaikan
                                     </label>
                                     <input
                                         type="date"
                                         value={form.start_datetime}
                                         onChange={(e) => setForm({ ...form, start_datetime: e.target.value })}
-                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                    <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                                         Target Selesai Perbaikan
                                     </label>
                                     <input
                                         type="date"
                                         value={form.end_datetime}
                                         onChange={(e) => setForm({ ...form, end_datetime: e.target.value })}
-                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                        className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                     />
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-brand-border">
+                            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-brand-border">
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-4 py-2 text-sm text-brand-text-muted hover:text-brand-text rounded-xl"
+                                    className="w-full sm:w-auto text-center px-4 py-2.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-text rounded-xl bg-brand-muted/40"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="bg-brand-accent text-brand-secondary px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-accent/90 transition flex items-center gap-2 disabled:opacity-50"
+                                    className="w-full sm:w-auto justify-center bg-brand-accent text-brand-primary px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-brand-accent2 transition flex items-center gap-2 disabled:opacity-50 shadow-sm"
                                 >
                                     <Plus size={15} />
                                     {submitting ? 'Menerbitkan...' : 'Simpan & Terbitkan Order Perbaikan'}

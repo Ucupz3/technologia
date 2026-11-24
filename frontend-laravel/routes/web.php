@@ -5,15 +5,19 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Landing Welcome
 Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('dashboard');
-    }
     return Inertia::render('Shared/Welcome');
 });
 
-Route::get('/projects', fn() => Inertia::render('Shared/Tekna/Projects/index'))->name('projects');
+// Portofolio Routes
+Route::get('/portofolio', fn() => Inertia::render('Shared/Tekna/Portofolio/index'))->name('portofolio');
+Route::get('/portofolio/{slug}', fn($slug) => Inertia::render('Shared/Tekna/Portofolio/show', ['slug' => $slug]))->name('portofolio.show');
+
+// Products Routes
 Route::get('/products', fn() => Inertia::render('Shared/Tekna/Products/index'))->name('products');
+Route::get('/products/{id}', fn($id) => Inertia::render('Shared/Tekna/Products/show', ['id' => $id]))->name('products.show');
+
 Route::get('/blog', fn() => Inertia::render('Shared/Tekna/Blog/index'))->name('blog');
 Route::get('/career', fn() => Inertia::render('Shared/Tekna/Career/index'))->name('career');
 
@@ -31,19 +35,15 @@ Route::middleware('auth')->group(function () {
 // SUPER ADMIN
 // ========================================
 Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('super-admin.')->group(function () {
-    // Users
     Route::get('/users', fn() => Inertia::render('SuperAdmin/Users/Index'))->name('users.index');
     Route::get('/users/{id}', fn($id) => Inertia::render('SuperAdmin/Users/Show', ['userId' => (int) $id]))->name('users.show');
 
-    // Roles
     Route::get('/roles', fn() => Inertia::render('SuperAdmin/Roles/Index'))->name('roles.index');
     Route::get('/roles/{id}', fn($id) => Inertia::render('SuperAdmin/Roles/Show', ['roleId' => (int) $id]))->name('roles.show'); 
 
     Route::get('/audit-logs', fn() => Inertia::render('SuperAdmin/AuditLogs/Index'))->name('audit-logs.index');
-
     Route::get('/schedules', fn() => Inertia::render('SuperAdmin/Schedules/Index'))->name('schedules.index');
 
-    // Customers
     Route::get('/customers', fn() => Inertia::render('SuperAdmin/Customers/Index'))->name('customers.index');
     Route::get('/customers/{id}', fn($id) => Inertia::render('SuperAdmin/Customers/Show', ['customerId' => (int) $id]))->name('customers.show');
 
@@ -51,7 +51,6 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::get('/orders/create', fn() => Inertia::render('SuperAdmin/Orders/Create'))->name('orders.create');
     Route::get('/orders/{id}', fn($id) => Inertia::render('SuperAdmin/Orders/Show', ['orderId' => (int) $id]))->name('orders.show'); 
 
-    // Maintenance
     Route::get('/maintenance', fn() => Inertia::render('SuperAdmin/Maintenance/Index'))->name('maintenance.index');
     Route::get('/maintenance/{id}', fn($id) => Inertia::render('SuperAdmin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
 
@@ -60,53 +59,39 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 
     // MASTER DATA
     Route::get('/master-data', fn() => Inertia::render('SuperAdmin/MasterData/Index'))->name('master-data.index');
-
     Route::get('/master-data/categories', fn() => redirect('/super-admin/master-data?tab=categories'))->name('master-data.categories');
     Route::get('/master-data/categories/{id}', fn($id) => Inertia::render('SuperAdmin/MasterData/Categories/Show', ['categoryId' => (int) $id]))->name('master-data.categories.show');
-    
     Route::get('/master-data/services', fn() => redirect('/super-admin/master-data?tab=services'))->name('master-data.services');
     Route::get('/master-data/services/{id}', fn($id) => Inertia::render('SuperAdmin/MasterData/Services/Show', ['serviceId' => (int) $id]))->name('master-data.services.show');
-    
     Route::get('/master-data/teams', fn() => redirect('/super-admin/master-data?tab=teams'))->name('master-data.teams');
     Route::get('/master-data/teams/{id}', fn($id) => Inertia::render('SuperAdmin/MasterData/Teams/Show', ['teamId' => (int) $id]))->name('master-data.teams.show');
-
     Route::get('/master-data/jobs', fn() => redirect('/super-admin/master-data?tab=jobs'))->name('master-data.jobs');
     Route::get('/master-data/jobs/{id}', fn($id) => Inertia::render('SuperAdmin/MasterData/Jobs/Show', ['jobId' => (int) $id]))->name('master-data.jobs.show');
-
 });
 
 // ========================================
 // ADMIN
 // ========================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    // MASTER DATA
     Route::get('/master-data', fn() => Inertia::render('Admin/MasterData/Index'))->name('master-data.index');
-    
-    // Services Redirects & Show
     Route::get('/services', fn() => redirect('/admin/master-data?tab=services'))->name('services.index');
     Route::get('/master-data/services', fn() => redirect('/admin/master-data?tab=services'))->name('master-data.services');
     Route::get('/master-data/services/{id}', fn($id) => Inertia::render('Admin/MasterData/Services/Show', ['serviceId' => (int) $id]))->name('master-data.services.show');
-    
-    // Teams Redirects & Show
     Route::get('/teams', fn() => redirect('/admin/master-data?tab=teams'))->name('teams.index');
     Route::get('/master-data/teams', fn() => redirect('/admin/master-data?tab=teams'))->name('master-data.teams');
     Route::get('/master-data/teams/{id}', fn($id) => Inertia::render('Admin/MasterData/Teams/Show', ['teamId' => (int) $id]))->name('master-data.teams.show');
 
-    // Customers
     Route::get('/customers', fn() => Inertia::render('Admin/Customers/Index'))->name('customers.index');
     Route::get('/customers/{id}', fn($id) => Inertia::render('Admin/Customers/Show', ['customerId' => (int) $id]))->name('customers.show');
 
-    // Orders
     Route::get('/orders', fn() => Inertia::render('Admin/Orders/Index'))->name('orders.index');
     Route::get('/orders/create', fn() => Inertia::render('Admin/Orders/Create'))->name('orders.create');
     Route::get('/orders/{id}', fn($id) => Inertia::render('Admin/Orders/Show', ['orderId' => (int) $id]))->name('orders.show');
     
-    // Maintenance & Schedules
     Route::get('/maintenance', fn() => Inertia::render('Admin/Maintenance/Index'))->name('maintenance.index');
     Route::get('/maintenance/{id}', fn($id) => Inertia::render('Admin/Maintenance/Show', ['maintenanceId' => (int) $id]))->name('maintenance.show');
     Route::get('/schedules', fn() => Inertia::render('Admin/Schedules/Index'))->name('schedules.index');
 
-    // Invoices
     Route::get('/invoices', fn() => Inertia::render('Admin/Invoices/Index'))->name('invoices.index');
     Route::get('/invoices/{id}', fn($id) => Inertia::render('Admin/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 });
@@ -114,8 +99,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 // ========================================
 // CS (CUSTOMER SERVICE)
 // ========================================
-
-Route::middleware(['auth', 'role:cs'])->prefix('cs')->name('cs.')->group(function () {
+Route::middleware(['auth', 'role:cs,CS'])->prefix('cs')->name('cs.')->group(function () {
     Route::get('/customers', fn() => Inertia::render('CS/Customers/Index'))->name('customers.index');
     Route::get('/customers/{id}', fn($id) => Inertia::render('CS/Customers/Show', ['customerId' => (int) $id]))->name('customers.show');
     Route::get('/orders', fn() => Inertia::render('CS/Orders/Index'))->name('orders.index');
@@ -125,17 +109,13 @@ Route::middleware(['auth', 'role:cs'])->prefix('cs')->name('cs.')->group(functio
     Route::get('/invoices/{id}', fn($id) => Inertia::render('CS/Invoices/Show', ['invoiceId' => (int) $id]))->name('invoices.show');
 });
 
-// routes/web.php
+// DEVELOPER
 Route::middleware(['auth'])->group(function () {
-    // Route Dashboard Developer (Diubah ke Index)
-    Route::get('/developer/dashboard', function () {
-        return Inertia::render('Developer/Index');
-    })->name('developer.dashboard');
-    
-    // Route lainnya untuk developer
+    Route::get('/developer/dashboard', fn() => Inertia::render('Developer/Index'))->name('developer.dashboard');
     Route::get('/developer/tasks', fn() => Inertia::render('Developer/Tasks/Index'))->name('developer.tasks');
     Route::get('/developer/schedules', fn() => Inertia::render('Developer/Schedules/Index'))->name('developer.schedules');
     Route::get('/developer/maintenance', fn() => Inertia::render('Developer/Maintenance/Index'))->name('developer.maintenance');
     Route::get('/developer/maintenance/{id}', fn($id) => Inertia::render('Developer/Maintenance/Show', ['maintenanceId' => (string) $id]))->name('developer.maintenance.show');
 });
+
 require __DIR__.'/auth.php';

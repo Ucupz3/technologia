@@ -48,18 +48,25 @@ export default function ServicesIndex({ showToast }) {
     load();
   }, []);
 
-  const filtered = services.filter((s) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      s.name?.toLowerCase().includes(q) ||
-      s.description?.toLowerCase().includes(q) ||
-      s.category_name?.toLowerCase().includes(q) ||
-      s.service_categories?.name?.toLowerCase().includes(q);
-    const matchCategory = !categoryFilter || String(s.category_id) === String(categoryFilter);
-    const matchStatus = !statusFilter || s.status === statusFilter;
-    return matchSearch && matchCategory && matchStatus;
-  });
+  // Filter & Urutkan: Active di atas, non-Active (Inactive) di bawah
+  const filtered = services
+    .filter((s) => {
+      const q = search.toLowerCase();
+      const matchSearch =
+        !q ||
+        s.name?.toLowerCase().includes(q) ||
+        s.description?.toLowerCase().includes(q) ||
+        s.category_name?.toLowerCase().includes(q) ||
+        s.service_categories?.name?.toLowerCase().includes(q);
+      const matchCategory = !categoryFilter || String(s.category_id) === String(categoryFilter);
+      const matchStatus = !statusFilter || s.status === statusFilter;
+      return matchSearch && matchCategory && matchStatus;
+    })
+    .sort((a, b) => {
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      return 0;
+    });
 
   return (
     <div>

@@ -1,157 +1,170 @@
-import { useState } from 'react';
-import { useTheme } from '@/hooks/useTheme';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Head, Link } from '@inertiajs/react';
 import TeknaNavbar from '../TeknaNavbar';
 import TeknaFooter from '../TeknaFooter';
-import {
-    Search,
-    ChevronDown,
-    LayoutGrid,
-    List,
-    Package,
-} from 'lucide-react';
 
 export default function ProductsIndex() {
-    const { theme, toggle } = useTheme();
-    const [search, setSearch] = useState('');
-    const [category, setCategory] = useState('All');
-    const [sort, setSort] = useState('featured');
-    const [view, setView] = useState('grid');
+  const [theme, setTheme] = useState('dark');
+  const [orders, setOrders] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState('all');
+  const [loading, setLoading] = useState(true);
 
-    // Belum ada produk — placeholder untuk masa depan
-    const products = [];
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
-    return (
-        <div
-            id="top"
-            className="relative min-h-screen w-full overflow-x-hidden bg-[rgb(var(--brand-primary))] text-[rgb(var(--brand-text))] transition-colors duration-500"
-        >
-            <TeknaNavbar theme={theme} onToggleTheme={toggle} />
+  useEffect(() => {
+    fetch('/api/v1/orders')
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          // FILTER: Hanya ambil order yang berstatus COMPLETED
+          const completedOnly = res.data.filter((order) => order.status === 'completed');
+          setOrders(completedOnly);
+        }
+      })
+      .catch((err) => console.error('Error fetching orders:', err))
+      .finally(() => setLoading(false));
+  }, []);
 
-            <div className="container mx-auto px-4 pt-24 pb-8">
-                {/* Header */}
-                <div className="text-center mb-6">
-                    <h1 className="text-3xl md:text-4xl font-bold mb-2">Our Products</h1>
-                    <p className="text-sm md:text-base text-[rgb(var(--brand-text-muted))] max-w-2xl mx-auto">
-                        Explore our innovative products and solutions with transparent pricing.
-                    </p>
-                </div>
+  const customerOptions = useMemo(() => {
+    const list = orders
+      .map((o) => o.customers?.name || o.customer_name_snapshot)
+      .filter(Boolean);
+    return [...new Set(list)];
+  }, [orders]);
 
-                {/* Filters */}
-                <div className="flex flex-col lg:flex-row gap-2 mb-6 pb-4 border-b border-[rgb(var(--brand-border))]/40">
-                    <div className="flex-1">
-                        <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-[rgb(var(--brand-text-muted))]/60 w-3.5 h-3.5" />
-                            <input
-                                type="text"
-                                placeholder="Search products..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full h-9 pl-8 pr-3 bg-transparent text-sm border-0 border-b border-transparent focus:border-[rgb(var(--brand-accent))]/50 outline-none transition-colors placeholder:text-[rgb(var(--brand-text-muted))]"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-1.5 flex-wrap lg:flex-nowrap items-center">
-                        <div className="relative">
-                            <select
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                                className="appearance-none w-full lg:w-auto h-9 px-2 pr-8 text-sm bg-transparent border-0 border-b border-transparent focus:border-[rgb(var(--brand-accent))]/50 outline-none cursor-pointer text-[rgb(var(--brand-text))]"
-                            >
-                                <option value="All">All Products</option>
-                                <option value="web">Web Apps</option>
-                                <option value="mobile">Mobile Apps</option>
-                                <option value="iot">IoT Solutions</option>
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
-                        </div>
-                        <div className="relative">
-                            <select
-                                value={sort}
-                                onChange={(e) => setSort(e.target.value)}
-                                className="appearance-none w-full lg:w-auto h-9 px-2 pr-8 text-sm bg-transparent border-0 border-b border-transparent focus:border-[rgb(var(--brand-accent))]/50 outline-none cursor-pointer text-[rgb(var(--brand-text))]"
-                            >
-                                <option value="featured">Featured First</option>
-                                <option value="newest">Newest First</option>
-                                <option value="price">Price (Low to High)</option>
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
-                        </div>
-                        <div className="flex border-b border-transparent">
-                            <button
-                                type="button"
-                                onClick={() => setView('grid')}
-                                aria-label="Grid view"
-                                className={`inline-flex items-center gap-1.5 h-9 px-2 border-b-2 transition-colors ${
-                                    view === 'grid'
-                                        ? 'border-[rgb(var(--brand-accent))] text-[rgb(var(--brand-accent))]'
-                                        : 'border-transparent text-[rgb(var(--brand-text-muted))] hover:text-[rgb(var(--brand-text))]'
-                                }`}
-                            >
-                                <LayoutGrid className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setView('list')}
-                                aria-label="List view"
-                                className={`inline-flex items-center gap-1.5 h-9 px-2 border-b-2 transition-colors ${
-                                    view === 'list'
-                                        ? 'border-[rgb(var(--brand-accent))] text-[rgb(var(--brand-accent))]'
-                                        : 'border-transparent text-[rgb(var(--brand-text-muted))] hover:text-[rgb(var(--brand-text))]'
-                                }`}
-                            >
-                                <List className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
+  const filteredOrders = useMemo(() => {
+    return orders.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.customers?.name && item.customers.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-                {/* Count */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="text-xs text-[rgb(var(--brand-text-muted))]">
-                        {products.length} products found
-                    </div>
-                </div>
+      const customerName = item.customers?.name || item.customer_name_snapshot || '';
+      const matchesCustomer =
+        selectedCustomer === 'all' || customerName === selectedCustomer;
 
-                {/* Content */}
-                {products.length === 0 ? (
-                    <div className="text-center py-8">
-                        <div className="w-12 h-12 mx-auto bg-[rgb(var(--brand-muted))]/20 rounded-full flex items-center justify-center mb-3">
-                            <Search className="h-6 w-6 text-[rgb(var(--brand-text-muted))]" />
-                        </div>
-                        <h3 className="text-base font-medium mb-1">No products found</h3>
-                        <p className="text-sm text-[rgb(var(--brand-text-muted))] mb-3">
-                            No products are available at the moment.
-                        </p>
-                    </div>
-                ) : (
-                    <div
-                        className={
-                            view === 'grid'
-                                ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3'
-                                : 'space-y-4'
-                        }
-                    >
-                        {products.map((p) => (
-                            <div
-                                key={p.id}
-                                className="bg-[rgb(var(--brand-secondary))] border border-[rgb(var(--brand-border))] rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow"
-                            >
-                                <div className="flex items-center gap-3 mb-2">
-                                    <Package className="w-5 h-5 text-[rgb(var(--brand-accent))]" />
-                                    <h3 className="font-semibold text-[rgb(var(--brand-text))]">
-                                        {p.name}
-                                    </h3>
-                                </div>
-                                <p className="text-sm text-[rgb(var(--brand-text-muted))]">
-                                    {p.description}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                )}
+      return matchesSearch && matchesCustomer;
+    });
+  }, [searchQuery, selectedCustomer, orders]);
+
+  const formatRupiah = (val) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+  };
+
+  return (
+    <div className="min-h-screen bg-brand-primary text-brand-text font-sans selection:bg-brand-accent selection:text-brand-white transition-colors duration-300">
+      <Head title="Our Products & Completed Projects - Tekna" />
+      <TeknaNavbar theme={theme} onToggleTheme={toggleTheme} />
+
+      <main className="pt-[84px] pb-20 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          
+          <header className="mb-8 text-center">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-brand-text mb-2">
+              Completed Products & Projects
+            </h1>
+            <p className="text-brand-text-muted text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+              Daftar produk dan solusi digital yang telah resmi diselesaikan dan diimplementasikan untuk klien enterprise.
+            </p>
+          </header>
+
+          <div className="mb-4 bg-brand-secondary border border-brand-border rounded-xl p-2.5 flex flex-col md:flex-row items-center justify-between gap-3 shadow-md">
+            <div className="relative flex-1 w-full flex items-center">
+              <svg className="absolute left-3 size-4 text-brand-text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Cari produk atau proyek..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 bg-transparent text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none"
+              />
             </div>
 
-            <TeknaFooter />
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              <label htmlFor="customer-filter" className="text-xs font-semibold text-brand-text-muted whitespace-nowrap">
+                Klien:
+              </label>
+              <select
+                id="customer-filter"
+                value={selectedCustomer}
+                onChange={(e) => setSelectedCustomer(e.target.value)}
+                className="bg-brand-primary text-brand-text text-xs sm:text-sm border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-accent cursor-pointer"
+              >
+                <option value="all">Semua Klien</option>
+                {customerOptions.map((cust) => (
+                  <option key={cust} value={cust} className="bg-brand-secondary text-brand-text">
+                    {cust}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <p className="text-brand-text-muted text-xs mb-5">
+            <span className="text-brand-accent font-bold">{filteredOrders.length}</span> produk/proyek selesai ditemukan
+          </p>
+
+          {loading ? (
+            <div className="text-center py-12 text-brand-text-muted text-sm">Loading data...</div>
+          ) : filteredOrders.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredOrders.map((order) => (
+                <article
+                  key={order.id}
+                  className="bg-brand-secondary border border-brand-border rounded-2xl overflow-hidden flex flex-col justify-between hover:border-brand-accent/50 hover:shadow-xl transition-all duration-300 group"
+                >
+                  <div>
+                    <div className="relative aspect-[16/10] bg-brand-tertiary flex items-center justify-center p-6 text-center border-b border-brand-border/40">
+                      <span className="text-brand-accent font-bold text-xs tracking-wide bg-brand-accent/10 px-3 py-1 rounded-full border border-brand-accent/20">
+                        {order.customers?.name || order.customer_name_snapshot || 'Enterprise Product'}
+                      </span>
+                    </div>
+
+                    <div className="p-5 pb-3">
+                      <h3 className="text-brand-text text-base md:text-lg font-bold mb-1 line-clamp-1 group-hover:text-brand-accent transition-colors">
+                        {order.name}
+                      </h3>
+
+                      <p className="text-brand-text-muted text-xs md:text-sm leading-relaxed line-clamp-3 mb-4">
+                        {order.notes || 'Sistem telah diselesaikan dan beroperasi penuh sesuai spesifikasi kebutuhan.'}
+                      </p>
+
+                      <div className="text-xs text-brand-accent font-semibold pt-2 border-t border-brand-border/40">
+                        Nilai Proyek: {formatRupiah(order.grand_total || 0)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-5 pt-2">
+                    <Link
+                      href={`/products/${order.id}`}
+                      className="w-full py-2.5 px-4 bg-brand-accent hover:bg-brand-accent2 text-brand-white font-semibold rounded-xl text-sm transition-colors block text-center shadow-sm"
+                    >
+                      View Details
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-brand-secondary rounded-2xl border border-brand-border">
+              <h4 className="text-base font-semibold text-brand-text mb-1">Produk tidak ditemukan</h4>
+              <button
+                onClick={() => { setSearchQuery(''); setSelectedCustomer('all'); }}
+                className="mt-3 px-4 py-2 text-xs font-semibold rounded-xl bg-brand-accent text-brand-white"
+              >
+                Reset Filter
+              </button>
+            </div>
+          )}
         </div>
-    );
+      </main>
+
+      <TeknaFooter />
+    </div>
+  );
 }

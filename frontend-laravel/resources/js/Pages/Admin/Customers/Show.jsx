@@ -4,12 +4,20 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
   ArrowLeft, RefreshCw, Mail, Phone, MapPin,
   AlertCircle, CheckCircle2, Pencil, Trash2, Plus,
-  Package, User, Save,
+  Package, User, Save, UserCheck, UserX,
 } from 'lucide-react';
 
 function getBasePath() {
   return window.location.pathname.replace(/\/customers.*$/, '');
 }
+
+const ORDER_STATUS_LABELS = {
+  draft:       'Draft',
+  pending:     'Pending',
+  in_progress: 'In Progress',
+  completed:   'Completed',
+  cancelled:   'Cancelled',
+};
 
 const ORDER_STATUS_COLORS = {
   draft:       'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/40',
@@ -18,6 +26,14 @@ const ORDER_STATUS_COLORS = {
   completed:   'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
   cancelled:   'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
 };
+
+function OrderStatusBadge({ status }) {
+  return (
+    <span className={`inline-block text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full font-medium border shrink-0 ${ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.draft}`}>
+      {ORDER_STATUS_LABELS[status] || status}
+    </span>
+  );
+}
 
 const PAYMENT_STATUS_COLORS = {
   unpaid:   'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
@@ -36,6 +52,7 @@ export default function CustomerShow({ customerId }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [picModalOpen, setPicModalOpen] = useState(false);
+  const [togglingPicId, setTogglingPicId] = useState(null);
   const [salesList, setSalesList] = useState([]);
 
   const basePath = getBasePath();
@@ -68,6 +85,29 @@ export default function CustomerShow({ customerId }) {
       .catch(() => {});
   };
 
+  const handleTogglePicStatus = async (pic) => {
+    setTogglingPicId(pic.id);
+    const newStatus = !Boolean(pic.is_active);
+    try {
+      const res = await fetch(`/api/v1/customers/${customerId}/pics/${pic.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ is_active: newStatus }),
+      });
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        showToast('error', resData.message || 'Gagal mengubah status PIC');
+      } else {
+        showToast('success', `PIC ${pic.name} berhasil ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}`);
+        load();
+      }
+    } catch {
+      showToast('error', 'Gagal menghubungi server');
+    } finally {
+      setTogglingPicId(null);
+    }
+  };
+
   useEffect(() => {
     load();
     loadSales();
@@ -77,9 +117,9 @@ export default function CustomerShow({ customerId }) {
     return (
       <RoleLayout>
         <Head title="Detail Customer" />
-        <div className="p-12 text-center text-brand-text-muted">
+        <div className="p-8 sm:p-12 text-center text-brand-text-muted">
           <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-          Loading customer...
+          <p className="text-xs sm:text-sm">Loading customer...</p>
         </div>
       </RoleLayout>
     );
@@ -89,9 +129,9 @@ export default function CustomerShow({ customerId }) {
     return (
       <RoleLayout>
         <Head title="Detail Customer" />
-        <div className="p-8 text-center">
-          <p className="text-red-600 dark:text-red-400 mb-3">Error: {error || 'Data tidak ditemukan'}</p>
-          <Link href={`${basePath}/customers`} className="text-brand-accent underline">
+        <div className="p-6 sm:p-8 text-center">
+          <p className="text-red-600 dark:text-red-400 mb-3 text-xs sm:text-sm">Error: {error || 'Data tidak ditemukan'}</p>
+          <Link href={`${basePath}/customers`} className="text-brand-accent underline hover:no-underline text-xs sm:text-sm font-medium">
             ← Kembali ke daftar
           </Link>
         </div>
@@ -106,56 +146,75 @@ export default function CustomerShow({ customerId }) {
     <RoleLayout>
       <Head title={`Customer — ${data.name}`} />
 
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${
-          toast.type === 'success'
-            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-            : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
+        <div
+          className={`fixed bottom-5 right-5 z-[100] max-w-sm flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 ${
+            toast.type === 'success'
+              ? 'bg-emerald-500/15 dark:bg-emerald-950/90 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
+              : 'bg-red-500/15 dark:bg-red-950/90 border-red-500/40 text-red-600 dark:text-red-300'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
+          ) : (
+            <AlertCircle size={18} className="shrink-0 text-red-500 dark:text-red-400" />
+          )}
+          <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug break-words">
+            {toast.message}
+          </span>
         </div>
       )}
 
-      <div className="mb-6">
+      {/* Navigation & Header */}
+      <div className="mb-4 sm:mb-6">
         <Link
           href={`${basePath}/customers`}
-          className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-6"
         >
           <ArrowLeft size={16} /> Kembali ke Customers
         </Link>
 
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-bold text-xl shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-brand-accent to-brand-accent2 rounded-full flex items-center justify-center text-brand-primary font-bold text-base sm:text-xl shrink-0 shadow-sm">
               {getInitials(data.name)}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-brand-text">{data.name}</h1>
-              <p className="text-sm text-brand-text-muted mt-0.5">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-brand-text truncate">{data.name}</h1>
+              <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5 truncate">
                 Customer ID: {data.id} · Terdaftar {formatDate(data.created_at)}
               </p>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button onClick={load}
-              className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition">
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
+          {/* Action Buttons */}
+          <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
+            <button 
+              onClick={load}
+              className="justify-center bg-brand-secondary border border-brand-border text-brand-text px-3 py-2.5 rounded-xl hover:bg-brand-muted flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition shadow-sm"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> <span>Refresh</span>
             </button>
-            <button onClick={() => setEditOpen(true)}
-              className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2">
-              <Pencil size={14} /> Edit Customer
+            <button 
+              onClick={() => setEditOpen(true)}
+              className="justify-center bg-brand-accent text-brand-primary px-3.5 py-2.5 rounded-xl hover:bg-brand-accent2 transition text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+            >
+              <Pencil size={14} /> <span>Edit</span>
             </button>
-            <button onClick={() => setDeleteOpen(true)}
-              className="bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 px-4 py-2 rounded-lg hover:bg-red-500/20 transition text-sm font-semibold flex items-center gap-2">
-              <Trash2 size={14} /> Hapus
+            <button 
+              onClick={() => setDeleteOpen(true)}
+              className="justify-center bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 px-3.5 py-2.5 rounded-xl hover:bg-red-500/20 transition text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+            >
+              <Trash2 size={14} /> <span>Hapus</span>
             </button>
           </div>
         </div>
       </div>
 
+      {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Kolom Kiri: Informasi, Customer Service, Notes */}
         <div className="lg:col-span-1 space-y-4">
           <Card title="Informasi Customer">
             <InfoRow icon={Mail} label="Email" value={data.email} />
@@ -166,136 +225,224 @@ export default function CustomerShow({ customerId }) {
           <Card title="Customer Service">
             {data.sales_name ? (
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-brand-accent/15 border border-brand-accent/40 rounded-full flex items-center justify-center text-brand-accent font-semibold text-sm">
+                <div className="w-10 h-10 bg-brand-accent/15 border border-brand-accent/40 rounded-full flex items-center justify-center text-brand-accent font-semibold text-sm shrink-0">
                   {getInitials(data.sales_name)}
                 </div>
-                <div>
-                  <div className="text-sm font-medium text-brand-text">{data.sales_name}</div>
-                  <div className="text-xs text-brand-text-muted">{data.sales_email}</div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-medium text-brand-text truncate">{data.sales_name}</div>
+                  <div className="text-xs text-brand-text-muted truncate">{data.sales_email}</div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-brand-text-muted">Belum ada Customer Service</p>
+              <p className="text-xs sm:text-sm text-brand-text-muted">Belum ada Customer Service</p>
             )}
           </Card>
 
           {data.notes && (
             <Card title="Notes">
-              <p className="text-sm text-brand-text whitespace-pre-line">{data.notes}</p>
+              <div className="bg-brand-primary/40 rounded-xl p-3 sm:p-3.5 border border-brand-border/40">
+                <p className="text-xs sm:text-sm text-brand-text whitespace-pre-line break-words">{data.notes}</p>
+              </div>
             </Card>
           )}
         </div>
 
+        {/* Kolom Kanan: Customer PIC & Orders */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Customer PIC Card */}
           <Card
             title="Customer PIC"
             subtitle={`${pics.length} PIC terdaftar`}
             action={
-              <button onClick={() => setPicModalOpen(true)}
-                className="text-xs bg-brand-accent text-brand-primary px-3 py-1.5 rounded-lg hover:bg-brand-accent2 transition font-semibold flex items-center gap-1.5">
-                <Plus size={12} /> Tambah PIC
+              <button 
+                onClick={() => setPicModalOpen(true)}
+                className="text-xs bg-brand-accent text-brand-primary px-3 py-1.5 rounded-xl hover:bg-brand-accent2 transition font-semibold flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus size={14} /> Tambah PIC
               </button>
             }
           >
             {pics.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="text-center py-6 sm:py-8">
                 <User size={32} className="mx-auto mb-2 text-brand-text-muted/40" />
-                <p className="text-sm text-brand-text-muted">Belum ada PIC terdaftar</p>
+                <p className="text-xs sm:text-sm text-brand-text-muted">Belum ada PIC terdaftar</p>
               </div>
             ) : (
               <div className="divide-y divide-brand-border/50">
-                {pics.map((pic) => (
-                  <div key={pic.id} className="py-3 flex items-center justify-between gap-3 first:pt-0 last:pb-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 bg-brand-muted/60 rounded-full flex items-center justify-center text-brand-text font-semibold text-xs shrink-0">
-                        {getInitials(pic.name)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-brand-text truncate">
-                          {pic.name}
-                          {pic.is_primary && (
-                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent border border-brand-accent/40 font-semibold uppercase tracking-wider">
-                              Primary
+                {pics.map((pic) => {
+                  const isActive = Boolean(pic.is_active ?? true);
+                  const isToggling = togglingPicId === pic.id;
+
+                  return (
+                    <div
+                      key={pic.id}
+                      className={`py-3 flex items-start sm:items-center justify-between gap-3 first:pt-0 last:pb-0 transition ${
+                        !isActive ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 bg-brand-muted/60 rounded-full flex items-center justify-center text-brand-text font-semibold text-xs shrink-0">
+                          {getInitials(pic.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs sm:text-sm font-bold text-brand-text truncate flex items-center gap-1.5 flex-wrap">
+                            <span>{pic.name}</span>
+                            {pic.is_primary && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent border border-brand-accent/40 font-semibold uppercase tracking-wider">
+                                Primary
+                              </span>
+                            )}
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border uppercase tracking-wider ${
+                                isActive
+                                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
+                                  : 'bg-gray-500/15 text-gray-500 border-gray-500/40'
+                              }`}
+                            >
+                              {isActive ? 'Aktif' : 'Nonaktif'}
                             </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-brand-text-muted truncate">
-                          {pic.position || '—'}
+                          </div>
+                          <div className="text-xs text-brand-text-muted truncate">
+                            {pic.position || '—'}
+                          </div>
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right text-xs text-brand-text-muted hidden sm:block">
+                          <div className="truncate max-w-[140px]">{pic.email || '—'}</div>
+                          <div>{pic.phone || '—'}</div>
+                        </div>
+
+                        {/* Quick Toggle Status Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePicStatus(pic)}
+                          disabled={isToggling}
+                          title={isActive ? 'Nonaktifkan PIC' : 'Aktifkan PIC'}
+                          className={`p-1.5 rounded-lg border text-xs font-medium flex items-center gap-1 transition ${
+                            isActive
+                              ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                          }`}
+                        >
+                          {isToggling ? (
+                            <RefreshCw size={13} className="animate-spin" />
+                          ) : isActive ? (
+                            <UserX size={13} />
+                          ) : (
+                            <UserCheck size={13} />
+                          )}
+                          <span className="hidden md:inline">
+                            {isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-right text-xs text-brand-text-muted shrink-0">
-                      <div>{pic.email || '—'}</div>
-                      <div>{pic.phone || '—'}</div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
 
+          {/* Orders Card */}
           <Card
             title="Orders"
             subtitle={`${orders.length} order terakhir`}
             action={
-              <Link href={`${basePath}/orders?customer_id=${data.id}`}
-                className="text-xs text-brand-accent hover:text-brand-accent2 font-medium transition">
+              <Link 
+                href={`${basePath}/orders?customer_id=${data.id}`}
+                className="text-xs text-brand-accent hover:text-brand-accent2 font-medium transition"
+              >
                 Lihat semua →
               </Link>
             }
           >
             {orders.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="text-center py-6 sm:py-8">
                 <Package size={32} className="mx-auto mb-2 text-brand-text-muted/40" />
-                <p className="text-sm text-brand-text-muted">Belum ada order</p>
+                <p className="text-xs sm:text-sm text-brand-text-muted">Belum ada order</p>
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-2">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-brand-border">
-                      <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Order #</th>
-                      <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Tanggal</th>
-                      <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Status</th>
-                      <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Payment</th>
-                      <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-brand-border/50">
-                    {orders.map((o) => (
-                      <tr key={o.id} className="hover:bg-brand-muted/30 transition">
-                        <td className="px-2 py-2.5">
-                          <Link href={`${basePath}/orders/${o.id}`}
-                            className="text-sm font-medium text-brand-text hover:text-brand-accent transition">
-                            {o.order_number}
-                          </Link>
-                        </td>
-                        <td className="px-2 py-2.5 text-xs text-brand-text-muted">
-                          {formatDate(o.created_at)}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium border ${ORDER_STATUS_COLORS[o.status] || ORDER_STATUS_COLORS.draft}`}>
-                            {o.status}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium border ${PAYMENT_STATUS_COLORS[o.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
+              <>
+                {/* 1. CARD VIEW (MOBILE - < md) */}
+                <div className="block md:hidden divide-y divide-brand-border/50">
+                  {orders.map((o) => (
+                    <div key={o.id} className="py-3 space-y-2 first:pt-0 last:pb-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link 
+                          href={`${basePath}/orders/${o.id}`}
+                          className="text-xs sm:text-sm font-bold text-brand-text hover:text-brand-accent transition truncate"
+                        >
+                          {o.order_number}
+                        </Link>
+                        <span className="text-xs sm:text-sm font-bold text-brand-text shrink-0">
+                          {formatCurrency(o.grand_total)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-2 text-xs text-brand-text-muted">
+                        <span>{formatDate(o.created_at)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <OrderStatusBadge status={o.status} />
+                          <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium border ${PAYMENT_STATUS_COLORS[o.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
                             {o.payment_status}
                           </span>
-                        </td>
-                        <td className="px-2 py-2.5 text-sm text-brand-text text-right font-medium">
-                          {formatCurrency(o.grand_total)}
-                        </td>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 2. TABLE VIEW (DESKTOP - >= md) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-brand-border">
+                        <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Order #</th>
+                        <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Tanggal</th>
+                        <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Status</th>
+                        <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Payment</th>
+                        <th className="px-2 py-2 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-brand-border/50">
+                      {orders.map((o) => (
+                        <tr key={o.id} className="hover:bg-brand-muted/30 transition">
+                          <td className="px-2 py-2.5">
+                            <Link 
+                              href={`${basePath}/orders/${o.id}`}
+                              className="text-sm font-medium text-brand-text hover:text-brand-accent transition"
+                            >
+                              {o.order_number}
+                            </Link>
+                          </td>
+                          <td className="px-2 py-2.5 text-xs text-brand-text-muted">
+                            {formatDate(o.created_at)}
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <OrderStatusBadge status={o.status} />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium border ${PAYMENT_STATUS_COLORS[o.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
+                              {o.payment_status}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2.5 text-sm text-brand-text text-right font-medium">
+                            {formatCurrency(o.grand_total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </Card>
         </div>
       </div>
 
+      {/* MODALS */}
       {editOpen && (
         <CustomerEditModal
           customer={data}
@@ -330,17 +477,19 @@ export default function CustomerShow({ customerId }) {
   );
 }
 
+// ============ HELPER COMPONENTS ============
+
 function Card({ title, subtitle, action, children }) {
   return (
-    <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-brand-border flex items-center justify-between gap-3">
+    <div className="bg-brand-secondary rounded-xl border border-brand-border overflow-hidden shadow-sm">
+      <div className="px-4 sm:px-5 py-3.5 border-b border-brand-border flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-brand-text uppercase tracking-widest">{title}</h2>
-          {subtitle && <p className="text-xs text-brand-text-muted mt-0.5">{subtitle}</p>}
+          <h2 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest">{title}</h2>
+          {subtitle && <p className="text-[11px] sm:text-xs text-brand-text-muted mt-0.5">{subtitle}</p>}
         </div>
         {action}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </div>
   );
 }
@@ -348,18 +497,21 @@ function Card({ title, subtitle, action, children }) {
 function InfoRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3 mb-3 last:mb-0">
-      <div className="w-8 h-8 bg-brand-muted/60 rounded-lg flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 bg-brand-muted/60 rounded-xl flex items-center justify-center shrink-0">
         <Icon size={14} className="text-brand-accent" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs text-brand-text-muted uppercase tracking-widest">{label}</div>
-        <div className="text-sm text-brand-text break-words">{value}</div>
+        <div className="text-[11px] sm:text-xs text-brand-text-muted uppercase tracking-widest">{label}</div>
+        <div className="text-xs sm:text-sm text-brand-text break-words mt-0.5">{value}</div>
       </div>
     </div>
   );
 }
 
 function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError }) {
+  const pics = customer?.pics || customer?.customer_pics || [];
+  const primaryPic = pics.find((p) => p.is_primary);
+
   const [form, setForm] = useState({
     name: customer?.name || '',
     email: customer?.email || '',
@@ -367,6 +519,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
     address: customer?.address || '',
     notes: customer?.notes || '',
     sales_id: customer?.sales_id || '',
+    primary_pic_id: primaryPic ? primaryPic.id : (customer?.primary_pic_id || ''),
   });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -379,6 +532,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
     const payload = { ...form };
     if (!payload.phone) payload.phone = null;
     if (!payload.sales_id) payload.sales_id = null;
+    if (!payload.primary_pic_id) payload.primary_pic_id = null;
 
     try {
       const res = await fetch(`/api/v1/customers/${customer.id}`, {
@@ -402,7 +556,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
 
   return (
     <ModalShell title="Edit Customer" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+      <form onSubmit={handleSubmit} autoComplete="off" className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         <FormField label="Nama Customer" value={form.name}
           onChange={(v) => setForm({ ...form, name: v })}
           error={errors.name} placeholder="PT Maju Bersama" required />
@@ -413,12 +567,35 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
           onChange={(v) => setForm({ ...form, phone: v })}
           error={errors.phone} placeholder="08123456789" />
 
+        {pics.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              PIC Utama
+            </label>
+            <select
+              value={form.primary_pic_id}
+              onChange={(e) => setForm({ ...form, primary_pic_id: e.target.value })}
+              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition"
+            >
+              <option value="">— Tidak ada PIC Utama —</option>
+              {pics.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.position ? `(${p.position})` : ''} {!Boolean(p.is_active ?? true) ? '— [Nonaktif]' : ''}
+                </option>
+              ))}
+            </select>
+            {errors.primary_pic_id && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.primary_pic_id[0]}</p>
+            )}
+          </div>
+        )}
+
         <div>
           <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Customer Service</label>
           <select
             value={form.sales_id}
             onChange={(e) => setForm({ ...form, sales_id: e.target.value })}
-            className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition"
+            className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition"
           >
             <option value="">— Tidak ada —</option>
             {salesList.map((s) => (
@@ -433,7 +610,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             rows={2}
-            className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
+            className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition resize-none"
           />
         </div>
 
@@ -443,18 +620,18 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={2}
-            className="w-full bg-brand-primary border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-accent/60 transition resize-none"
+            className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition resize-none"
           />
         </div>
       </form>
 
       <ModalFooter>
         <button onClick={onClose} type="button"
-          className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
+          className="flex-1 sm:flex-initial bg-brand-muted text-brand-text px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition">
           Batal
         </button>
         <button onClick={handleSubmit} disabled={submitting}
-          className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+          className="flex-1 sm:flex-initial justify-center bg-brand-accent text-brand-primary px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition">
           {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
           {submitting ? 'Menyimpan...' : 'Simpan'}
         </button>
@@ -465,7 +642,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
 
 function PicFormModal({ customerId, onClose, onSuccess, onError }) {
   const [form, setForm] = useState({
-    name: '', position: '', email: '', phone: '', is_primary: false,
+    name: '', position: '', email: '', phone: '', is_primary: false, is_active: true,
   });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -502,7 +679,7 @@ function PicFormModal({ customerId, onClose, onSuccess, onError }) {
 
   return (
     <ModalShell title="Tambah PIC" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+      <form onSubmit={handleSubmit} autoComplete="off" className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         <FormField label="Nama PIC" value={form.name}
           onChange={(v) => setForm({ ...form, name: v })}
           error={errors.name} placeholder="Budi Santoso" required />
@@ -516,24 +693,36 @@ function PicFormModal({ customerId, onClose, onSuccess, onError }) {
           onChange={(v) => setForm({ ...form, phone: v })}
           error={errors.phone} placeholder="08123456789" />
 
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={form.is_primary}
-            onChange={(e) => setForm({ ...form, is_primary: e.target.checked })}
-            className="rounded border-brand-border text-brand-accent focus:ring-0"
-          />
-          <span className="text-sm text-brand-text">Jadikan PIC utama</span>
-        </label>
+        <div className="space-y-2 pt-1">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.is_primary}
+              onChange={(e) => setForm({ ...form, is_primary: e.target.checked })}
+              className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-0"
+            />
+            <span className="text-xs sm:text-sm text-brand-text font-medium">Jadikan PIC utama</span>
+          </label>
+
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-0"
+            />
+            <span className="text-xs sm:text-sm text-brand-text font-medium">Status PIC Aktif</span>
+          </label>
+        </div>
       </form>
 
       <ModalFooter>
         <button onClick={onClose} type="button"
-          className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition">
+          className="flex-1 sm:flex-initial bg-brand-muted text-brand-text px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition">
           Batal
         </button>
         <button onClick={handleSubmit} disabled={submitting}
-          className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+          className="flex-1 sm:flex-initial justify-center bg-brand-accent text-brand-primary px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition">
           {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
           {submitting ? 'Menyimpan...' : 'Tambah PIC'}
         </button>
@@ -566,29 +755,29 @@ function DeleteCustomerModal({ customer, onClose, onSuccess, onError }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-      <div className="bg-brand-secondary rounded-xl shadow-2xl border border-red-500/30 w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+      <div className="bg-brand-secondary rounded-2xl shadow-2xl border border-red-500/30 w-full max-w-md p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-red-500/15 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-red-500/15 rounded-full flex items-center justify-center shrink-0">
             <AlertCircle size={20} className="text-red-500 dark:text-red-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-brand-text">Hapus Customer?</h3>
+            <h3 className="text-base sm:text-lg font-bold text-brand-text">Hapus Customer?</h3>
             <p className="text-xs text-brand-text-muted">Aksi ini tidak bisa dibatalkan</p>
           </div>
         </div>
 
-        <p className="text-sm text-brand-text mb-6">
-          Yakin ingin menghapus customer <strong>{customer.name}</strong>?
+        <p className="text-xs sm:text-sm text-brand-text mb-6">
+          Yakin ingin menghapus customer <strong className="text-brand-text font-semibold">{customer.name}</strong>?
         </p>
 
         <div className="flex justify-end gap-2">
           <button onClick={onClose} disabled={submitting}
-            className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg hover:bg-brand-muted/70 text-sm font-medium transition disabled:opacity-50">
+            className="flex-1 sm:flex-initial bg-brand-muted text-brand-text px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition disabled:opacity-50">
             Batal
           </button>
           <button onClick={handleDelete} disabled={submitting}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+            className="flex-1 sm:flex-initial justify-center bg-red-500 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition">
             {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
             {submitting ? 'Menghapus...' : 'Hapus'}
           </button>
@@ -600,11 +789,11 @@ function DeleteCustomerModal({ customer, onClose, onSuccess, onError }) {
 
 function ModalShell({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between">
-          <h2 className="text-xl font-bold text-brand-text">{title}</h2>
-          <button onClick={onClose} className="text-brand-text-muted hover:text-brand-accent text-2xl leading-none transition">×</button>
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-brand-secondary rounded-2xl shadow-2xl border border-brand-border w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="px-5 py-4 border-b border-brand-border flex items-center justify-between shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-brand-text">{title}</h2>
+          <button type="button" onClick={onClose} className="text-brand-text-muted hover:text-brand-accent p-1 text-xl leading-none">×</button>
         </div>
         {children}
       </div>
@@ -614,7 +803,7 @@ function ModalShell({ title, onClose, children }) {
 
 function ModalFooter({ children }) {
   return (
-    <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
+    <div className="px-5 py-4 border-t border-brand-border flex justify-end gap-2 shrink-0 bg-brand-secondary">
       {children}
     </div>
   );
@@ -631,8 +820,8 @@ function FormField({ label, type = 'text', value, onChange, error, placeholder, 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full bg-brand-primary border rounded-lg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none transition ${
-          error ? 'border-red-500/50' : 'border-brand-border focus:border-brand-accent/60'
+        className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition ${
+          error ? 'border-red-500/50' : 'border-brand-border focus:border-brand-accent'
         }`}
       />
       {error && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{error[0]}</p>}

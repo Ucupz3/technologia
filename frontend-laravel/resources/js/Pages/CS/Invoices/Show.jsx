@@ -25,6 +25,12 @@ function getBasePath() {
 }
 
 function PaymentStatusBadge({ status }) {
+  const labels = {
+    unpaid: 'Unpaid',
+    partial: 'Partial',
+    paid: 'Paid',
+    cancelled: 'Cancelled',
+  };
   const colors = {
     unpaid: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
     partial: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40',
@@ -33,17 +39,17 @@ function PaymentStatusBadge({ status }) {
   };
   return (
     <span
-      className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium border capitalize ${
+      className={`inline-block text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 rounded-full font-medium border shrink-0 ${
         colors[status] || colors.unpaid
       }`}
     >
-      {status}
+      {labels[status] || status}
     </span>
   );
 }
 
 // ============ MAIN COMPONENT ============
-export default function CustomerServiceInvoiceShow({ invoiceId }) {
+export default function InvoiceShow({ invoiceId }) {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,7 +68,7 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
   const [sendToPic, setSendToPic] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
 
-  const basePath = getBasePath() || '/cs';
+  const basePath = getBasePath();
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -79,16 +85,16 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
         if (d.success) {
           setInvoice(d.data);
           // Default nominal = sisa tagihan
-          const remainingAmount =
-            Number(d.data.orders?.grand_total || 0) - Number(d.data.total_paid || 0);
-          setPayAmount(remainingAmount > 0 ? remainingAmount : 0);
+          setPayAmount(
+            Number(d.data.orders?.grand_total || 0) - Number(d.data.total_paid)
+          );
         } else {
-          setError(d.message || 'Gagal memuat data invoice');
+          setError(d.message || 'Gagal ambil data');
         }
         setLoading(false);
       })
       .catch((e) => {
-        setError(e.message || 'Gagal menghubungi server');
+        setError(e.message);
         setLoading(false);
       });
   };
@@ -103,8 +109,8 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
     setPaymentType(type);
     if (type === 'full') {
       const rem =
-        Number(invoice.orders?.grand_total || 0) - Number(invoice.total_paid || 0);
-      setPayAmount(rem > 0 ? rem : 0);
+        Number(invoice.orders?.grand_total || 0) - Number(invoice.total_paid);
+      setPayAmount(rem);
     } else {
       setPayAmount('');
     }
@@ -130,7 +136,7 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        showToast('error', data.message || 'Gagal mencatat pembayaran');
+        showToast('error', data.message || 'Gagal update pembayaran');
       } else {
         setPayFile(null);
         load();
@@ -194,7 +200,7 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
         showToast('error', data.message || 'Gagal mengirim email');
       } else {
         setEmailOpen(false);
-        showToast('success', data.message || 'Invoice berhasil dikirim ke email');
+        showToast('success', data.message);
       }
     } catch {
       showToast('error', 'Gagal menghubungi server');
@@ -208,12 +214,12 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
     return (
       <RoleLayout>
         <Head title="Detail Invoice" />
-        <div className="p-12 text-center text-brand-text-muted">
+        <div className="p-8 sm:p-12 text-center text-brand-text-muted">
           <RefreshCw
             size={24}
             className="animate-spin mx-auto mb-3 text-brand-accent"
           />
-          Memuat data invoice...
+          <p className="text-xs sm:text-sm">Loading invoice...</p>
         </div>
       </RoleLayout>
     );
@@ -224,15 +230,15 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
     return (
       <RoleLayout>
         <Head title="Detail Invoice" />
-        <div className="p-8 text-center">
-          <p className="text-red-600 dark:text-red-400 mb-3">
+        <div className="p-6 sm:p-8 text-center">
+          <p className="text-red-600 dark:text-red-400 mb-3 text-xs sm:text-sm">
             Error: {error || 'Data tidak ditemukan'}
           </p>
           <Link
             href={`${basePath}/invoices`}
-            className="text-brand-accent underline"
+            className="text-brand-accent underline hover:no-underline text-xs sm:text-sm font-medium"
           >
-            ← Kembali ke daftar invoices
+            ← Kembali ke daftar
           </Link>
         </div>
       </RoleLayout>
@@ -253,53 +259,46 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
     <RoleLayout>
       <Head title={`Invoice — ${invoice.invoice_number}`} />
 
-      {/* Toast Notification */}
+      {/* Toast Notification (Responsif: Bawah di Mobile, Atas di Desktop) */}
       {toast && (
         <div
-          className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${
+          className={`fixed bottom-5 right-5 z-[100] max-w-sm flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 ${
             toast.type === 'success'
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-              : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
+              ? 'bg-emerald-500/15 dark:bg-emerald-950/90 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
+              : 'bg-red-500/15 dark:bg-red-950/90 border-red-500/40 text-red-600 dark:text-red-300'
           }`}
         >
           {toast.type === 'success' ? (
-            <CheckCircle2 size={18} />
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
           ) : (
-            <AlertCircle size={18} />
+            <AlertCircle size={18} className="shrink-0 text-red-500 dark:text-red-400" />
           )}
-          <span className="text-sm font-medium">{toast.message}</span>
+          <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug break-words">
+            {toast.message}
+          </span>
         </div>
       )}
 
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <Link
           href={`${basePath}/invoices`}
-          className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-6"
         >
           <ArrowLeft size={16} /> Kembali ke Invoices
         </Link>
 
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-brand-text flex items-center gap-3">
-              Detail Tagihan
+            <h1 className="text-xl sm:text-2xl font-bold text-brand-text flex items-center gap-2.5 flex-wrap">
+              <span>Detail Tagihan</span>
               <PaymentStatusBadge status={invoice.status} />
             </h1>
-            <p className="text-sm text-brand-text-muted mt-0.5 font-mono">
-              {invoice.invoice_number} · Order: {invoice.orders?.order_number}
-            </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={load}
-              className="bg-brand-secondary border border-brand-border text-brand-text px-3 py-2 rounded-lg hover:bg-brand-muted flex items-center gap-2 text-sm transition"
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
-            </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => setEmailOpen(true)}
-              className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg hover:bg-brand-accent2 flex items-center gap-2 text-sm font-semibold transition"
+              className="w-full sm:w-auto justify-center bg-brand-accent text-brand-primary px-4 py-2.5 sm:py-2 rounded-xl hover:bg-brand-accent2 flex items-center gap-2 text-xs sm:text-sm font-semibold transition shadow-sm"
             >
               <Mail size={16} /> Kirim ke Email
             </button>
@@ -308,81 +307,84 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
       </div>
 
       {/* Ringkasan 3 Kolom */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-brand-secondary rounded-xl border border-brand-border p-5 shadow-sm">
-          <div className="text-xs text-brand-text-muted uppercase mb-1 font-semibold">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="bg-brand-secondary rounded-xl border border-brand-border p-4 sm:p-5 shadow-sm">
+          <div className="text-[11px] sm:text-xs text-brand-text-muted uppercase tracking-widest font-semibold mb-1">
             Total Tagihan
           </div>
-          <div className="text-2xl font-bold text-brand-text">
+          <div className="text-xl sm:text-2xl font-bold text-brand-text">
             {formatRupiah(grandTotal)}
           </div>
         </div>
-        <div className="bg-emerald-500/10 rounded-xl border border-emerald-500/30 p-5 shadow-sm">
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 uppercase mb-1 font-semibold">
+        <div className="bg-emerald-500/10 rounded-xl border border-emerald-500/30 p-4 sm:p-5 shadow-sm">
+          <div className="text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-semibold mb-1">
             Sudah Dibayar
           </div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {formatRupiah(totalPaid)}
           </div>
         </div>
-        <div className="bg-red-500/10 rounded-xl border border-red-500/30 p-5 shadow-sm">
-          <div className="text-xs text-red-600 dark:text-red-400 uppercase mb-1 font-semibold">
+        <div className="bg-red-500/10 rounded-xl border border-red-500/30 p-4 sm:p-5 shadow-sm">
+          <div className="text-[11px] sm:text-xs text-red-600 dark:text-red-400 uppercase tracking-widest font-semibold mb-1">
             Sisa Tagihan
           </div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {formatRupiah(remaining > 0 ? remaining : 0)}
+          <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">
+            {formatRupiah(remaining)}
           </div>
         </div>
       </div>
 
-      {/* Form Proses Pembayaran */}
-      <div className="bg-brand-secondary rounded-xl border border-brand-border p-6 mb-8 shadow-sm w-full">
-        <h3 className="text-sm font-bold text-brand-text uppercase mb-6 flex items-center gap-2 border-b border-brand-border pb-3">
-          <CreditCard size={16} /> Proses Pembayaran
+      {/* Form Pembayaran */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm w-full">
+        <h3 className="text-xs sm:text-sm font-bold text-brand-text uppercase tracking-widest mb-4 sm:mb-6 flex items-center gap-2 border-b border-brand-border pb-3">
+          <CreditCard size={16} className="text-brand-accent shrink-0" />
+          <span>Proses Pembayaran</span>
         </h3>
 
         {invoice.status === 'paid' ? (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 p-8 rounded-xl flex flex-col items-center justify-center text-center">
-            <CheckCircle2 size={48} className="text-emerald-500 mb-3" />
-            <p className="text-xl font-bold text-emerald-500">Lunas</p>
-            <p className="text-sm text-emerald-600/70 mt-1">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 p-6 sm:p-8 rounded-xl flex flex-col items-center justify-center text-center">
+            <CheckCircle2 size={44} className="text-emerald-500 dark:text-emerald-400 mb-2 sm:mb-3" />
+            <p className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">Lunas</p>
+            <p className="text-xs sm:text-sm text-emerald-700/80 dark:text-emerald-300/80 mt-1">
               Tagihan ini sudah dibayar sepenuhnya.
             </p>
           </div>
         ) : (
-          <div className="space-y-6 w-full">
+          <div className="space-y-4 sm:space-y-6 w-full">
             {/* 1. Tipe Pembayaran */}
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-2">
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-2">
                 1. Pilih Tipe Pembayaran
               </label>
-              <div className="flex gap-3 w-full">
+              <div className="flex gap-2.5 sm:gap-3 w-full">
                 <button
+                  type="button"
                   onClick={() => handleTypeChange('full')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold rounded-xl border transition ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-3 text-xs sm:text-sm font-semibold rounded-xl border transition ${
                     paymentType === 'full'
                       ? 'bg-brand-accent/15 border-brand-accent text-brand-accent shadow-sm'
                       : 'bg-brand-primary border-brand-border text-brand-text-muted hover:text-brand-text'
                   }`}
                 >
-                  <Landmark size={16} /> Lunas (Full)
+                  <Landmark size={15} className="shrink-0" /> Lunas (Full)
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleTypeChange('dp')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold rounded-xl border transition ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-3 text-xs sm:text-sm font-semibold rounded-xl border transition ${
                     paymentType === 'dp'
                       ? 'bg-brand-accent/15 border-brand-accent text-brand-accent shadow-sm'
                       : 'bg-brand-primary border-brand-border text-brand-text-muted hover:text-brand-text'
                   }`}
                 >
-                  <CreditCard size={16} /> DP / Cicilan
+                  <CreditCard size={15} className="shrink-0" /> DP / Cicilan
                 </button>
               </div>
             </div>
 
             {/* 2. Nominal */}
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                 2. Nominal Bayar (Rp)
               </label>
               <input
@@ -393,14 +395,14 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
                 onChange={(e) => setPayAmount(e.target.value)}
                 readOnly={paymentType === 'full'}
                 placeholder={`Maksimal ${remaining}`}
-                className={`w-full border rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none transition shadow-sm ${
+                className={`w-full border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm font-semibold focus:outline-none transition shadow-sm ${
                   paymentType === 'full'
                     ? 'bg-brand-muted/50 border-brand-border text-brand-text-muted cursor-not-allowed'
-                    : 'bg-brand-primary border-brand-border text-brand-text focus:border-brand-accent'
+                    : 'bg-brand-primary border-brand-border text-brand-text focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30'
                 }`}
               />
               {paymentType === 'full' && (
-                <p className="text-[11px] text-emerald-500 mt-1">
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
                   *Nominal otomatis terisi sesuai sisa tagihan.
                 </p>
               )}
@@ -408,47 +410,49 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
 
             {/* 3. Metode */}
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-2">
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-2">
                 3. Pilih Metode Pembayaran
               </label>
               <div className="flex gap-2 p-1 bg-brand-primary rounded-xl border border-brand-border shadow-sm w-full">
                 <button
+                  type="button"
                   onClick={() => setPayMethod('manual')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold rounded-lg transition ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-2 text-xs sm:text-sm font-semibold rounded-lg transition ${
                     payMethod === 'manual'
                       ? 'bg-brand-secondary text-brand-text shadow-sm'
                       : 'text-brand-text-muted hover:text-brand-text'
                   }`}
                 >
-                  <UploadCloud size={16} /> Transfer Manual
+                  <UploadCloud size={15} className="shrink-0" /> Transfer Manual
                 </button>
                 <button
+                  type="button"
                   onClick={() => setPayMethod('qris')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold rounded-lg transition ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-2 text-xs sm:text-sm font-semibold rounded-lg transition ${
                     payMethod === 'qris'
                       ? 'bg-brand-secondary text-brand-text shadow-sm'
                       : 'text-brand-text-muted hover:text-brand-text'
                   }`}
                 >
-                  <QrCode size={16} /> QRIS / E-Wallet
+                  <QrCode size={15} className="shrink-0" /> QRIS / E-Wallet
                 </button>
               </div>
             </div>
 
-            {/* 4. Form Manual Upload Bukti */}
+            {/* 4. Form Manual */}
             {payMethod === 'manual' && (
               <form
                 onSubmit={handleManualSubmit}
-                className="space-y-4 animate-in fade-in duration-300 pt-2"
+                className="space-y-4 animate-in fade-in duration-300 pt-1"
               >
                 <div>
-                  <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                  <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                     Upload Bukti Transfer
                   </label>
-                  <div className="relative border border-brand-border rounded-xl px-4 py-3 flex items-center gap-2 hover:bg-brand-primary/30 transition cursor-pointer shadow-sm bg-brand-primary/40 w-full">
+                  <div className="relative border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 flex items-center gap-2 hover:bg-brand-primary/30 transition cursor-pointer shadow-sm bg-brand-primary/40 w-full">
                     <UploadCloud size={18} className="text-brand-text-muted shrink-0" />
-                    <span className="text-sm text-brand-text-muted truncate">
-                      {payFile ? payFile.name : 'Pilih file struk transfer (JPG/PNG/PDF)'}
+                    <span className="text-xs sm:text-sm text-brand-text-muted truncate">
+                      {payFile ? payFile.name : 'Pilih file (JPG/PNG/PDF)'}
                     </span>
                     <input
                       type="file"
@@ -458,11 +462,11 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
                     />
                   </div>
                 </div>
-                <div className="pt-2">
+                <div className="pt-1">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full bg-brand-accent text-brand-primary px-6 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm transition"
+                    className="w-full bg-brand-accent text-brand-primary px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm transition"
                   >
                     {submitting ? (
                       <RefreshCw size={16} className="animate-spin" />
@@ -475,33 +479,34 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
               </form>
             )}
 
-            {/* 4. QRIS Simulation */}
+            {/* 4. QRIS */}
             {payMethod === 'qris' && (
-              <div className="flex flex-col items-center justify-center p-6 border border-brand-border rounded-xl bg-brand-primary/40 animate-in fade-in duration-300">
+              <div className="flex flex-col items-center justify-center p-4 sm:p-6 border border-brand-border rounded-xl bg-brand-primary/40 animate-in fade-in duration-300">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=QRIS-INV-${invoice.invoice_number}-${payAmount}`}
                   alt="QRIS Code"
-                  className="w-40 h-40 mb-4 rounded-xl border-4 border-white shadow-lg"
+                  className="w-36 h-36 sm:w-40 sm:h-40 mb-3 sm:mb-4 rounded-xl border-4 border-white shadow-lg"
                 />
-                <p className="text-sm font-bold text-brand-text mb-1">
+                <p className="text-xs sm:text-sm font-bold text-brand-text mb-1 text-center">
                   Scan QRIS untuk Membayar
                 </p>
-                <p className="text-xs text-brand-text-muted mb-6 text-center max-w-xs">
+                <p className="text-[11px] sm:text-xs text-brand-text-muted mb-4 sm:mb-6 text-center max-w-xs">
                   Nominal:{' '}
                   <strong className="text-brand-accent">
                     {formatRupiah(payAmount)}
                   </strong>
-                  . Buka m-banking atau e-wallet, lalu scan QR code di atas.
+                  . Buka m-banking atau e-wallet, lalu scan QR code.
                 </p>
                 <button
+                  type="button"
                   onClick={handleQrisSubmit}
                   disabled={submitting}
-                  className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 transition shadow-md"
+                  className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 transition shadow-md"
                 >
                   {submitting ? (
-                    <RefreshCw size={18} className="animate-spin" />
+                    <RefreshCw size={16} className="animate-spin" />
                   ) : (
-                    <CheckCircle2 size={18} />
+                    <CheckCircle2 size={16} />
                   )}
                   {submitting ? 'Memverifikasi...' : 'Simulasi Pembayaran Lunas'}
                 </button>
@@ -511,24 +516,27 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
         )}
       </div>
 
-      {/* Preview Struk Tagihan */}
-      <div className="border-t border-brand-border pt-8">
-        <h2 className="text-lg font-bold text-brand-text mb-4 flex items-center gap-2">
-          <Receipt size={18} /> Preview Struk Tagihan
+      {/* Preview Struk */}
+      <div className="border-t border-brand-border pt-6 sm:pt-8">
+        <h2 className="text-base sm:text-lg font-bold text-brand-text mb-3 sm:mb-4 flex items-center gap-2">
+          <Receipt size={18} className="text-brand-accent shrink-0" />
+          <span>Preview Struk Tagihan</span>
         </h2>
 
-        <div className="bg-white text-black p-8 rounded-xl shadow-xl border border-gray-300 max-w-md mx-auto font-mono relative overflow-hidden">
-          <div className="text-center mb-6 pt-4">
-            <h2 className="text-xl font-bold uppercase tracking-widest">
+        <div className="bg-white text-black p-4 sm:p-8 rounded-xl shadow-xl border border-gray-300 max-w-md mx-auto font-mono relative overflow-hidden text-xs">
+          <div className="absolute top-0 left-0 right-0 h-2 bg-[radial-gradient(circle,transparent,transparent_50%,#f3f4f6_50%,#f3f4f6_100%)] bg-[length:10px_10px]" />
+
+          <div className="text-center mb-4 sm:mb-6 pt-2 sm:pt-4">
+            <h2 className="text-lg sm:text-xl font-bold uppercase tracking-widest">
               TEKNA.ID
             </h2>
-            <p className="text-xs text-gray-500 mt-1">Solusi Digital Terbaik</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-[11px] text-gray-500 mt-0.5">Solusi Digital Terbaik</p>
+            <p className="text-[11px] text-gray-500">
               Jl. Teknologi No. 123, Jakarta
             </p>
           </div>
 
-          <div className="text-xs space-y-1 border-t border-b border-dashed border-gray-300 py-3 mb-4">
+          <div className="text-[11px] sm:text-xs space-y-1 border-t border-b border-dashed border-gray-300 py-2.5 sm:py-3 mb-4">
             <div className="flex justify-between">
               <span>No. Invoice:</span>{' '}
               <span className="font-bold">{invoice.invoice_number}</span>
@@ -537,34 +545,34 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
               <span>Tanggal:</span> <span>{formatDate(invoice.created_at)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Customer:</span> <span>{customerName}</span>
+              <span>Customer:</span> <span className="truncate max-w-[160px]">{customerName}</span>
             </div>
             <div className="flex justify-between">
-              <span>PIC:</span> <span>{picName}</span>
+              <span>PIC:</span> <span className="truncate max-w-[160px]">{picName}</span>
             </div>
           </div>
 
           {/* Rincian Layanan */}
           <div className="mb-4">
-            <div className="flex justify-between text-xs font-bold border-b border-gray-300 pb-1 mb-2">
-              <span>Item Layanan</span>
+            <div className="flex justify-between text-[11px] sm:text-xs font-bold border-b border-gray-300 pb-1 mb-2">
+              <span>Item</span>
               <span>Total</span>
             </div>
             {services.map((svc) => (
-              <div key={svc.id} className="flex justify-between text-xs mb-1">
-                <div className="flex-1">
-                  <div>{svc.service_name_snapshot}</div>
+              <div key={svc.id} className="flex justify-between text-[11px] sm:text-xs mb-1.5 gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="truncate">{svc.service_name_snapshot}</div>
                   <div className="text-[10px] text-gray-500">
                     {svc.quantity} x {formatRupiah(svc.price_deal)}
                   </div>
                 </div>
-                <div className="text-right">{formatRupiah(svc.subtotal)}</div>
+                <div className="text-right shrink-0">{formatRupiah(svc.subtotal)}</div>
               </div>
             ))}
           </div>
 
-          {/* Ringkasan Biaya */}
-          <div className="text-xs space-y-1 border-t border-dashed border-gray-300 pt-3 mb-4">
+          {/* Ringkasan */}
+          <div className="text-[11px] sm:text-xs space-y-1 border-t border-dashed border-gray-300 pt-3 mb-4">
             <div className="flex justify-between">
               <span>Subtotal</span>{' '}
               <span>{formatRupiah(invoice.orders?.subtotal)}</span>
@@ -576,94 +584,98 @@ export default function CustomerServiceInvoiceShow({ invoiceId }) {
               </div>
             )}
             <div className="flex justify-between">
-              <span>Pajak (PPN)</span> <span>{formatRupiah(invoice.orders?.tax)}</span>
+              <span>Pajak</span> <span>{formatRupiah(invoice.orders?.tax)}</span>
             </div>
-            <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-300 mt-2">
+            <div className="flex justify-between font-bold text-xs sm:text-sm pt-2 border-t border-gray-300 mt-2">
               <span>Grand Total</span> <span>{formatRupiah(grandTotal)}</span>
             </div>
             <div className="flex justify-between text-emerald-600 font-bold">
               <span>Sudah Dibayar</span> <span>{formatRupiah(totalPaid)}</span>
             </div>
-            <div className="flex justify-between text-red-600 font-bold text-sm">
-              <span>Sisa Tagihan</span> <span>{formatRupiah(remaining > 0 ? remaining : 0)}</span>
+            <div className="flex justify-between text-red-600 font-bold text-xs sm:text-sm">
+              <span>Sisa Tagihan</span> <span>{formatRupiah(remaining)}</span>
             </div>
           </div>
 
-          <div className="text-center text-[10px] text-gray-500 border-t border-dashed border-gray-300 pt-4">
-            <p>Terima kasih atas kerja sama Anda.</p>
-            <p>Layanan yang sudah dipesan diproses sesuai ketentuan.</p>
+          <div className="text-center text-[10px] text-gray-500 border-t border-dashed border-gray-300 pt-3">
+            <p>Terima kasih atas kepercayaan Anda.</p>
+            <p>Barang/Jasa yang sudah dibeli tidak dapat dikembalikan.</p>
           </div>
         </div>
       </div>
 
-      {/* Modal Kirim Tagihan ke Email */}
+      {/* Modal Email (Responsif Mobile) */}
       {emailOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-brand-secondary rounded-xl shadow-2xl border border-brand-border w-full max-w-md flex flex-col">
-            <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between">
-              <h2 className="text-lg font-bold text-brand-text">
-                Kirim Tagihan ke Email
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[100] p-3 sm:p-4">
+          <div className="bg-brand-secondary rounded-2xl shadow-2xl border border-brand-border w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-brand-border flex items-center justify-between shrink-0">
+              <h2 className="text-base sm:text-lg font-bold text-brand-text">
+                Kirim Invoice ke Email
               </h2>
               <button
+                type="button"
                 onClick={() => setEmailOpen(false)}
-                className="text-brand-text-muted hover:text-brand-accent text-2xl leading-none"
+                className="text-brand-text-muted hover:text-brand-accent text-2xl leading-none p-1"
               >
                 ×
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-brand-text-muted">
-                Pilih tujuan pengiriman tagihan:
+            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
+              <p className="text-xs sm:text-sm text-brand-text-muted">
+                Pilih tujuan pengiriman email:
               </p>
 
-              <label className="flex items-center gap-3 p-3 border border-brand-border rounded-lg cursor-pointer hover:bg-brand-primary/30 transition">
+              <label className="flex items-center gap-3 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-brand-primary/30 transition select-none">
                 <input
                   type="checkbox"
                   checked={sendToCustomer}
                   onChange={(e) => setSendToCustomer(e.target.checked)}
-                  className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent"
+                  className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-0 shrink-0"
                 />
-                <div>
-                  <div className="text-sm font-semibold text-brand-text">
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-semibold text-brand-text truncate">
                     Customer Utama
                   </div>
-                  <div className="text-xs text-brand-text-muted">
+                  <div className="text-xs text-brand-text-muted truncate">
                     {invoice.customers?.email || 'Email tidak tersedia'}
                   </div>
                 </div>
               </label>
 
-              <label className="flex items-center gap-3 p-3 border border-brand-border rounded-lg cursor-pointer hover:bg-brand-primary/30 transition">
+              <label className="flex items-center gap-3 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-brand-primary/30 transition select-none">
                 <input
                   type="checkbox"
                   checked={sendToPic}
                   onChange={(e) => setSendToPic(e.target.checked)}
-                  className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent"
+                  className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-0 shrink-0"
                 />
-                <div>
-                  <div className="text-sm font-semibold text-brand-text">
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-semibold text-brand-text truncate">
                     PIC Customer
                   </div>
-                  <div className="text-xs text-brand-text-muted">
+                  <div className="text-xs text-brand-text-muted truncate">
                     {invoice.orders?.pic_email_snapshot || 'Email tidak tersedia'}
                   </div>
                 </div>
               </label>
             </div>
 
-            <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
+            <div className="px-5 py-4 border-t border-brand-border flex flex-col-reverse sm:flex-row justify-end gap-2 shrink-0 bg-brand-secondary">
               <button
                 type="button"
                 onClick={() => setEmailOpen(false)}
-                className="bg-brand-muted text-brand-text px-4 py-2 rounded-lg text-sm font-medium transition"
+                className="w-full sm:w-auto text-center bg-brand-muted text-brand-text px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleSendEmail}
-                disabled={sendingEmail || (!sendToCustomer && !sendToPic)}
-                className="bg-brand-accent text-brand-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition"
+                disabled={
+                  sendingEmail || (!sendToCustomer && !sendToPic)
+                }
+                className="w-full sm:w-auto justify-center bg-brand-accent text-brand-primary px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition shadow-sm"
               >
                 {sendingEmail ? (
                   <RefreshCw size={14} className="animate-spin" />

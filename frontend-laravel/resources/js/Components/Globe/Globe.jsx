@@ -3,9 +3,37 @@ import * as THREE from 'three';
 import ThreeGlobe from 'three-globe';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { getGlobeConfig } from '@/config/globeConfig';
-import { arcs, points, COUNTRIES_URL } from '@/data/globeData';
+import { arcs as rawArcs, points, COUNTRIES_URL } from '@/data/globeData';
 
 const DEG = Math.PI / 180;
+
+// Membuat beberapa rute berantai tambahan secara sedang (tidak terlalu banyak)
+function generateChainedArcs(basePoints, extraCount = 12) {
+    if (!basePoints || basePoints.length < 2) return [];
+    const chainedArcs = [];
+
+    for (let i = 0; i < extraCount; i++) {
+        const startIdx = Math.floor(Math.random() * basePoints.length);
+        let endIdx = (startIdx + 1 + Math.floor(Math.random() * 4)) % basePoints.length;
+        
+        const start = basePoints[startIdx];
+        const end = basePoints[endIdx];
+
+        chainedArcs.push({
+            startLat: start.lat,
+            startLng: start.lng,
+            endLat: end.lat,
+            endLng: end.lng,
+            arcAlt: Math.random() * 0.2 + 0.15,
+            order: i,
+            stroke: 0.5,
+            // Waktu tempuh sedang & tenang (1800ms - 2400ms)
+            animateTime: Math.floor(Math.random() * 600 + 1800),
+        });
+    }
+
+    return chainedArcs;
+}
 
 export default function Globe({ theme = 'dark', className = '' }) {
     const mountRef = useRef(null);
@@ -22,7 +50,7 @@ export default function Globe({ theme = 'dark', className = '' }) {
         const renderer = new THREE.WebGLRenderer({ antialias: !lowEnd, alpha: true, powerPreference: 'high-performance' });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowEnd ? 1.5 : 2));
         renderer.setClearColor(0x000000, 0);
-        renderer.domElement.style.touchAction = 'pan-y'; // scroll vertikal tetap jalan di mobile
+        renderer.domElement.style.touchAction = 'pan-y';
         mount.appendChild(renderer.domElement);
 
         // ---------- Scene, camera, lights ----------
@@ -44,7 +72,7 @@ export default function Globe({ theme = 'dark', className = '' }) {
         scene.add(pl);
 
         // ---------- Globe ----------
-        const globe = new ThreeGlobe({ waitForGlobeReady: true, animateIn: !reduceMotion })
+        const globe = new ThreeGlobe({ waitForGlobeReady: true, animateIn: false })
             .showAtmosphere(cfg.showAtmosphere)
             .atmosphereColor(cfg.atmosphereColor)
             .atmosphereAltitude(cfg.atmosphereAltitude);
@@ -53,32 +81,41 @@ export default function Globe({ theme = 'dark', className = '' }) {
         mat.color = new THREE.Color(cfg.globeColor);
         mat.emissive = new THREE.Color(cfg.emissive);
         mat.emissiveIntensity = cfg.emissiveIntensity;
-        mat.shininess = cfg.shininess * 100; // Phong shininess berskala lebih besar
+        mat.shininess = cfg.shininess * 100;
 
-        // Putar globe agar lng awal menghadap kamera
         globe.rotation.y = -cfg.initialPosition.lng * DEG;
 
-        const arcData = arcs.map((a, i) => ({ ...a, color: cfg.arcColors[i % cfg.arcColors.length] }));
-        const animTime = reduceMotion ? 0 : cfg.arcTime * cfg.arcSpeedFactor;
+        // Total rute sekitar ~24 rute (gabungan rute tetap + tambahan berantai)
+        const combinedArcs = [
+            ...(rawArcs || []),
+            ...generateChainedArcs(points, 12)
+        ];
+
+        const arcData = combinedArcs.map((a, i) => ({
+            ...a,
+            color: cfg.arcColors[i % cfg.arcColors.length],
+        }));
 
         globe
             .arcsData(arcData)
             .arcColor((e) => e.color)
-            .arcAltitude((e) => e.arcAlt)
-            .arcStroke(0.5)
-            .arcDashLength(cfg.arcLength)
-            .arcDashInitialGap((e) => e.order)
-            .arcDashGap(15)
-            .arcDashAnimateTime(() => animTime)
+            .arcAltitude((e) => (e.arcAlt ? e.arcAlt * 1.6 : 0.45)) // Lengkungan melayang lebih jauh keluar
+            .arcStroke((e) => (e.stroke ? e.stroke * 2.2 : 1.2))    // Garis dibuat lebih tebal & besar
+            .arcDashLength(0.35)
+            .arcDashInitialGap((e) => e.order || 0)
+            .arcDashGap(6) // Gap sedang agar tidak terlalu padat
+            .arcDashAnimateTime((e) => (reduceMotion ? 0 : e.animateTime || 1500))
+            
+            // Point & Ripple Rings
             .pointsData(points)
             .pointColor(() => cfg.arcColors[0])
             .pointsMerge(true)
             .pointAltitude(0)
-            .pointRadius(cfg.pointSize / 4)
+            .pointRadius(cfg.pointSize / 3.5)
             .ringColor(() => (t) => `rgba(${theme === 'light' ? '16,185,129' : '6,182,212'},${1 - t})`)
             .ringMaxRadius(cfg.maxRings * 2)
-            .ringPropagationSpeed(2)
-            .ringRepeatPeriod(((cfg.arcTime * cfg.arcSpeedFactor) * cfg.arcLength) / cfg.rings);
+            .ringPropagationSpeed(1.8)
+            .ringRepeatPeriod(1200);
 
         scene.add(globe);
 
@@ -96,13 +133,13 @@ export default function Globe({ theme = 'dark', className = '' }) {
             })
             .catch(() => {});
 
-        // Ring berpindah-pindah antar kota
+        // Ring berpindah-pindah antar kota secara berkala
         let ringTimer;
         if (!reduceMotion) {
             ringTimer = setInterval(() => {
                 const picks = [...points].sort(() => 0.5 - Math.random()).slice(0, Math.min(cfg.maxRings, points.length));
                 globe.ringsData(picks);
-            }, 2500);
+            }, 2000);
         }
 
         // ---------- Controls ----------
@@ -130,7 +167,7 @@ export default function Globe({ theme = 'dark', className = '' }) {
         ro.observe(mount);
         resize();
 
-        // ---------- Loop (berhenti saat tidak terlihat) ----------
+        // ---------- Loop ----------
         let raf = 0;
         let visible = true;
         const loop = () => {

@@ -4,7 +4,7 @@ import { Code2, Users, Rocket, Package, Globe, Briefcase, Menu, X, Moon, Sun, Lo
 import { LOGO_SRC, NAV_LINKS } from './data';
 
 const ICONS = { code: Code2, users: Users, rocket: Rocket, package: Package, globe: Globe, briefcase: Briefcase };
-const SPY_IDS = ['about', 'projects', 'testimonials', 'contact'];
+const SPY_IDS = ['about', 'portofolio', 'testimonials', 'contact'];
 
 function Logo() {
     const [failed, setFailed] = useState(false);

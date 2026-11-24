@@ -424,15 +424,21 @@ export default function DeveloperSchedule() {
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-5 right-5 z-50 max-w-[calc(100vw-2rem)] px-4 py-3 rounded-xl shadow-2xl text-xs sm:text-sm font-medium flex items-center gap-2.5 border transition-all ${
-          toast.type === 'success'
-            ? 'bg-emerald-950/90 text-emerald-200 border-emerald-800'
-            : 'bg-red-950/90 text-red-200 border-red-800'
-        }`}>
-          {toast.type === 'success'
-            ? <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
-            : <AlertCircle size={18} className="text-red-400 shrink-0" />}
-          <span>{toast.message}</span>
+        <div
+          className={`fixed bottom-5 right-5 z-[100] max-w-sm flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 ${
+            toast.type === 'success'
+              ? 'bg-emerald-500/15 dark:bg-emerald-950/90 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
+              : 'bg-red-500/15 dark:bg-red-950/90 border-red-500/40 text-red-600 dark:text-red-300'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
+          ) : (
+            <AlertCircle size={18} className="shrink-0 text-red-500 dark:text-red-400" />
+          )}
+          <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug break-words">
+            {toast.message}
+          </span>
         </div>
       )}
 

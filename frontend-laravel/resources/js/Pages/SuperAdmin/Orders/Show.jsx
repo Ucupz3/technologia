@@ -4,11 +4,11 @@ import { Head, Link } from '@inertiajs/react';
 import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertCircle,
   MapPin, Star, ChevronDown, Check, Clock, Eye, FileText, X,
-  ShieldCheck, AlertTriangle
+  ShieldCheck, Calendar, Layers, Tag, Percent, Receipt
 } from 'lucide-react';
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
 const STATUS_OPTIONS = [
@@ -35,7 +35,7 @@ function OrderStatusBadge({ status }) {
     cancelled: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
   };
   return (
-    <span className={`inline-block text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 rounded-full font-medium border shrink-0 ${colors[status] || colors.draft}`}>
+    <span className={`inline-block text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 rounded-lg font-semibold border shrink-0 ${colors[status] || colors.draft}`}>
       {labels[status] || status}
     </span>
   );
@@ -145,13 +145,23 @@ export default function OrderShow({ orderId }) {
     <RoleLayout>
       <Head title={`Detail Order — ${order.name || order.order_number}`} />
 
-      {/* Toast Notification (Responsif: bawah di Mobile, atas di Desktop) */}
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-4 left-4 right-4 sm:bottom-auto sm:top-6 sm:left-auto sm:right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border transition ${
-          toast.type === 'success' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
-          <span className="text-xs sm:text-sm font-medium">{toast.message}</span>
+        <div
+          className={`fixed bottom-5 right-5 z-[100] max-w-sm flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 ${
+            toast.type === 'success'
+              ? 'bg-emerald-500/15 dark:bg-emerald-950/90 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
+              : 'bg-red-500/15 dark:bg-red-950/90 border-red-500/40 text-red-600 dark:text-red-300'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
+          ) : (
+            <AlertCircle size={18} className="shrink-0 text-red-500 dark:text-red-400" />
+          )}
+          <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug break-words">
+            {toast.message}
+          </span>
         </div>
       )}
 
@@ -159,7 +169,7 @@ export default function OrderShow({ orderId }) {
       <div className="mb-4 sm:mb-6">
         <button
           onClick={handleBack}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-6"
         >
           <ArrowLeft size={16} /> Kembali
         </button>
@@ -171,7 +181,7 @@ export default function OrderShow({ orderId }) {
                 {order.name || order.order_number}
               </h1>
               {order.parent_order_id && (
-                <span className="text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 font-medium">
+                <span className="text-[10px] sm:text-xs px-2.5 py-0.5 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 font-medium">
                   Order Perbaikan Maintenance
                 </span>
               )}
@@ -181,7 +191,7 @@ export default function OrderShow({ orderId }) {
             </p>
           </div>
 
-          {/* Action Buttons (Flex W-Full di Mobile, Auto di Desktop) */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <div className="relative flex-1 sm:flex-initial">
               <button
@@ -291,79 +301,84 @@ export default function OrderShow({ orderId }) {
 
         {/* KANAN: Layanan & Setoran Progres Tim Developer */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          {/* Card Layanan */}
+          {/* Card Layanan Dipesan (Clean UI/UX Redesign) */}
           <Card title="Layanan yang Dipesan">
-            {/* 1. CARD VIEW (MOBILE - < md) */}
-            <div className="block md:hidden divide-y divide-brand-border/50">
-              {services.map((s) => (
-                <div key={s.id} className="py-3 space-y-2 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-bold text-xs sm:text-sm text-brand-text truncate">{s.service_name_snapshot}</div>
-                      {s.category_name_snapshot && <div className="text-[11px] text-brand-text-muted">{s.category_name_snapshot}</div>}
+            <div className="space-y-3">
+              {/* Item List Layanan */}
+              <div className="divide-y divide-brand-border/40">
+                {services.map((s) => (
+                  <div key={s.id} className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-brand-accent/10 border border-brand-accent/20 text-brand-accent flex items-center justify-center shrink-0 mt-0.5">
+                        <Layers size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-brand-text truncate">
+                          {s.service_name_snapshot}
+                        </div>
+                        {s.category_name_snapshot && (
+                          <div className="text-xs text-brand-text-muted flex items-center gap-1 mt-0.5">
+                            <Tag size={11} className="shrink-0" />
+                            <span>{s.category_name_snapshot}</span>
+                          </div>
+                        )}
+                        {s.notes && (
+                          <p className="text-xs text-brand-text-muted/90 bg-brand-primary/40 px-2.5 py-1 rounded-lg border border-brand-border/40 mt-1.5 inline-block">
+                            {s.notes}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-brand-text shrink-0">{formatRupiah(s.subtotal)}</span>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-1 sm:pt-0">
+                      <div className="text-xs text-brand-text-muted">
+                        <span>{formatRupiah(s.price_deal)}</span>
+                        <span className="mx-1">×</span>
+                        <span className="font-semibold text-brand-text">{s.quantity}</span>
+                      </div>
+                      <div className="text-sm font-bold text-brand-text">
+                        {formatRupiah(s.subtotal)}
+                      </div>
+                    </div>
                   </div>
-                  {s.notes && <div className="text-xs text-brand-text-muted bg-brand-primary/40 p-2 rounded-lg border border-brand-border/40">{s.notes}</div>}
-                  <div className="flex justify-between items-center text-xs text-brand-text-muted pt-1">
-                    <span>{formatRupiah(s.price_deal)} × {s.quantity}</span>
-                    <span className="font-medium text-brand-text">Qty: {s.quantity}</span>
+                ))}
+              </div>
+
+              {/* Rincian Pembayaran Box */}
+              <div className="mt-4 pt-4 border-t border-brand-border/60">
+                <div className="bg-brand-primary/50 border border-brand-border/60 rounded-xl p-4 space-y-2.5 w-full sm:max-w-xs ml-auto">
+                  <div className="flex justify-between text-xs text-brand-text-muted">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-brand-text">{formatRupiah(order.subtotal)}</span>
+                  </div>
+
+                  {Number(order.discount) > 0 && (
+                    <div className="flex justify-between text-xs text-red-500 font-medium">
+                      <span>Diskon</span>
+                      <span>-{formatRupiah(order.discount)}</span>
+                    </div>
+                  )}
+
+                  {Number(order.tax) > 0 && (
+                    <div className="flex justify-between text-xs text-brand-text-muted">
+                      <span>Pajak ({order.tax_rate}%)</span>
+                      <span className="font-semibold text-brand-text">+{formatRupiah(order.tax)}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-brand-border/60 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-brand-text-muted">Grand Total</span>
+                    <span className="text-base font-bold text-brand-accent">
+                      {formatRupiah(order.grand_total)}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* 2. TABLE VIEW (DESKTOP - >= md) */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-brand-muted/30 border-b border-brand-border">
-                  <tr>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Layanan</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Harga Satuan</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-center">Qty</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-border/50">
-                  {services.map((s) => (
-                    <tr key={s.id} className="hover:bg-brand-muted/20">
-                      <td className="px-3 py-2.5">
-                        <div className="font-medium text-brand-text">{s.service_name_snapshot}</div>
-                        {s.category_name_snapshot && <div className="text-xs text-brand-text-muted/80">{s.category_name_snapshot}</div>}
-                        {s.notes && <div className="text-xs text-brand-text-muted">{s.notes}</div>}
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-brand-text">{formatRupiah(s.price_deal)}</td>
-                      <td className="px-3 py-2.5 text-center text-brand-text">{s.quantity}</td>
-                      <td className="px-3 py-2.5 text-right font-medium text-brand-text">{formatRupiah(s.subtotal)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Total Calculations */}
-            <div className="mt-4 pt-4 border-t border-brand-border space-y-2 w-full sm:max-w-xs sm:ml-auto">
-              <div className="flex justify-between text-xs sm:text-sm text-brand-text-muted">
-                <span>Subtotal</span>
-                <span className="font-medium text-brand-text">{formatRupiah(order.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-xs sm:text-sm text-red-500">
-                <span>Diskon</span>
-                <span className="font-medium">-{formatRupiah(order.discount)}</span>
-              </div>
-              <div className="flex justify-between text-xs sm:text-sm text-brand-text-muted">
-                <span>Pajak ({order.tax_rate}%)</span>
-                <span className="font-medium text-brand-text">+{formatRupiah(order.tax)}</span>
-              </div>
-              <div className="flex justify-between text-sm sm:text-base font-bold text-brand-accent pt-2 border-t border-brand-border mt-2">
-                <span>Grand Total</span>
-                <span>{formatRupiah(order.grand_total)}</span>
               </div>
             </div>
           </Card>
 
           {/* Card Progres Developer */}
-          <Card title="Tim Pengerjaan & Setoran Progres Developer">
+          <Card title="Tim Pengerjaan & Progres Developer">
             {allTasksFinished && order.status !== 'completed' && (
               <div className="mb-4 sm:mb-5 p-3.5 sm:p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
                 <div className="flex items-start gap-2.5">
@@ -398,200 +413,98 @@ export default function OrderShow({ orderId }) {
             {assignments.length === 0 ? (
               <p className="text-xs sm:text-sm text-brand-text-muted italic text-center py-4">Belum ada anggota tim yang ditugaskan.</p>
             ) : (
-              <>
-                {/* 1. CARD VIEW (MOBILE - < md) */}
-                <div className="block md:hidden space-y-3">
-                  {assignments.map((a) => {
-                    const latestProgress = a.progress_order?.[0];
-                    const progress = latestProgress?.progress_percentage ?? 0;
-                    const taskStatus = latestProgress?.status ?? (progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending');
-                    const notes = latestProgress?.notes;
+              <div className="space-y-3">
+                {assignments.map((a) => {
+                  const latestProgress = a.progress_order?.[0];
+                  const progress = latestProgress?.progress_percentage ?? 0;
+                  const taskStatus = latestProgress?.status ?? (progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending');
+                  const devName = a.team_members?.users?.name || 'Developer';
+                  const initials = devName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 
-                    return (
-                      <div key={a.id} className="p-3.5 bg-brand-primary/40 rounded-xl border border-brand-border/60 space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-brand-text truncate">
-                              <span>{a.team_members?.users?.name || '—'}</span>
-                              {a.is_lead && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 font-semibold border border-amber-500/30 shrink-0">
-                                  <Star size={9} className="fill-amber-500" /> Lead
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
-                                Fase {a.phase_order || 1}
+                  return (
+                    <div
+                      key={a.id}
+                      className="p-3.5 sm:p-4 bg-brand-primary/40 border border-brand-border/60 hover:border-brand-accent/40 rounded-xl transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      {/* Developer Details & Role */}
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-brand-accent/15 border border-brand-accent/30 text-brand-accent font-bold text-xs flex items-center justify-center shrink-0">
+                          {initials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-brand-text truncate">{devName}</span>
+                            {a.is_lead && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-500 font-semibold border border-amber-500/30">
+                                <Star size={10} className="fill-amber-500" /> Lead
                               </span>
-                              <span className="inline-block text-[10px] px-2 py-0.5 rounded bg-brand-muted text-brand-text-muted border border-brand-border">
-                                {a.jobs?.name || '—'}
-                              </span>
-                            </div>
+                            )}
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
+                              Fase {a.phase_order || 1}
+                            </span>
                           </div>
 
-                          <div className="shrink-0">
-                            {taskStatus === 'completed' || progress === 100 ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle2 size={10} /> Selesai
-                              </span>
-                            ) : taskStatus === 'in_progress' || progress > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                                <Clock size={10} /> Proses
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-500/15 text-gray-400 border border-gray-500/30">
-                                Belum
+                          <div className="flex items-center gap-3 text-xs text-brand-text-muted mt-1 flex-wrap">
+                            <span className="font-medium text-brand-text/90">{a.jobs?.name || '—'}</span>
+                            {a.start_date && a.end_date && (
+                              <span className="flex items-center gap-1 text-[11px] text-brand-text-muted/80">
+                                <Calendar size={12} className="shrink-0" />
+                                {formatDate(a.start_date)} - {formatDate(a.end_date)}
                               </span>
                             )}
                           </div>
                         </div>
+                      </div>
 
-                        {/* Progress Bar */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] text-brand-text-muted font-medium">
-                            <span>Progres</span>
-                            <span className="text-brand-text font-bold">{progress}%</span>
-                          </div>
-                          <div className="w-full bg-brand-muted rounded-full h-2 overflow-hidden border border-brand-border/40">
-                            <div
-                              className={`h-full transition-all duration-300 ${progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}
-                              style={{ width: `${progress}%` }}
-                            />
+                      {/* Status, Visual Progress & Action */}
+                      <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-brand-border/40">
+                        {/* Progress Bar & Status Badge */}
+                        <div className="flex items-center gap-3 min-w-[150px] sm:min-w-[180px]">
+                          <div className="flex-1 space-y-1">
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="text-brand-text-muted font-medium">
+                                {taskStatus === 'completed' || progress === 100 ? (
+                                  <span className="text-emerald-500 font-semibold">Selesai</span>
+                                ) : taskStatus === 'in_progress' || progress > 0 ? (
+                                  <span className="text-blue-400 font-semibold">Proses</span>
+                                ) : (
+                                  <span className="text-brand-text-muted">Belum Dimulai</span>
+                                )}
+                              </span>
+                              <span className="font-bold text-brand-text">{progress}%</span>
+                            </div>
+                            <div className="w-full bg-brand-muted rounded-full h-1.5 overflow-hidden border border-brand-border/40">
+                              <div
+                                className={`h-full transition-all duration-300 ${
+                                  progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-500/40'
+                                }`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        {/* Catatan Terakhir */}
-                        {notes && (
-                          <div className="text-xs text-brand-text-muted bg-brand-primary/60 p-2.5 rounded-lg border border-brand-border/40">
-                            <p className="line-clamp-2 leading-relaxed text-brand-text">{notes}</p>
-                            <span className="text-[10px] text-brand-text-muted/80 mt-1 block">
-                              Diupdate: {formatDateTime(latestProgress?.updated_at || latestProgress?.created_at)}
-                            </span>
-                          </div>
-                        )}
-
+                        {/* Action Detail */}
                         <button
                           type="button"
                           onClick={() => setSelectedAssignment(a)}
-                          className="w-full justify-center inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-brand-primary border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent transition shadow-sm"
+                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-brand-primary border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent transition shadow-sm flex items-center gap-1.5 shrink-0"
+                          title="Lihat Detail Setoran"
                         >
-                          <Eye size={14} /> Lihat Detail Setoran
+                          <Eye size={14} />
+                          <span className="hidden sm:inline">Detail</span>
                         </button>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* 2. TABLE VIEW (DESKTOP - >= md) */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-brand-muted/30 border-b border-brand-border">
-                      <tr>
-                        <th className="px-3 py-2.5 font-semibold text-brand-text-muted text-xs uppercase tracking-widest">Fase</th>
-                        <th className="px-3 py-2.5 font-semibold text-brand-text-muted text-xs uppercase tracking-widest">Developer & Posisi</th>
-                        <th className="px-3 py-2.5 font-semibold text-brand-text-muted text-xs uppercase tracking-widest">Status Tugas</th>
-                        <th className="px-3 py-2.5 font-semibold text-brand-text-muted text-xs uppercase tracking-widest">Progres</th>
-                        <th className="px-3 py-2.5 font-semibold text-brand-text-muted text-xs uppercase tracking-widest">Catatan Setoran Terakhir</th>
-                        <th className="px-3 py-2.5 font-semibold text-brand-text-muted text-xs uppercase tracking-widest text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-brand-border/50">
-                      {assignments.map((a) => {
-                        const latestProgress = a.progress_order?.[0];
-                        const progress = latestProgress?.progress_percentage ?? 0;
-                        const taskStatus = latestProgress?.status ?? (progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending');
-                        const notes = latestProgress?.notes;
-
-                        return (
-                          <tr key={a.id} className="hover:bg-brand-muted/20 transition">
-                            <td className="px-3 py-3 align-top">
-                              <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
-                                Fase {a.phase_order || 1}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              <div className="flex items-center gap-1.5 font-medium text-brand-text">
-                                <span>{a.team_members?.users?.name || '—'}</span>
-                                {a.is_lead && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 font-semibold border border-amber-500/30">
-                                    <Star size={10} className="fill-amber-500" /> Lead
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-1">
-                                <span className="inline-block text-[11px] px-2 py-0.5 rounded bg-brand-muted text-brand-text-muted border border-brand-border">
-                                  {a.jobs?.name || '—'}
-                                </span>
-                              </div>
-                              {a.start_date && a.end_date && (
-                                <div className="text-[11px] text-brand-text-muted/70 mt-1">
-                                  {formatDate(a.start_date)} - {formatDate(a.end_date)}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              {taskStatus === 'completed' || progress === 100 ? (
-                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                  <CheckCircle2 size={12} /> Tugas Selesai
-                                </span>
-                              ) : taskStatus === 'in_progress' || progress > 0 ? (
-                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                                  <Clock size={12} /> Sedang Dikerjakan
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-gray-500/15 text-gray-400 border border-gray-500/30">
-                                  Belum Dimulai
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              <div className="flex items-center gap-2">
-                                <div className="w-16 bg-brand-muted rounded-full h-1.5 overflow-hidden border border-brand-border/40">
-                                  <div
-                                    className={`h-full transition-all duration-300 ${progress === 100 ? 'bg-emerald-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}
-                                    style={{ width: `${progress}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs font-semibold text-brand-text">{progress}%</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 align-top max-w-xs">
-                              {notes ? (
-                                <div>
-                                  <p className="text-xs text-brand-text line-clamp-2 leading-relaxed">
-                                    {notes}
-                                  </p>
-                                  <span className="text-[10px] text-brand-text-muted mt-1 block">
-                                    Diupdate: {formatDateTime(latestProgress?.updated_at || latestProgress?.created_at)}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-brand-text-muted italic">Belum ada catatan setoran</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 align-top text-center">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedAssignment(a)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-primary border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent transition shadow-sm"
-                              >
-                                <Eye size={13} />
-                                Detail
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </Card>
         </div>
       </div>
 
-      {/* MODAL DETAIL ASSIGNMENT (RESPONSIF) */}
+      {/* MODAL DETAIL ASSIGNMENT */}
       {selectedAssignment && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <div className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -606,7 +519,7 @@ export default function OrderShow({ orderId }) {
                   <h3 className="font-bold text-brand-text text-sm sm:text-base flex items-center gap-1.5 flex-wrap truncate">
                     <span>{selectedAssignment.team_members?.users?.name || 'Developer'}</span>
                     {selectedAssignment.is_lead && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 font-semibold border border-amber-500/30">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-500 font-semibold border border-amber-500/30">
                         <Star size={10} className="fill-amber-500" /> Lead
                       </span>
                     )}

@@ -1,74 +1,50 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
-  RefreshCw, Search, Plus, FileText, CheckCircle2, AlertCircle,
-  Users, ChevronDown, Check, X
+  RefreshCw, Search, Plus, FileText,
+  CheckCircle2, AlertCircle, Users, ChevronDown, Check, X
 } from 'lucide-react';
 
-// Currency & Date helpers (English format)
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
-const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-const formatDateTime = (d) =>
-  d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
-// Status filter options
+function getBasePath() {
+  return window.location.pathname.replace(/\/orders.*$/, '');
+}
+
 const STATUS_OPTIONS = [
-  { value: 'draft',       label: 'Draft' },
   { value: 'pending',     label: 'Pending' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'completed',   label: 'Completed' },
   { value: 'cancelled',   label: 'Cancelled' },
 ];
 
-// Order Progress Status Badge
 function OrderStatusBadge({ status }) {
   const labels = {
-    draft:       'Draft',
-    pending:     'Pending',
+    draft: 'Draft',
+    pending: 'Pending',
     in_progress: 'In Progress',
-    completed:   'Completed',
-    cancelled:   'Cancelled',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
   };
   const colors = {
-    draft:       'bg-gray-500/15 text-gray-400 border-gray-500/40',
-    pending:     'bg-amber-500/15 text-amber-400 border-amber-500/40',
-    in_progress: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
-    completed:   'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
-    cancelled:   'bg-red-500/15 text-red-400 border-red-500/40',
+    draft: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/40',
+    pending: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40',
+    in_progress: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40',
+    completed: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
+    cancelled: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
   };
   return (
-    <span className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium border ${colors[status] || colors.draft}`}>
+    <span className={`inline-block text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full font-medium border shrink-0 ${colors[status] || colors.draft}`}>
       {labels[status] || status}
     </span>
   );
 }
 
-// Order Payment Status Badge
-function PaymentStatusBadge({ status }) {
-  const labels = {
-    unpaid:   'Unpaid',
-    partial:  'Partial (DP)',
-    paid:     'Paid',
-    refunded: 'Refunded',
-    failed:   'Failed',
-  };
-  const colors = {
-    unpaid:   'bg-red-500/15 text-red-400 border-red-500/40',
-    partial:  'bg-amber-500/15 text-amber-400 border-amber-500/40',
-    paid:     'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
-    refunded: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
-    failed:   'bg-gray-500/15 text-gray-400 border-gray-500/40',
-  };
-  return (
-    <span className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium border ${colors[status] || colors.unpaid}`}>
-      {labels[status] || status}
-    </span>
-  );
-}
+export default function OrdersIndex() {
+  const { auth } = usePage().props;
+  const currentUserId = auth?.user?.id;
 
-export default function CustomerServiceOrdersIndex() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -77,148 +53,144 @@ export default function CustomerServiceOrdersIndex() {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
+  const basePath = getBasePath();
+
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Fetch orders from Express API via Laravel proxy
-  const loadOrders = () => {
+  const load = () => {
     setLoading(true);
     setError('');
     fetch('/api/v1/orders')
       .then((r) => r.json())
       .then((d) => {
         if (d.success) setOrders(d.data || []);
-        else setError(d.message || 'Failed to load orders');
+        else setError(d.message || 'Gagal ambil data');
         setLoading(false);
       })
       .catch((e) => {
-        setError(e.message || 'Failed to connect to server');
+        setError(e.message || 'Terjadi kesalahan jaringan');
         setLoading(false);
       });
   };
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  // Filter orders by search query and progress status
-  const filtered = orders.filter((o) => {
+  // Filter KHUSUS order yang ditangani / dibuat oleh user CS yang sedang login
+  const myOrders = orders.filter((o) => {
+    if (!currentUserId) return true;
+
+    const currentIdStr = String(currentUserId);
+    const csIdStr = String(o.cs_id ?? o.sales_id ?? o.customer_service_id ?? '');
+    const createdByStr = String(o.created_by ?? '');
+    const userIdStr = String(o.user_id ?? '');
+
+    return (
+      (csIdStr !== '' && csIdStr === currentIdStr) ||
+      (createdByStr !== '' && createdByStr === currentIdStr) ||
+      (userIdStr !== '' && userIdStr === currentIdStr)
+    );
+  });
+
+  const filtered = myOrders.filter((o) => {
     const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      o.order_number?.toLowerCase().includes(q) ||
-      o.customer_name_snapshot?.toLowerCase().includes(q) ||
-      o.pic_name_snapshot?.toLowerCase().includes(q) ||
-      o.customers?.name?.toLowerCase().includes(q) ||
-      o.teams?.name?.toLowerCase().includes(q);
+    const matchSearch = !q
+      || o.name?.toLowerCase().includes(q)
+      || o.customer_name_snapshot?.toLowerCase().includes(q)
+      || o.order_number?.toLowerCase().includes(q);
     const matchStatus = !statusFilter || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
   return (
     <RoleLayout>
-      <Head title="Orders - Customer Service" />
+      <Head title="My Orders" />
 
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${
+          className={`fixed bottom-5 right-5 z-[100] max-w-sm flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 ${
             toast.type === 'success'
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-              : 'bg-red-500/15 border-red-500/40 text-red-400'
+              ? 'bg-emerald-500/15 dark:bg-emerald-950/90 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
+              : 'bg-red-500/15 dark:bg-red-950/90 border-red-500/40 text-red-600 dark:text-red-300'
           }`}
         >
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
+          {toast.type === 'success' ? (
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
+          ) : (
+            <AlertCircle size={18} className="shrink-0 text-red-500 dark:text-red-400" />
+          )}
+          <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug break-words">
+            {toast.message}
+          </span>
         </div>
       )}
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-brand-text">Orders</h1>
-        <p className="text-sm text-brand-text-muted mt-1">
-          Total {orders.length} orders
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-brand-text">My Orders</h1>
+        <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5">
+          Total {myOrders.length} order yang Anda tangani
         </p>
       </div>
 
-      {/* Search & Filter Toolbar */}
+      {/* ============ FILTER BAR ============ */}
       <div className="mb-4 space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
+          
+          {/* SEARCH + STATUS FILTER */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
             {/* Search Input */}
-            <div className="relative flex-1 min-w-0 max-w-md">
+            <div className="relative flex-1 min-w-0">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
               <input
                 type="text"
-                placeholder="Search order number, customer, PIC, or team..."
+                placeholder="Cari nama order atau customer..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 bg-brand-primary border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+                className="w-full pl-10 pr-9 py-2.5 sm:py-3 bg-brand-primary border border-brand-border rounded-xl text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
               />
               {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition"
+                <button 
+                  type="button" 
+                  onClick={() => setSearch('')} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition p-1"
                 >
                   <X size={14} />
                 </button>
               )}
             </div>
 
-            {/* Status Dropdown Filter */}
-            <div className="relative sm:w-44 sm:shrink-0">
+            {/* Custom Dropdown Status */}
+            <div className="relative sm:w-44 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsStatusOpen(!isStatusOpen)}
-                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
+                className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm"
               >
-                <span className="truncate">
-                  {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'All Status'}
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${
-                    isStatusOpen ? 'rotate-180 text-brand-accent' : ''
-                  }`}
-                />
+                <span className="truncate">{STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || 'Semua Status'}</span>
+                <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isStatusOpen ? 'rotate-180 text-brand-accent' : ''}`} />
               </button>
 
               {isStatusOpen && (
                 <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter('');
-                      setIsStatusOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
-                      !statusFilter
-                        ? 'bg-brand-accent/15 text-brand-accent font-medium'
-                        : 'text-brand-text hover:bg-brand-border/40'
-                    }`}
+                  <button 
+                    type="button" 
+                    onClick={() => { setStatusFilter(''); setIsStatusOpen(false); }} 
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition-colors ${!statusFilter ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
                   >
-                    <span>All Status</span>
-                    {!statusFilter && <Check size={14} className="text-brand-accent" />}
+                    <span>Semua Status</span>{!statusFilter && <Check size={14} className="text-brand-accent" />}
                   </button>
                   {STATUS_OPTIONS.map((s) => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => {
-                        setStatusFilter(s.value);
-                        setIsStatusOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
-                        statusFilter === s.value
-                          ? 'bg-brand-accent/15 text-brand-accent font-medium'
-                          : 'text-brand-text hover:bg-brand-border/40'
-                      }`}
+                    <button 
+                      key={s.value} 
+                      type="button" 
+                      onClick={() => { setStatusFilter(s.value); setIsStatusOpen(false); }} 
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition-colors ${statusFilter === s.value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
                     >
-                      <span className="truncate">{s.label}</span>
-                      {statusFilter === s.value && <Check size={14} className="text-brand-accent" />}
+                      <span className="truncate">{s.label}</span>{statusFilter === s.value && <Check size={14} className="text-brand-accent" />}
                     </button>
                   ))}
                 </div>
@@ -226,137 +198,159 @@ export default function CustomerServiceOrdersIndex() {
             </div>
           </div>
 
-          {/* Action Buttons Aligned with Filter (Matching Super Admin) */}
+          {/* REFRESH + BUAT ORDER */}
           <div className="flex items-center gap-2 lg:shrink-0 lg:ml-auto">
-            <button
-              onClick={loadOrders}
-              className="bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-sm transition shadow-sm"
+            <button 
+              onClick={load} 
+              className="flex-1 sm:flex-initial justify-center bg-brand-primary border border-brand-border text-brand-text px-3 py-2.5 sm:py-3 rounded-xl hover:bg-brand-muted flex items-center gap-2 text-xs sm:text-sm font-medium transition shadow-sm"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span>Refresh</span>
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /><span>Refresh</span>
             </button>
-            <Link
-              href="/cs/orders/create"
-              className="bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-sm transition shadow-sm whitespace-nowrap"
+            <Link 
+              href={`${basePath}/orders/create`} 
+              className="flex-1 sm:flex-initial justify-center bg-brand-accent text-brand-primary font-semibold px-4 py-2.5 sm:py-3 rounded-xl hover:bg-brand-accent2 flex items-center gap-1.5 text-xs sm:text-sm transition shadow-sm whitespace-nowrap"
             >
-              <Plus size={16} /> Create Order
+              <Plus size={16} /> Buat Order
             </Link>
           </div>
         </div>
 
-        {/* Filter Summary */}
+        {/* Info Filter Aktif */}
         {(search || statusFilter) && (
-          <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2 rounded-xl backdrop-blur-sm">
-            <span>
-              Showing <strong className="text-brand-text font-semibold">{filtered.length}</strong> of{' '}
-              {orders.length} orders
-            </span>
-            <button
-              onClick={() => {
-                setSearch('');
-                setStatusFilter('');
-                setIsStatusOpen(false);
-              }}
+          <div className="flex items-center justify-between text-xs text-brand-text-muted bg-brand-primary/60 border border-brand-border/60 px-3.5 py-2.5 rounded-xl backdrop-blur-sm">
+            <span>Menampilkan <strong className="text-brand-text font-semibold">{filtered.length}</strong> dari {myOrders.length} order Anda</span>
+            <button 
+              onClick={() => { setSearch(''); setStatusFilter(''); setIsStatusOpen(false); }} 
               className="text-brand-accent hover:text-brand-accent2 flex items-center gap-1.5 font-medium transition"
             >
-              <X size={13} /> Reset Filter
+              <X size={13} /> Reset filter
             </button>
           </div>
         )}
       </div>
 
-      {/* Orders Table */}
-      <div className="bg-brand-secondary rounded-lg border border-brand-border overflow-hidden">
+      {/* ============ DATA VIEW CONTAINER ============ */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border overflow-hidden shadow-sm">
         {loading && (
-          <div className="p-12 text-center text-brand-text-muted">
+          <div className="p-8 sm:p-12 text-center text-brand-text-muted">
             <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-            Loading orders...
+            <p className="text-xs sm:text-sm">Loading...</p>
           </div>
         )}
-
+        
         {error && (
-          <div className="p-8 text-center">
-            <p className="text-red-500 mb-3">Error: {error}</p>
-            <button onClick={loadOrders} className="text-brand-accent underline hover:no-underline">
-              Try again
-            </button>
+          <div className="p-6 sm:p-8 text-center">
+            <p className="text-red-600 dark:text-red-400 mb-3 text-xs sm:text-sm">Error: {error}</p>
+            <button onClick={load} className="text-brand-accent underline hover:no-underline text-xs sm:text-sm font-medium">Coba lagi</button>
           </div>
         )}
-
+        
         {!loading && !error && filtered.length === 0 && (
-          <div className="p-12 text-center">
+          <div className="p-8 sm:p-12 text-center">
             <FileText size={48} className="mx-auto mb-3 text-brand-text-muted/40" />
-            <p className="text-brand-text-muted">No orders found</p>
+            <p className="text-brand-text-muted text-xs sm:text-sm">
+              {myOrders.length === 0 ? 'Belum ada order yang Anda tangani' : 'Tidak ada order yang cocok'}
+            </p>
           </div>
         )}
 
         {!loading && !error && filtered.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-brand-muted/40 border-b border-brand-border">
-                <tr>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Order No.</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Customer</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Team</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Total Amount</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Order Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-border/50">
-                {filtered.map((o) => (
-                  <tr key={o.id} className="hover:bg-brand-muted/40 transition">
-                    {/* Order No */}
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-brand-text text-sm font-mono whitespace-nowrap">
-                        {o.order_number}
+          <>
+            {/* 1. CARD VIEW (MOBILE - < md) */}
+            <div className="block md:hidden divide-y divide-brand-border/50">
+              {filtered.map((o) => (
+                <div key={o.id} className="p-4 space-y-3 hover:bg-brand-muted/30 transition">
+                  <div className="flex items-center justify-end gap-2">
+                    <OrderStatusBadge status={o.status} />
+                  </div>
+
+                  <div className="bg-brand-primary/40 rounded-xl p-3 border border-brand-border/40 space-y-2">
+                    <div>
+                      <span className="text-brand-text-muted text-[10px] uppercase tracking-wider block font-semibold mb-0.5">Nama Order</span>
+                      <span className="text-xs text-brand-text font-medium truncate block">
+                        {o.name || <span className="text-brand-text-muted italic">—</span>}
                       </span>
-                    </td>
+                    </div>
 
-                    {/* Customer */}
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-brand-text">
-                        {o.customer_name_snapshot || o.customers?.name || '—'}
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-brand-border/30">
+                      <div>
+                        <span className="text-brand-text-muted text-[10px] uppercase tracking-wider block font-semibold">Customer</span>
+                        <span className="text-brand-text truncate block font-medium">{o.customer_name_snapshot || '—'}</span>
                       </div>
-                    </td>
-
-                    {/* Assigned Team */}
-                    <td className="px-4 py-3 text-sm text-brand-text-muted">
-                      {o.teams?.name ? (
-                        <span className="inline-flex items-center gap-1 text-xs bg-brand-muted/50 px-2 py-1 rounded border border-brand-border">
-                          <Users size={12} /> {o.teams.name}
+                      <div>
+                        <span className="text-brand-text-muted text-[10px] uppercase tracking-wider block font-semibold">Tim</span>
+                        <span className="text-brand-text truncate block font-medium">
+                          {o.teams?.name ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-brand-text">
+                              <Users size={11} className="text-brand-text-muted shrink-0" /> {o.teams.name}
+                            </span>
+                          ) : '—'}
                         </span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-
-                    {/* Grand Total */}
-                    <td className="px-4 py-3 text-sm font-semibold text-brand-accent whitespace-nowrap">
-                      {formatRupiah(o.grand_total)}
-                    </td>
-
-                    {/* Order Progress Status */}
-                    <td className="px-4 py-3">
-                      <OrderStatusBadge status={o.status} />
-                    </td>
-
-                    {/* Action Button: Navigate to Dedicated Show Page */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end">
-                        <Link
-                          href={`/cs/orders/${o.id}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
-                        >
-                          Detail
-                        </Link>
                       </div>
-                    </td>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <span className="text-[10px] text-brand-text-muted uppercase tracking-wider block font-semibold">Total</span>
+                      <span className="text-sm font-bold text-brand-accent">{formatRupiah(o.grand_total)}</span>
+                    </div>
+                    <Link
+                      href={`${basePath}/orders/${o.id}`}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
+                    >
+                      Detail Order
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. TABLE VIEW (DESKTOP - >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-brand-muted/40 border-b border-brand-border">
+                  <tr>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Nama Order</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Customer</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Tim</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Total</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest">Status</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-brand-text-muted uppercase tracking-widest text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-brand-border/50">
+                  {filtered.map((o) => (
+                    <tr key={o.id} className="hover:bg-brand-muted/40 transition">
+                      <td className="px-4 py-3 text-sm text-brand-text font-medium">
+                        {o.name || <span className="text-brand-text-muted italic">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-brand-text">{o.customer_name_snapshot}</td>
+                      <td className="px-4 py-3 text-sm text-brand-text-muted">
+                        {o.teams?.name ? (
+                          <span className="inline-flex items-center gap-1 text-xs bg-brand-muted/50 px-2 py-1 rounded border border-brand-border">
+                            <Users size={12} /> {o.teams.name}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-brand-accent">{formatRupiah(o.grand_total)}</td>
+                      <td className="px-4 py-3"><OrderStatusBadge status={o.status} /></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end">
+                          <Link
+                            href={`${basePath}/orders/${o.id}`}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-accent border border-brand-accent/40 hover:bg-brand-accent/10 transition"
+                          >
+                            Detail
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </RoleLayout>

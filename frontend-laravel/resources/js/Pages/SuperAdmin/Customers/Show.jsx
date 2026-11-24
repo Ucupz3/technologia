@@ -4,12 +4,20 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
   ArrowLeft, RefreshCw, Mail, Phone, MapPin,
   AlertCircle, CheckCircle2, Pencil, Trash2, Plus,
-  Package, User, Save,
+  Package, User, Save, UserCheck, UserX,
 } from 'lucide-react';
 
 function getBasePath() {
   return window.location.pathname.replace(/\/customers.*$/, '');
 }
+
+const ORDER_STATUS_LABELS = {
+  draft:       'Draft',
+  pending:     'Pending',
+  in_progress: 'In Progress',
+  completed:   'Completed',
+  cancelled:   'Cancelled',
+};
 
 const ORDER_STATUS_COLORS = {
   draft:       'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/40',
@@ -18,6 +26,14 @@ const ORDER_STATUS_COLORS = {
   completed:   'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
   cancelled:   'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
 };
+
+function OrderStatusBadge({ status }) {
+  return (
+    <span className={`inline-block text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full font-medium border shrink-0 ${ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.draft}`}>
+      {ORDER_STATUS_LABELS[status] || status}
+    </span>
+  );
+}
 
 const PAYMENT_STATUS_COLORS = {
   unpaid:   'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40',
@@ -36,6 +52,7 @@ export default function CustomerShow({ customerId }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [picModalOpen, setPicModalOpen] = useState(false);
+  const [togglingPicId, setTogglingPicId] = useState(null);
   const [salesList, setSalesList] = useState([]);
 
   const basePath = getBasePath();
@@ -66,6 +83,29 @@ export default function CustomerShow({ customerId }) {
       .then((r) => r.json())
       .then((d) => { if (d.success) setSalesList(d.data || []); })
       .catch(() => {});
+  };
+
+  const handleTogglePicStatus = async (pic) => {
+    setTogglingPicId(pic.id);
+    const newStatus = !Boolean(pic.is_active);
+    try {
+      const res = await fetch(`/api/v1/customers/${customerId}/pics/${pic.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ is_active: newStatus }),
+      });
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        showToast('error', resData.message || 'Gagal mengubah status PIC');
+      } else {
+        showToast('success', `PIC ${pic.name} berhasil ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}`);
+        load();
+      }
+    } catch {
+      showToast('error', 'Gagal menghubungi server');
+    } finally {
+      setTogglingPicId(null);
+    }
   };
 
   useEffect(() => {
@@ -106,15 +146,23 @@ export default function CustomerShow({ customerId }) {
     <RoleLayout>
       <Head title={`Customer — ${data.name}`} />
 
-      {/* Toast Notification (Responsif: bawah di Mobile, atas di Desktop) */}
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-4 left-4 right-4 sm:bottom-auto sm:top-6 sm:left-auto sm:right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border transition ${
-          toast.type === 'success'
-            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-            : 'bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
-          <span className="text-xs sm:text-sm font-medium">{toast.message}</span>
+        <div
+          className={`fixed bottom-5 right-5 z-[100] max-w-sm flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 ${
+            toast.type === 'success'
+              ? 'bg-emerald-500/15 dark:bg-emerald-950/90 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
+              : 'bg-red-500/15 dark:bg-red-950/90 border-red-500/40 text-red-600 dark:text-red-300'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
+          ) : (
+            <AlertCircle size={18} className="shrink-0 text-red-500 dark:text-red-400" />
+          )}
+          <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug break-words">
+            {toast.message}
+          </span>
         </div>
       )}
 
@@ -122,7 +170,7 @@ export default function CustomerShow({ customerId }) {
       <div className="mb-4 sm:mb-6">
         <Link
           href={`${basePath}/customers`}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-6"
         >
           <ArrowLeft size={16} /> Kembali ke Customers
         </Link>
@@ -140,7 +188,7 @@ export default function CustomerShow({ customerId }) {
             </div>
           </div>
 
-          {/* Action Buttons (Full Width Grid di Mobile, Flex Auto di Desktop) */}
+          {/* Action Buttons */}
           <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
             <button 
               onClick={load}
@@ -221,32 +269,78 @@ export default function CustomerShow({ customerId }) {
               </div>
             ) : (
               <div className="divide-y divide-brand-border/50">
-                {pics.map((pic) => (
-                  <div key={pic.id} className="py-3 flex items-start sm:items-center justify-between gap-3 first:pt-0 last:pb-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 sm:w-9 sm:h-9 bg-brand-muted/60 rounded-full flex items-center justify-center text-brand-text font-semibold text-xs shrink-0">
-                        {getInitials(pic.name)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs sm:text-sm font-bold text-brand-text truncate flex items-center gap-1.5 flex-wrap">
-                          <span>{pic.name}</span>
-                          {pic.is_primary && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent border border-brand-accent/40 font-semibold uppercase tracking-wider">
-                              Primary
+                {pics.map((pic) => {
+                  const isActive = Boolean(pic.is_active ?? true);
+                  const isToggling = togglingPicId === pic.id;
+
+                  return (
+                    <div
+                      key={pic.id}
+                      className={`py-3 flex items-start sm:items-center justify-between gap-3 first:pt-0 last:pb-0 transition ${
+                        !isActive ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 bg-brand-muted/60 rounded-full flex items-center justify-center text-brand-text font-semibold text-xs shrink-0">
+                          {getInitials(pic.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs sm:text-sm font-bold text-brand-text truncate flex items-center gap-1.5 flex-wrap">
+                            <span>{pic.name}</span>
+                            {pic.is_primary && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent border border-brand-accent/40 font-semibold uppercase tracking-wider">
+                                Primary
+                              </span>
+                            )}
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border uppercase tracking-wider ${
+                                isActive
+                                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
+                                  : 'bg-gray-500/15 text-gray-500 border-gray-500/40'
+                              }`}
+                            >
+                              {isActive ? 'Aktif' : 'Nonaktif'}
                             </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-brand-text-muted truncate">
-                          {pic.position || '—'}
+                          </div>
+                          <div className="text-xs text-brand-text-muted truncate">
+                            {pic.position || '—'}
+                          </div>
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right text-xs text-brand-text-muted hidden sm:block">
+                          <div className="truncate max-w-[140px]">{pic.email || '—'}</div>
+                          <div>{pic.phone || '—'}</div>
+                        </div>
+
+                        {/* Quick Toggle Status Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePicStatus(pic)}
+                          disabled={isToggling}
+                          title={isActive ? 'Nonaktifkan PIC' : 'Aktifkan PIC'}
+                          className={`p-1.5 rounded-lg border text-xs font-medium flex items-center gap-1 transition ${
+                            isActive
+                              ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                          }`}
+                        >
+                          {isToggling ? (
+                            <RefreshCw size={13} className="animate-spin" />
+                          ) : isActive ? (
+                            <UserX size={13} />
+                          ) : (
+                            <UserCheck size={13} />
+                          )}
+                          <span className="hidden md:inline">
+                            {isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-right text-xs text-brand-text-muted shrink-0">
-                      <div className="truncate max-w-[120px] sm:max-w-none">{pic.email || '—'}</div>
-                      <div>{pic.phone || '—'}</div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -290,9 +384,7 @@ export default function CustomerShow({ customerId }) {
                       <div className="flex items-center justify-between gap-2 text-xs text-brand-text-muted">
                         <span>{formatDate(o.created_at)}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium border ${ORDER_STATUS_COLORS[o.status] || ORDER_STATUS_COLORS.draft}`}>
-                            {o.status}
-                          </span>
+                          <OrderStatusBadge status={o.status} />
                           <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium border ${PAYMENT_STATUS_COLORS[o.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
                             {o.payment_status}
                           </span>
@@ -329,9 +421,7 @@ export default function CustomerShow({ customerId }) {
                             {formatDate(o.created_at)}
                           </td>
                           <td className="px-2 py-2.5">
-                            <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium border ${ORDER_STATUS_COLORS[o.status] || ORDER_STATUS_COLORS.draft}`}>
-                              {o.status}
-                            </span>
+                            <OrderStatusBadge status={o.status} />
                           </td>
                           <td className="px-2 py-2.5">
                             <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium border ${PAYMENT_STATUS_COLORS[o.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
@@ -387,7 +477,7 @@ export default function CustomerShow({ customerId }) {
   );
 }
 
-// ============ HELPER COMPONENTS (RESPONSIF) ============
+// ============ HELPER COMPONENTS ============
 
 function Card({ title, subtitle, action, children }) {
   return (
@@ -419,6 +509,9 @@ function InfoRow({ icon: Icon, label, value }) {
 }
 
 function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError }) {
+  const pics = customer?.pics || customer?.customer_pics || [];
+  const primaryPic = pics.find((p) => p.is_primary);
+
   const [form, setForm] = useState({
     name: customer?.name || '',
     email: customer?.email || '',
@@ -426,6 +519,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
     address: customer?.address || '',
     notes: customer?.notes || '',
     sales_id: customer?.sales_id || '',
+    primary_pic_id: primaryPic ? primaryPic.id : (customer?.primary_pic_id || ''),
   });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -438,6 +532,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
     const payload = { ...form };
     if (!payload.phone) payload.phone = null;
     if (!payload.sales_id) payload.sales_id = null;
+    if (!payload.primary_pic_id) payload.primary_pic_id = null;
 
     try {
       const res = await fetch(`/api/v1/customers/${customer.id}`, {
@@ -471,6 +566,29 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
         <FormField label="Phone" value={form.phone}
           onChange={(v) => setForm({ ...form, phone: v })}
           error={errors.phone} placeholder="08123456789" />
+
+        {pics.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              PIC Utama
+            </label>
+            <select
+              value={form.primary_pic_id}
+              onChange={(e) => setForm({ ...form, primary_pic_id: e.target.value })}
+              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition"
+            >
+              <option value="">— Tidak ada PIC Utama —</option>
+              {pics.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.position ? `(${p.position})` : ''} {!Boolean(p.is_active ?? true) ? '— [Nonaktif]' : ''}
+                </option>
+              ))}
+            </select>
+            {errors.primary_pic_id && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.primary_pic_id[0]}</p>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Customer Service</label>
@@ -524,7 +642,7 @@ function CustomerEditModal({ customer, salesList, onClose, onSuccess, onError })
 
 function PicFormModal({ customerId, onClose, onSuccess, onError }) {
   const [form, setForm] = useState({
-    name: '', position: '', email: '', phone: '', is_primary: false,
+    name: '', position: '', email: '', phone: '', is_primary: false, is_active: true,
   });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -575,15 +693,27 @@ function PicFormModal({ customerId, onClose, onSuccess, onError }) {
           onChange={(v) => setForm({ ...form, phone: v })}
           error={errors.phone} placeholder="08123456789" />
 
-        <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1">
-          <input
-            type="checkbox"
-            checked={form.is_primary}
-            onChange={(e) => setForm({ ...form, is_primary: e.target.checked })}
-            className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-0"
-          />
-          <span className="text-xs sm:text-sm text-brand-text font-medium">Jadikan PIC utama</span>
-        </label>
+        <div className="space-y-2 pt-1">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.is_primary}
+              onChange={(e) => setForm({ ...form, is_primary: e.target.checked })}
+              className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-0"
+            />
+            <span className="text-xs sm:text-sm text-brand-text font-medium">Jadikan PIC utama</span>
+          </label>
+
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-0"
+            />
+            <span className="text-xs sm:text-sm text-brand-text font-medium">Status PIC Aktif</span>
+          </label>
+        </div>
       </form>
 
       <ModalFooter>

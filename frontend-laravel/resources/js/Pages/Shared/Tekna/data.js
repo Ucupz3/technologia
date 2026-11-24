@@ -1,5 +1,4 @@
 // resources/js/Pages/Shared/Tekna/data.js
-// Semua teks & link landing page dikumpulkan di sini supaya mudah diedit.
 
 export const SITE = 'https://tekna.id';
 
@@ -13,17 +12,15 @@ export const CONTACT = {
     linkedin: 'https://linkedin.com/company/tekna',
 };
 
-// Isi path logo Anda (mis. '/images/tekna-logo.png' di folder public).
-// Jika null, tampil logo teks sebagai pengganti sementara.
 export const LOGO_SRC = null;
 
 export const NAV_LINKS = [
     { label: 'Beranda', href: '/', icon: 'code' },
     { label: 'Tentang Kami', href: '/#about', icon: 'users' },
-    { label: 'Proyek', href: '/projects', icon: 'rocket' }, // Ubah ke /projects
-    { label: 'Product', href: '/products', icon: 'package' }, // Ubah ke /products
-    { label: 'Blog', href: '/blog', icon: 'globe' },          // Ubah ke /blog
-    { label: 'Career', href: '/career', icon: 'briefcase' },  // Ubah ke /career
+    { label: 'Portofolio', href: '/portofolio', icon: 'rocket' },
+    { label: 'Product', href: '/products', icon: 'package' },
+    { label: 'Blog', href: '/blog', icon: 'globe' },
+    { label: 'Career', href: '/career', icon: 'briefcase' },
 ];
 
 export const DISCIPLINES = [
@@ -46,37 +43,133 @@ export const DISCIPLINES = [
 
 export const PROJECTS = [
     {
+        id: 'tekna-erp',
+        slug: 'tekna-erp',
+        title: 'ERP Tekna',
+        date: '08/11/2025',
+        category: 'Web Application',
+        description: 'Sistem ERP komprehensif dengan analitik canggih, otomatisasi workflow, dan arsitektur multi-tenant untuk bisnis modern.',
+        overview: 'Digital enterprise resource planning system tailored for modern businesses, featuring integrated modules for inventory management, financial tracking, human resources, and real-time operational analytics.',
+        status: 'Active',
+        projectStatus: 'Completed',
+        createdDate: 'November 8, 2025',
+        updatedDate: 'November 8, 2025',
+        image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+        tags: ['Laravel 13', 'React', 'Inertia.js', 'Tailwind CSS', 'MySQL'],
+        demoUrl: '#',
+        githubUrl: '#',
+        featured: true,
+        gallery: [
+            'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80'
+        ]
+    },
+    {
+        id: 'tekna-web-platform',
         slug: 'tekna-web-platform',
         title: 'Tekna Web Platform',
-        image: `${SITE}/images/projects/tekna-web.jpg`,
-        icon: 'monitor',
-        tags: ['IoT', 'Web'],
-        desc: 'A comprehensive IoT monitoring platform designed to provide real-time insights and control over industrial equipment and environmental conditions.',
+        date: '08/11/2025',
+        category: 'Web Application',
+        description: 'Platform monitoring IoT canggih dengan dashboard real-time, sistem peringatan cerdas, dan pelaporan komprehensif untuk bisnis.',
+        overview: 'A comprehensive IoT monitoring platform designed to provide real-time insights and control over industrial equipment and environmental conditions, integrating secure API routes and instant data streaming.',
+        status: 'Active',
+        projectStatus: 'Completed',
+        createdDate: 'November 8, 2025',
+        updatedDate: 'November 8, 2025',
+        image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
+        tags: ['React', 'Vite', 'Tailwind CSS', 'Supabase'],
+        demoUrl: 'https://nusa-quest.truecupzz.tech',
+        githubUrl: '#',
+        featured: true,
+        gallery: [
+            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'
+        ]
     },
     {
+        id: 'tekna-mobile-app',
         slug: 'tekna-mobile-app',
         title: 'Tekna Mobile App',
-        image: `${SITE}/images/projects/tekna-mobile.jpg`,
-        icon: 'phone',
-        tags: ['IoT', 'Mobile'],
-        desc: 'Native mobile application for IoT monitoring that provides field engineers and managers with on-the-go access to critical system data.',
+        date: '08/11/2025',
+        category: 'UI/UX Design',
+        description: 'Aplikasi mobile profesional untuk monitoring IoT dengan kemampuan offline canggih, fitur AR, dan operasi lapangan yang efisien.',
+        overview: 'Professional mobile application for IoT monitoring that provides field engineers and managers with on-the-go access to critical system data, interactive AR maintenance overlays, and offline sync support.',
+        status: 'Active',
+        projectStatus: 'Completed',
+        createdDate: 'November 8, 2025',
+        updatedDate: 'November 8, 2025',
+        image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
+        tags: ['Figma', 'UI/UX Prototype', 'Mobile App Design'],
+        demoUrl: '#',
+        githubUrl: '#',
+        featured: true,
+        gallery: [
+            'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80'
+        ]
     },
     {
-        slug: 'erp-tekna',
-        title: 'ERP Tekna',
-        image: `${SITE}/images/projects/erp-tekna.jpg`,
-        icon: 'building',
-        tags: ['ERP', 'Web'],
-        desc: 'Enterprise Resource Planning system tailored for modern businesses, featuring integrated modules for inventory management, financial tracking, human resources, and project management.',
-    },
-    {
+        id: 'midea-e-warranty-mobile',
         slug: 'midea-e-warranty-mobile',
         title: 'Midea E-Warranty Mobile',
-        image: `${SITE}/images/projects/midea-warranty.jpg`,
-        icon: 'shield',
-        tags: ['Mobile', 'Customer Service'],
-        desc: 'Digital warranty management application for Midea home appliances, enabling customers to register products, claim warranties, and track service requests.',
+        date: '08/11/2025',
+        category: 'UI/UX Design',
+        description: 'Solusi manajemen garansi digital komprehensif dengan QR scanning, dukungan multibahasa, dan integrasi layanan seamless.',
+        overview: 'Digital warranty management application for Midea home appliances, enabling customers to register products, claim warranties, and track service requests. The app features advanced QR code scanning with product verification, comprehensive multilingual support for global markets, and seamless integration with service centers and customer support systems.',
+        status: 'Active',
+        projectStatus: 'Completed',
+        createdDate: 'November 8, 2025',
+        updatedDate: 'November 8, 2025',
+        image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
+        tags: ['Figma', 'Mobile UI', 'Prototyping'],
+        demoUrl: '#',
+        githubUrl: '#',
+        featured: true,
+        gallery: [
+            'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=800&q=80'
+        ]
     },
+    {
+        id: 'traffic-monitoring',
+        slug: 'traffic-monitoring',
+        title: 'Computer Vision Traffic Monitor',
+        date: '15/10/2025',
+        category: 'AI & Computer Vision',
+        description: 'Dashboard pemantauan dan deteksi pelanggaran kendaraan secara real-time menggunakan alur pengolahan kamera dan pemodelan YOLOv8.',
+        overview: 'Real-time vehicle violation tracking dashboard powered by custom YOLOv8 computer vision model pipelines and OpenCV Flask server.',
+        status: 'Active',
+        projectStatus: 'Completed',
+        createdDate: 'October 15, 2025',
+        updatedDate: 'October 15, 2025',
+        image: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80',
+        tags: ['Python', 'OpenCV', 'YOLOv8', 'Flask'],
+        demoUrl: '#',
+        githubUrl: '#',
+        featured: false,
+        gallery: [
+            'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80'
+        ]
+    },
+    {
+        id: 'hr-sports',
+        slug: 'hr-sports',
+        title: 'HR Sports Landing Page',
+        date: '20/08/2025',
+        category: 'Web Application',
+        description: 'Landing page responsif toko sepatu dan perlengkapan olahraga modern dengan optimasi performa dan animasi transisi antarmuka.',
+        overview: 'Responsive storefront landing page built for shoe and sportswear showcase featuring optimized UI transitions and clean responsive layouts.',
+        status: 'Active',
+        projectStatus: 'Completed',
+        createdDate: 'August 20, 2025',
+        updatedDate: 'August 20, 2025',
+        image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
+        tags: ['React', 'Vite', 'Tailwind CSS', 'AOS'],
+        demoUrl: 'https://hrsports.truecupzz.tech',
+        githubUrl: '#',
+        featured: false,
+        gallery: [
+            'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80'
+        ]
+    }
 ];
 
 export const TESTIMONIALS = [

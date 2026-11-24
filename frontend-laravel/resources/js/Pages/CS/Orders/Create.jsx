@@ -2,102 +2,124 @@ import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-  ArrowLeft, RefreshCw, Save, ChevronDown, Check,
-  User, UserCircle, Briefcase, Users, Package, Percent,
-  AlertCircle, CheckCircle2, Calendar, FileText, Info
+  ArrowLeft, RefreshCw, Save, ChevronDown, Check, Search, X,
+  User, UserCircle, Briefcase, Users, Package, Percent, Plus, Trash2, AlertCircle
 } from 'lucide-react';
 
 const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 
-function CustomSelect({ label, value, options, onChange, placeholder, disabled, icon: Icon, error, onDisabledClick }) {
+function getBasePath() {
+  return window.location.pathname.replace(/\/orders.*$/, '');
+}
+
+function CustomSelect({ label, value, options, onChange, placeholder, disabled, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find((o) => String(o.value) === String(value));
+  const [searchQuery, setSearchQuery] = useState('');
+  const selectedOption = options.find(o => String(o.value) === String(value));
+
+  const filteredOptions = options.filter(opt => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const labelMatch = String(opt.label || '').toLowerCase().includes(q);
+    const subtextMatch = String(opt.subtext || '').toLowerCase().includes(q);
+    const searchTextMatch = String(opt.searchText || '').toLowerCase().includes(q);
+    const badgeMatch = String(opt.badge || '').toLowerCase().includes(q);
+    return labelMatch || subtextMatch || searchTextMatch || badgeMatch;
+  });
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setSearchQuery('');
+  };
 
   return (
-    <div className={`relative ${isOpen ? 'z-40' : 'z-10'}`}>
-      <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
-        {label}
-      </label>
+    <div className="relative">
+      {label && <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">{label}</label>}
       <button
         type="button"
+        disabled={disabled}
         onClick={() => {
-          if (disabled) {
-            if (onDisabledClick) onDisabledClick();
-          } else {
-            setIsOpen(!isOpen);
-          }
+          if (!isOpen) setSearchQuery('');
+          setIsOpen(!isOpen);
         }}
-        className={`w-full flex items-center justify-between bg-brand-primary border rounded-xl px-3.5 py-2.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm ${
-          disabled
-            ? 'opacity-60 cursor-pointer bg-brand-primary/40'
-            : 'cursor-pointer hover:border-brand-accent/50'
-        } ${error ? 'border-red-500' : 'border-brand-border'}`}
+        className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <div className="flex items-center gap-2 min-w-0">
           {Icon && <Icon size={14} className="text-brand-text-muted shrink-0" />}
-          <span className={`truncate ${!selectedOption ? 'text-brand-text-muted/60' : 'font-medium text-brand-text'}`}>
+          <span className={`truncate ${!selectedOption ? 'text-brand-text-muted/60' : ''}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
-        <ChevronDown
-          size={16}
-          className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${
-            isOpen ? 'rotate-180 text-brand-accent' : ''
-          }`}
-        />
+        <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-brand-accent' : ''}`} />
       </button>
-
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
-          <div className="absolute z-40 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-2xl max-h-56 overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => {
-                onChange('');
-                setIsOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
-                !value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'
-              }`}
-            >
-              <span>{placeholder}</span>
-              {!value && <Check size={14} className="text-brand-accent" />}
-            </button>
-            {options.map((opt) => (
+          <div className="fixed inset-0 z-20" onClick={handleClose} />
+          <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1.5 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-64 flex flex-col">
+            <div className="p-1 pb-1.5 border-b border-brand-border/60">
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-brand-secondary border border-brand-border rounded-lg text-xs text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-y-auto max-h-48 pt-1 space-y-0.5">
               <button
-                key={opt.value}
                 type="button"
-                disabled={opt.disabled}
-                onClick={() => {
-                  if (opt.disabled) return;
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
-                  opt.disabled
-                    ? 'opacity-40 cursor-not-allowed bg-transparent text-brand-text-muted'
-                    : String(value) === String(opt.value)
-                    ? 'bg-brand-accent/15 text-brand-accent font-medium'
-                    : 'text-brand-text hover:bg-brand-border/40'
-                }`}
+                onClick={() => { onChange(''); handleClose(); }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm flex items-center justify-between ${!value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
               >
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="truncate">{opt.label}</span>
-                  {opt.subtext && <span className="text-[10px] text-brand-text-muted truncate">{opt.subtext}</span>}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                  {opt.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${opt.badgeClassName || 'bg-brand-accent/10 text-brand-accent'}`}>
-                      {opt.badge}
-                    </span>
-                  )}
-                  {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent shrink-0" />}
-                </div>
+                <span>{placeholder}</span>
+                {!value && <Check size={14} className="text-brand-accent" />}
               </button>
-            ))}
+
+              {filteredOptions.length === 0 ? (
+                <div className="p-3 text-center text-xs text-brand-text-muted italic">
+                  Tidak ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={opt.disabled}
+                    onClick={() => {
+                      if (opt.disabled) return;
+                      onChange(opt.value);
+                      handleClose();
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm flex items-center justify-between transition ${
+                      opt.disabled
+                        ? 'opacity-40 cursor-not-allowed bg-transparent text-brand-text-muted'
+                        : String(value) === String(opt.value)
+                        ? 'bg-brand-accent/15 text-brand-accent font-medium'
+                        : 'text-brand-text hover:bg-brand-border/40'
+                    }`}
+                  >
+                    <div className="flex flex-col min-w-0 pr-2">
+                      <span className="truncate">{opt.label}</span>
+                      {opt.subtext && <span className="text-[10px] text-brand-text-muted truncate">{opt.subtext}</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                      {opt.badge && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${opt.badgeClassName || 'bg-brand-accent/10 text-brand-accent'}`}>
+                          {opt.badge}
+                        </span>
+                      )}
+                      {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent shrink-0" />}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </>
       )}
@@ -131,20 +153,20 @@ const getRequiredJobKeywords = (svcNames) => {
   return [...new Set(keywords)];
 };
 
-const computeDefaultAssignments = (team, keywords) => {
+const computeDefaultAssignments = (team, keywords, startDateProject = '', endDateProject = '') => {
   if (!team || !team.team_members) return {};
   const assignments = {};
 
-  const hasPrimaryMatch = keywords.length > 0 && team.team_members.some((tm) => {
-    const primary = tm.users?.user_jobs?.find((uj) => uj.is_primary) || tm.users?.user_jobs?.[0];
-    return primary && keywords.some((k) => (primary.jobs?.name || '').toLowerCase().includes(k));
+  const hasPrimaryMatch = keywords.length > 0 && team.team_members.some(tm => {
+    const primary = tm.users?.user_jobs?.find(uj => uj.is_primary) || tm.users?.user_jobs?.[0];
+    return primary && keywords.some(k => (primary.jobs?.name || '').toLowerCase().includes(k));
   });
 
-  team.team_members.forEach((tm) => {
+  team.team_members.forEach(tm => {
     const userJobs = tm.users?.user_jobs || [];
-    const primaryJob = userJobs.find((uj) => uj.is_primary) || userJobs[0];
-    const primaryMatches = primaryJob && keywords.some((k) => (primaryJob.jobs?.name || '').toLowerCase().includes(k));
-    const secondaryMatch = userJobs.find((uj) => keywords.some((k) => (uj.jobs?.name || '').toLowerCase().includes(k)));
+    const primaryJob = userJobs.find(uj => uj.is_primary) || userJobs[0];
+    const primaryMatches = primaryJob && keywords.some(k => (primaryJob.jobs?.name || '').toLowerCase().includes(k));
+    const secondaryMatch = userJobs.find(uj => keywords.some(k => (uj.jobs?.name || '').toLowerCase().includes(k)));
 
     let isAssigned = true;
     let chosenJobId = primaryJob ? String(primaryJob.job_id) : '';
@@ -168,17 +190,18 @@ const computeDefaultAssignments = (team, keywords) => {
       is_assigned: isAssigned,
       is_lead: false,
       phase_order: 1,
-      start_date: '',
-      end_date: '',
+      start_date: startDateProject || '',
+      end_date: endDateProject || ''
     };
   });
 
   return assignments;
 };
 
-export default function CSOrderCreate() {
-  const page = usePage();
-  const authUser = page.props.auth?.user;
+export default function OrderCreate() {
+  const { auth } = usePage().props;
+  const currentUserId = auth?.user?.id;
+  const currentUserName = auth?.user?.name || 'Anda';
 
   const [options, setOptions] = useState({
     customers: [],
@@ -189,95 +212,151 @@ export default function CSOrderCreate() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const [toast, setToast] = useState(null);
+  const [memberSearch, setMemberSearch] = useState('');
 
   const [form, setForm] = useState({
+    name: '',              
     customer_id: '',
     pic_id: '',
-    sales_id: authUser?.id ? String(authUser.id) : '',
+    sales_id: currentUserId ? String(currentUserId) : '',
     team_id: '',
-    service_id: '',
-    price_deal: '',
-    quantity: 1,
+    services: [
+      { service_id: '', price_deal: '' } 
+    ],
     discount_type: 'fixed',
-    discount: 0,
-    tax_rate: 0,
+    discount: '',
+    tax_rate: '',
     start_date_project: '',
     end_date_project: '',
     notes: '',
-    assignments: {},
+    assignments: {}
   });
 
-  const showToast = (type, message) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3500);
-  };
+  const basePath = getBasePath();
 
   useEffect(() => {
     Promise.all([
       fetch('/api/v1/orders/options/customers').then((r) => r.json()),
       fetch('/api/v1/orders/options/services').then((r) => r.json()),
-      fetch('/api/v1/orders/options/customer-service').then((r) => r.json()),
+      fetch('/api/v1/orders/options/sales').then((r) => r.json()),
       fetch('/api/v1/orders/options/teams').then((r) => r.json()),
     ])
-      .then(([customers, services, sales, teams]) => {
-        const rawSales = sales.data || [];
-        if (authUser?.id && !rawSales.some((s) => Number(s.id) === Number(authUser.id))) {
-          rawSales.unshift({ id: String(authUser.id), name: `${authUser.name} (You)` });
-        }
+      .then(([c, s, sa, t]) => {
+        const rawCustomers = c.success ? c.data || [] : [];
+        
+        // Filter KHUSUS customer yang ditangani / dibuat oleh user CS yang sedang login
+        const myCustomers = rawCustomers.filter((cust) => {
+          if (!currentUserId) return true;
+          const currentIdStr = String(currentUserId);
+          const salesIdStr = String(cust.sales_id ?? cust.cs_id ?? cust.customer_service_id ?? '');
+          const createdByStr = String(cust.created_by ?? '');
+          const userIdStr = String(cust.user_id ?? '');
 
-        setOptions({
-          customers: customers.data || [],
-          services: services.data || [],
-          sales: rawSales,
-          teams: teams.data || [],
+          return (
+            (salesIdStr !== '' && salesIdStr === currentIdStr) ||
+            (createdByStr !== '' && createdByStr === currentIdStr) ||
+            (userIdStr !== '' && userIdStr === currentIdStr)
+          );
         });
 
-        if (authUser?.id) {
-          setForm((prev) => ({
-            ...prev,
-            sales_id: prev.sales_id || String(authUser.id),
-          }));
+        setOptions({
+          customers: myCustomers,
+          services: s.success ? s.data : [],
+          sales: sa.success ? sa.data : [],
+          teams: t.success ? t.data : [],
+        });
+        
+        if (currentUserId) {
+          setForm(prev => ({ ...prev, sales_id: String(currentUserId) }));
         }
 
         setLoading(false);
       })
-      .catch((err) => {
-        console.error('Failed to load order options', err);
-        showToast('error', 'Failed to load options from server');
-        setLoading(false);
-      });
-  }, []);
+      .catch(() => setLoading(false));
+  }, [currentUserId]);
 
-  const price = Number(form.price_deal) || 0;
-  const subtotal = price * form.quantity;
-  const discountAmount = form.discount_type === 'percent' ? (subtotal * form.discount) / 100 : Number(form.discount);
-  const taxAmount = ((subtotal - discountAmount) * form.tax_rate) / 100;
-  const grandTotal = Math.max(0, subtotal - discountAmount + taxAmount);
+  const subtotal = form.services.reduce((acc, curr) => {
+    return acc + (Number(curr.price_deal) || 0);
+  }, 0);
+
+  const discountAmount = form.discount_type === 'percent' 
+    ? (subtotal * (Number(form.discount) || 0)) / 100 
+    : (Number(form.discount) || 0);
+    
+  const taxAmount = ((subtotal - discountAmount) * (Number(form.tax_rate) || 0)) / 100;
+  const grandTotal = subtotal - discountAmount + taxAmount;
 
   const handleCustomerChange = (val) => {
-    const cust = options.customers.find((c) => String(c.id) === String(val));
-    const pics = cust?.customer_pics || [];
-    const defaultPic = pics.find((p) => p.is_primary) || pics[0];
-
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
       customer_id: val,
-      pic_id: defaultPic ? String(defaultPic.id) : '',
+      pic_id: '',
+      sales_id: currentUserId ? String(currentUserId) : prev.sales_id
     }));
   };
 
-  const handleServiceChange = (val) => {
-    const selectedService = options.services.find((s) => String(s.id) === String(val));
-    const svcNames = selectedService ? [selectedService.name] : [];
+  const handleProjectDateChange = (field, value) => {
+    setForm(prev => {
+      const nextAssignments = { ...prev.assignments };
+
+      Object.keys(nextAssignments).forEach(tmId => {
+        const assign = { ...nextAssignments[tmId] };
+        if (field === 'start_date_project') {
+          if (!assign.start_date || assign.start_date === prev.start_date_project) {
+            assign.start_date = value;
+          }
+        } else if (field === 'end_date_project') {
+          if (!assign.end_date || assign.end_date === prev.end_date_project) {
+            assign.end_date = value;
+          }
+        }
+        nextAssignments[tmId] = assign;
+      });
+
+      return {
+        ...prev,
+        [field]: value,
+        assignments: nextAssignments
+      };
+    });
+  };
+
+  const currentCustomer = options.customers.find(c => String(c.id) === String(form.customer_id));
+  const customerPics = currentCustomer?.customer_pics || [];
+
+  const salesOptions = [
+    { value: currentUserId ? String(currentUserId) : '', label: `${currentUserName} (Anda)` }
+  ];
+
+  const getServiceNamesFromList = (serviceRows) => {
+    return serviceRows
+      .map(s => options.services.find(opt => String(opt.id) === String(s.service_id))?.name)
+      .filter(Boolean);
+  };
+
+  const handleServiceChange = (index, field, value) => {
+    const newServices = [...form.services];
+
+    if (field === 'service_id') {
+      const selectedService = options.services.find(s => String(s.id) === String(value));
+      newServices[index] = {
+        ...newServices[index],
+        service_id: value,
+        price_deal: selectedService ? selectedService.default_price : ''
+      };
+    } else {
+      newServices[index] = { ...newServices[index], [field]: value };
+    }
+
+    const svcNames = getServiceNamesFromList(newServices);
     const newKeywords = getRequiredJobKeywords(svcNames);
 
-    setForm((prev) => {
+    setForm(prev => {
       let nextTeamId = prev.team_id;
       let nextAssignments = prev.assignments;
 
       if (nextTeamId) {
-        const currentTeam = options.teams.find((t) => String(t.id) === String(nextTeamId));
+        const currentTeam = options.teams.find(t => String(t.id) === String(nextTeamId));
         const memberJobs = currentTeam?.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
         const isTeamValid = newKeywords.length === 0 || memberJobs.some((jn) => newKeywords.some((k) => jn.toLowerCase().includes(k)));
 
@@ -285,28 +364,64 @@ export default function CSOrderCreate() {
           nextTeamId = '';
           nextAssignments = {};
         } else if (currentTeam) {
-          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords);
+          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords, prev.start_date_project, prev.end_date_project);
         }
       }
 
       return {
         ...prev,
-        service_id: val,
-        price_deal: selectedService ? selectedService.default_price : prev.price_deal,
+        services: newServices,
         team_id: nextTeamId,
-        assignments: nextAssignments,
+        assignments: nextAssignments
       };
     });
   };
 
-  const currentCustomer = options.customers.find((c) => String(c.id) === String(form.customer_id));
-  const customerPics = currentCustomer?.customer_pics || [];
+  const addServiceRow = () => {
+    setForm({
+      ...form,
+      services: [...form.services, { service_id: '', price_deal: '' }]
+    });
+  };
 
-  const selectedService = options.services.find((s) => String(s.id) === String(form.service_id));
-  const requiredKeywords = getRequiredJobKeywords(selectedService ? [selectedService.name] : []);
+  const removeServiceRow = (index) => {
+    if (form.services.length === 1) return;
+    const newServices = form.services.filter((_, i) => i !== index);
+    const svcNames = getServiceNamesFromList(newServices);
+    const newKeywords = getRequiredJobKeywords(svcNames);
+
+    setForm(prev => {
+      let nextTeamId = prev.team_id;
+      let nextAssignments = prev.assignments;
+
+      if (nextTeamId) {
+        const currentTeam = options.teams.find(t => String(t.id) === String(nextTeamId));
+        const memberJobs = currentTeam?.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
+        const isTeamValid = newKeywords.length === 0 || memberJobs.some((jn) => newKeywords.some((k) => jn.toLowerCase().includes(k)));
+
+        if (!isTeamValid) {
+          nextTeamId = '';
+          nextAssignments = {};
+        } else if (currentTeam) {
+          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords, prev.start_date_project, prev.end_date_project);
+        }
+      }
+
+      return {
+        ...prev,
+        services: newServices,
+        team_id: nextTeamId,
+        assignments: nextAssignments
+      };
+    });
+  };
+
+  const currentSvcNames = getServiceNamesFromList(form.services);
+  const requiredKeywords = getRequiredJobKeywords(currentSvcNames);
 
   const teamOptions = options.teams.map((t) => {
     const memberJobs = t.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
+    const memberNames = t.team_members?.map((tm) => tm.users?.name).filter(Boolean).join(', ') || '';
     const uniqueJobs = [...new Set(memberJobs)];
 
     let hasMatch = true;
@@ -327,7 +442,8 @@ export default function CSOrderCreate() {
     return {
       value: t.id,
       label: t.name,
-      subtext: uniqueJobs.length > 0 ? `Keahlian: ${uniqueJobs.join(', ')}` : 'Belum ada anggota',
+      subtext: memberNames ? `Anggota: ${memberNames}` : (uniqueJobs.length > 0 ? `Keahlian: ${uniqueJobs.join(', ')}` : 'Belum ada anggota'),
+      searchText: `${t.name} ${memberNames} ${uniqueJobs.join(' ')}`,
       disabled: requiredKeywords.length > 0 && !hasMatch,
       badge: badge,
       badgeClassName: badgeClassName,
@@ -335,50 +451,74 @@ export default function CSOrderCreate() {
   });
 
   const handleTeamChange = (val) => {
-    setForm((prev) => {
-      const selectedTeam = options.teams.find((t) => String(t.id) === String(val));
-      const curService = options.services.find((s) => String(s.id) === String(prev.service_id));
-      const svcNames = curService ? [curService.name] : [];
+    setForm(prev => {
+      const selectedTeam = options.teams.find(t => String(t.id) === String(val));
+      const svcNames = getServiceNamesFromList(prev.services);
       const keywords = getRequiredJobKeywords(svcNames);
 
       return {
         ...prev,
         team_id: val,
-        assignments: selectedTeam ? computeDefaultAssignments(selectedTeam, keywords) : {},
+        assignments: selectedTeam ? computeDefaultAssignments(selectedTeam, keywords, prev.start_date_project, prev.end_date_project) : {}
       };
     });
   };
 
   const handleAssignmentChange = (teamMemberId, field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      assignments: {
-        ...prev.assignments,
-        [teamMemberId]: {
-          ...prev.assignments[teamMemberId],
-          [field]: value,
-        },
-      },
-    }));
+    setForm(prev => {
+      const nextAssignments = { ...prev.assignments };
+
+      if (field === 'is_lead' && value) {
+        Object.keys(nextAssignments).forEach(tmId => {
+          nextAssignments[tmId] = {
+            ...nextAssignments[tmId],
+            is_lead: false
+          };
+        });
+      }
+
+      const currentAssign = nextAssignments[teamMemberId] || {};
+      let updatedAssign = { ...currentAssign, [field]: value };
+
+      if (field === 'is_assigned') {
+        if (value) {
+          if (!updatedAssign.start_date && prev.start_date_project) {
+            updatedAssign.start_date = prev.start_date_project;
+          }
+          if (!updatedAssign.end_date && prev.end_date_project) {
+            updatedAssign.end_date = prev.end_date_project;
+          }
+        } else {
+          updatedAssign.is_lead = false;
+        }
+      }
+
+      nextAssignments[teamMemberId] = updatedAssign;
+
+      return {
+        ...prev,
+        assignments: nextAssignments
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
 
     const newErrors = {};
-    if (!form.customer_id) newErrors.customer_id = 'Please select a customer';
-    if (!form.service_id) newErrors.service_id = 'Please select a service / package';
-    if (!form.price_deal || Number(form.price_deal) < 0) newErrors.price_deal = 'Valid deal price is required';
-
+    if (!form.name.trim()) newErrors.name = ['Nama order wajib diisi'];
+    if (!form.customer_id) newErrors.customer_id = ['Customer wajib dipilih'];
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      showToast('error', 'Please fill in all required fields');
       return;
     }
 
+    const hasEmptyService = form.services.some(s => !s.service_id || !s.price_deal);
+    if (hasEmptyService) return alert('Harap lengkapi semua layanan dan harganya.');
+
     const assignmentsArray = Object.values(form.assignments)
-      .filter((a) => a.is_assigned && a.job_id)
-      .map((a) => ({
+      .filter(a => a.is_assigned && a.job_id)
+      .map(a => ({
         team_member_id: Number(a.team_member_id),
         job_id: Number(a.job_id),
         is_lead: Boolean(a.is_lead),
@@ -388,7 +528,7 @@ export default function CSOrderCreate() {
       }));
 
     if (form.team_id && assignmentsArray.length === 0) {
-      showToast('error', 'Pilih minimal satu anggota tim untuk ditugaskan pada proyek ini.');
+      alert('Pilih minimal satu anggota tim untuk ditugaskan pada proyek ini.');
       return;
     }
 
@@ -396,46 +536,43 @@ export default function CSOrderCreate() {
     setErrors({});
 
     const payload = {
+      name: form.name.trim(),
       customer_id: form.customer_id,
       pic_id: form.pic_id || null,
-      customer_service_id: form.sales_id || null,
+      customer_service_id: currentUserId || form.sales_id || null,
+      sales_id: currentUserId || form.sales_id || null,
+      cs_id: currentUserId || form.sales_id || null,
       team_id: form.team_id || null,
-      service_id: form.service_id,
-      services: [{
-        service_id: Number(form.service_id),
-        price_deal: Number(form.price_deal),
-        quantity: Number(form.quantity)
-      }],
-      price_deal: Number(form.price_deal),
-      quantity: Number(form.quantity),
+      services: form.services.map(s => ({
+        service_id: Number(s.service_id),
+        price_deal: Number(s.price_deal),
+        quantity: 1 
+      })),
       discount_type: form.discount_type,
-      discount: Number(form.discount),
-      tax_rate: Number(form.tax_rate),
+      discount: Number(form.discount) || 0,
+      tax_rate: Number(form.tax_rate) || 0,
       start_date_project: form.start_date_project || null,
       end_date_project: form.end_date_project || null,
       notes: form.notes || null,
-      assignments: assignmentsArray,
+      assignments: assignmentsArray
     };
 
     try {
       const res = await fetch('/api/v1/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         if (data.errors) setErrors(data.errors);
-        showToast('error', data.message || 'Failed to create order');
+        alert(data.message || 'Gagal menyimpan order');
       } else {
-        showToast('success', 'Order created successfully! Invoice automatically generated.');
-        setTimeout(() => {
-          router.visit('/cs/orders');
-        }, 800);
+        router.visit(`${basePath}/orders`);
       }
     } catch {
-      showToast('error', 'Failed to communicate with server');
+      alert('Gagal menghubungi server');
     } finally {
       setSubmitting(false);
     }
@@ -444,102 +581,93 @@ export default function CSOrderCreate() {
   if (loading) {
     return (
       <RoleLayout>
-        <Head title="Create Order — Customer Service" />
-        <div className="p-12 text-center text-brand-text-muted">
+        <Head title="Buat Order" />
+        <div className="p-8 sm:p-12 text-center text-brand-text-muted">
           <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-brand-accent" />
-          Loading order form...
+          <p className="text-xs sm:text-sm">Memuat form...</p>
         </div>
       </RoleLayout>
     );
   }
 
+  const currentSelectedTeam = options.teams.find(t => String(t.id) === String(form.team_id));
+  const filteredTeamMembers = currentSelectedTeam?.team_members?.filter(tm => {
+    if (!memberSearch) return true;
+    const q = memberSearch.toLowerCase();
+    const nameMatch = tm.users?.name?.toLowerCase().includes(q);
+    const jobsMatch = tm.users?.user_jobs?.some(uj => uj.jobs?.name?.toLowerCase().includes(q));
+    return nameMatch || jobsMatch;
+  }) || [];
+
   return (
     <RoleLayout>
-      <Head title="Create Order — Customer Service" />
-
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border transition-all ${
-            toast.type === 'success'
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-              : 'bg-red-500/15 border-red-500/40 text-red-400'
-          }`}
-        >
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
+      <Head title="Buat Order Baru" />
 
       {/* Header */}
-      <div className="mb-6">
-        <Link
-          href="/cs/orders"
-          className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-brand-accent transition mb-3"
-        >
-          <ArrowLeft size={16} /> Back to Orders
+      <div className="mb-4 sm:mb-6">
+        <Link href={`${basePath}/orders`} className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-6">
+          <ArrowLeft size={16} /> Kembali ke Orders
         </Link>
-        <h1 className="text-2xl font-bold text-brand-text">Create New Order</h1>
-        <p className="text-sm text-brand-text-muted mt-1">
-          An invoice will be automatically generated upon order submission.
-        </p>
+        <h1 className="text-xl sm:text-2xl font-bold text-brand-text">Buat Order Baru</h1>
+        <p className="text-xs sm:text-sm text-brand-text-muted mt-0.5">Invoice akan otomatis dibuat setelah order tersimpan.</p>
       </div>
 
-      <div className="bg-brand-secondary rounded-lg border border-brand-border p-6 w-full">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* CUSTOMER & PIC */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <CustomSelect
-              label="Customer *"
-              placeholder="— Select Customer —"
-              value={form.customer_id}
-              options={options.customers.map((c) => ({ value: c.id, label: c.name }))}
-              onChange={handleCustomerChange}
-              icon={User}
-              error={errors.customer_id}
-            />
+      {/* Main Container Card */}
+      <div className="bg-brand-secondary rounded-xl border border-brand-border p-4 sm:p-6 w-full shadow-sm">
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 sm:space-y-6">
 
-            <div>
-              <CustomSelect
-                label="Customer PIC (Contact Person)"
-                placeholder={
-                  !form.customer_id
-                    ? '— Select Customer First —'
-                    : customerPics.length === 0
-                    ? '— No PIC Contact Registered —'
-                    : '— Select Customer PIC —'
-                }
-                value={form.pic_id}
-                options={customerPics.map((p) => ({
-                  value: p.id,
-                  label: `${p.name}${p.position ? ` (${p.position})` : ''}${p.is_primary ? ' ★ Primary' : ''}`,
-                }))}
-                onChange={(val) => setForm((prev) => ({ ...prev, pic_id: val }))}
-                disabled={!form.customer_id}
-                onDisabledClick={() => showToast('error', 'Please select a Customer first to choose their PIC contact.')}
-                icon={UserCircle}
-              />
-              {form.customer_id && customerPics.length === 0 && (
-                <p className="text-xs text-amber-500/90 mt-1 flex items-center gap-1">
-                  <Info size={12} /> No PIC contact registered for this customer. Order can proceed without PIC.
-                </p>
-              )}
-            </div>
+          {/* Nama Order */}
+          <div>
+            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+              Nama Order <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Website Company Profile PT ABC"
+              className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition-all ${
+                errors.name ? 'border-red-500' : 'border-brand-border focus:border-brand-accent'
+              }`}
+            />
+            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name[0]}</p>}
           </div>
 
-          {/* CUSTOMER SERVICE & TEAM */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Customer & PIC Customer */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <CustomSelect
+              label="Customer *"
+              placeholder="Pilih Customer Anda"
+              value={form.customer_id}
+              options={options.customers.map(c => ({ value: c.id, label: c.name }))}
+              onChange={handleCustomerChange}
+              icon={User}
+            />
+            <CustomSelect
+              label="PIC Customer"
+              placeholder="Pilih PIC"
+              value={form.pic_id}
+              options={customerPics.map(p => ({ value: p.id, label: p.name }))}
+              onChange={(val) => setForm({ ...form, pic_id: val })}
+              disabled={!form.customer_id}
+              icon={UserCircle}
+            />
+          </div>
+
+          {/* Customer Service & Tim Pengerjaan */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <CustomSelect
               label="Customer Service"
-              placeholder="— Pilih Customer Service —"
+              placeholder="Customer Service"
               value={form.sales_id}
-              options={options.sales.map((s) => ({ value: s.id, label: s.name }))}
-              onChange={(val) => setForm((prev) => ({ ...prev, sales_id: val }))}
+              options={salesOptions}
+              onChange={() => {}}
+              disabled={true}
               icon={Briefcase}
             />
             <CustomSelect
-              label="Assigned Team"
-              placeholder="— Select Working Team —"
+              label="Tim Pengerjaan"
+              placeholder="Pilih Tim"
               value={form.team_id}
               options={teamOptions}
               onChange={handleTeamChange}
@@ -547,140 +675,170 @@ export default function CSOrderCreate() {
             />
           </div>
 
-          {/* SERVICE, PRICE DEAL, & QTY */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="md:col-span-2">
-              <CustomSelect
-                label="Service / Package *"
-                placeholder="— Select Service —"
-                value={form.service_id}
-                options={options.services.map((s) => ({ value: s.id, label: s.name }))}
-                onChange={handleServiceChange}
-                icon={Package}
-                error={errors.service_id}
-              />
+          {/* Daftar Layanan */}
+          <div className="pt-4 border-t border-brand-border">
+            <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
+              <label className="block text-xs sm:text-sm font-bold text-brand-text uppercase sm:normal-case tracking-wider sm:tracking-normal">Daftar Layanan</label>
+              <button
+                type="button"
+                onClick={addServiceRow}
+                className="text-xs bg-brand-primary border border-brand-border hover:bg-brand-muted hover:text-brand-accent px-3 py-1.5 sm:py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-sm shrink-0"
+              >
+                <Plus size={14} /> Tambah Layanan
+              </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
-                Deal Price (Rp) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={form.price_deal}
-                onChange={(e) => setForm((prev) => ({ ...prev, price_deal: e.target.value }))}
-                className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all ${
-                  errors.price_deal ? 'border-red-500' : 'border-brand-border'
-                }`}
-                placeholder="0"
-                required
-              />
-              {errors.price_deal && <p className="text-xs text-red-500 mt-1">{errors.price_deal}</p>}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
-                Quantity
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={form.quantity}
-                onChange={(e) => setForm((prev) => ({ ...prev, quantity: Math.max(1, Number(e.target.value)) }))}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
-              />
+            <div className="space-y-3 sm:space-y-4">
+              {form.services.map((svc, index) => (
+                <div key={index} className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-end bg-brand-primary/30 p-3.5 sm:p-4 rounded-xl border border-brand-border/60 relative">
+                  <div className="flex-1 w-full">
+                    <CustomSelect
+                      label="Layanan / Service *"
+                      placeholder="Pilih Layanan"
+                      value={svc.service_id}
+                      options={options.services.map(s => ({ value: s.id, label: s.name }))}
+                      onChange={(val) => handleServiceChange(index, 'service_id', val)}
+                      icon={Package}
+                    />
+                  </div>
+                  <div className="w-full sm:w-64"> 
+                    <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Harga Deal (Rp) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={svc.price_deal}
+                      onChange={(e) => handleServiceChange(index, 'price_deal', e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end sm:block">
+                    <button
+                      type="button"
+                      onClick={() => removeServiceRow(index)}
+                      disabled={form.services.length === 1}
+                      className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition disabled:opacity-30 flex items-center gap-1 text-xs sm:text-sm"
+                      title="Hapus Layanan"
+                    >
+                      <Trash2 size={18} />
+                      <span className="sm:hidden font-medium">Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* DISCOUNT & TAX */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-brand-primary/20 p-5 rounded-xl border border-brand-border">
+          {/* Tipe Diskon, Nilai Diskon, Pajak */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 bg-brand-primary/20 p-4 sm:p-5 rounded-xl border border-brand-border mt-4 sm:mt-6">
             <CustomSelect
-              label="Discount Type"
-              placeholder="— Select Type —"
+              label="Tipe Diskon"
+              placeholder="Pilih Tipe"
               value={form.discount_type}
               options={[
-                { value: 'fixed', label: 'Fixed Amount (Rp)' },
-                { value: 'percent', label: 'Percentage (%)' },
+                { value: 'fixed', label: 'Nominal (Rp)' },
+                { value: 'percent', label: 'Persen (%)' }
               ]}
-              onChange={(val) => setForm((prev) => ({ ...prev, discount_type: val }))}
+              onChange={(val) => setForm({ ...form, discount_type: val })}
               icon={Percent}
             />
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
-                Discount Value
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={form.discount}
-                onChange={(e) => setForm((prev) => ({ ...prev, discount: Math.max(0, Number(e.target.value)) }))}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Nilai Diskon</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={form.discount} 
+                onChange={(e) => setForm({ ...form, discount: e.target.value })} 
+                placeholder="0"
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
-                Tax / VAT (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={form.tax_rate}
-                onChange={(e) => setForm((prev) => ({ ...prev, tax_rate: Math.max(0, Number(e.target.value)) }))}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Pajak / PPN (%)</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={form.tax_rate} 
+                onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} 
+                placeholder="0"
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
           </div>
 
-          {/* PROJECT TIMELINE */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Mulai Proyek & Selesai Proyek */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <Calendar size={13} /> Project Start Date
-              </label>
-              <input
-                type="date"
-                value={form.start_date_project}
-                onChange={(e) => setForm((prev) => ({ ...prev, start_date_project: e.target.value }))}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Mulai Proyek</label>
+              <input 
+                type="date" 
+                value={form.start_date_project} 
+                onChange={(e) => handleProjectDateChange('start_date_project', e.target.value)} 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <Calendar size={13} /> Project Target Completion
-              </label>
-              <input
-                type="date"
-                value={form.end_date_project}
-                onChange={(e) => setForm((prev) => ({ ...prev, end_date_project: e.target.value }))}
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
+              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Selesai Proyek</label>
+              <input 
+                type="date" 
+                value={form.end_date_project} 
+                min={form.start_date_project || undefined}
+                onChange={(e) => handleProjectDateChange('end_date_project', e.target.value)} 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
           </div>
 
-          {/* TEAM MEMBERS ASSIGNMENT */}
+          {/* Tim Assignments */}
           {form.team_id && Object.keys(form.assignments).length > 0 && (
             <div className="pt-4 border-t border-brand-border">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
-                  <label className="block text-xs font-semibold text-brand-text-muted uppercase">
+                  <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest">
                     Atur Posisi & Fase Anggota Tim
                   </label>
                   <p className="text-xs text-brand-text-muted mt-0.5">
                     Pilih anggota tim yang ditugaskan untuk pengerjaan proyek ini.
                   </p>
                 </div>
-                <div className="text-xs text-brand-text-muted">
-                  Ditugaskan: <span className="font-semibold text-brand-accent">
-                    {Object.values(form.assignments).filter((a) => a.is_assigned).length}
-                  </span> dari {Object.keys(form.assignments).length} anggota
+                
+                <div className="flex items-center gap-3">
+                  <div className="relative w-full sm:w-56">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+                    <input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Cari anggota tim..."
+                      className="w-full pl-8 pr-7 py-1.5 bg-brand-primary border border-brand-border rounded-xl text-xs text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+                    />
+                    {memberSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setMemberSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text p-0.5"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-brand-text-muted shrink-0">
+                    Ditugaskan: <span className="font-semibold text-brand-accent">
+                      {Object.values(form.assignments).filter(a => a.is_assigned).length}
+                    </span> dari {Object.keys(form.assignments).length} anggota
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {options.teams
-                  .find((t) => String(t.id) === String(form.team_id))
-                  ?.team_members?.map((tm) => {
+              <div className="space-y-3 sm:space-y-4">
+                {filteredTeamMembers.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-brand-text-muted bg-brand-primary/20 rounded-xl border border-brand-border/40 italic">
+                    Anggota tim tidak ditemukan.
+                  </div>
+                ) : (
+                  filteredTeamMembers.map((tm) => {
                     const assign = form.assignments[tm.id] || {};
                     const userJobs = tm.users?.user_jobs || [];
                     const isAssigned = Boolean(assign.is_assigned);
@@ -688,24 +846,29 @@ export default function CSOrderCreate() {
                     return (
                       <div
                         key={tm.id}
-                        className={`border p-4 rounded-xl space-y-3 transition-all ${
+                        className={`border p-3.5 sm:p-4 rounded-xl space-y-3 transition-all ${
                           isAssigned
                             ? 'bg-brand-primary/40 border-brand-border'
                             : 'bg-brand-primary/10 border-dashed border-brand-border/40 opacity-60'
                         }`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/40 pb-2">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5 flex-wrap">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                               <input
                                 type="checkbox"
                                 checked={isAssigned}
                                 onChange={(e) => handleAssignmentChange(tm.id, 'is_assigned', e.target.checked)}
-                                className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer"
+                                className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer shrink-0"
                               />
-                              <span className={`text-sm font-semibold flex items-center gap-2 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
-                                <User size={16} className={isAssigned ? 'text-brand-accent' : 'text-brand-text-muted'} />
-                                {tm.users?.name}
+                              <span className={`text-xs sm:text-sm font-semibold flex items-center gap-1.5 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
+                                <User size={15} className={isAssigned ? 'text-brand-accent shrink-0' : 'text-brand-text-muted shrink-0'} />
+                                <span>{tm.users?.name}</span>
+                                {userJobs.length === 0 && (
+                                  <span className="text-[11px] text-red-500 font-normal flex items-center gap-1">
+                                    <AlertCircle size={12} className="shrink-0" /> Belum punya Job
+                                  </span>
+                                )}
                               </span>
                             </label>
                             <span
@@ -720,12 +883,12 @@ export default function CSOrderCreate() {
                           </div>
 
                           {isAssigned && (
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <label className="flex items-center gap-2 cursor-pointer select-none self-start sm:self-auto">
                               <input
                                 type="checkbox"
                                 checked={assign.is_lead || false}
                                 onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
-                                className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer shrink-0"
                               />
                               <span className="text-xs font-semibold text-brand-text-muted">Lead Tim</span>
                             </label>
@@ -739,20 +902,20 @@ export default function CSOrderCreate() {
                                 label="Posisi / Job *"
                                 placeholder="— Pilih Job —"
                                 value={assign.job_id || ''}
-                                options={userJobs.map((uj) => ({ value: uj.job_id, label: uj.jobs?.name }))}
+                                options={userJobs.map(uj => ({ value: uj.job_id, label: uj.jobs?.name }))}
                                 onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
                                 disabled={userJobs.length === 0}
                               />
                             </div>
 
                             <div>
-                              <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
                                 Urutan Pengerjaan
                               </label>
                               <select
                                 value={assign.phase_order || 1}
                                 onChange={(e) => handleAssignmentChange(tm.id, 'phase_order', Number(e.target.value))}
-                                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                               >
                                 <option value={1}>Fase 1 (Mulai Pertama)</option>
                                 <option value={2}>Fase 2 (Setelah Fase 1 Selesai)</option>
@@ -764,23 +927,27 @@ export default function CSOrderCreate() {
 
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
                                   Tgl Mulai
                                 </label>
                                 <input
                                   type="date"
                                   value={assign.start_date || ''}
+                                  min={form.start_date_project || undefined}
+                                  max={assign.end_date || form.end_date_project || undefined}
                                   onChange={(e) => handleAssignmentChange(tm.id, 'start_date', e.target.value)}
                                   className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs font-semibold text-brand-text-muted uppercase mb-1.5">
+                                <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
                                   Deadline
                                 </label>
                                 <input
                                   type="date"
                                   value={assign.end_date || ''}
+                                  min={assign.start_date || form.start_date_project || undefined}
+                                  max={form.end_date_project || undefined}
                                   onChange={(e) => handleAssignmentChange(tm.id, 'end_date', e.target.value)}
                                   className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                                 />
@@ -794,60 +961,59 @@ export default function CSOrderCreate() {
                         )}
                       </div>
                     );
-                  })}
+                  })
+                )}
               </div>
             </div>
           )}
 
-          {/* NOTES & SUMMARY */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-brand-border">
+          {/* Catatan Tambahan & Summary Order */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-4 sm:pt-6 border-t border-brand-border">
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <FileText size={13} /> Additional Notes / Requirements
-              </label>
-              <textarea
-                rows={5}
-                value={form.notes}
-                onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                placeholder="Enter client brief, project requirements, delivery instructions..."
-                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-sm text-brand-text shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none placeholder:text-brand-text-muted/60"
+              <textarea 
+                rows={4} 
+                value={form.notes} 
+                onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+                placeholder="Catatan..." 
+                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none" 
               />
             </div>
-            <div className="bg-brand-primary/40 p-6 rounded-xl border border-brand-border space-y-3 flex flex-col justify-center">
-              <div className="flex justify-between text-sm text-brand-text-muted">
-                <span>Subtotal</span>
-                <span>{formatRupiah(subtotal)}</span>
+
+            <div className="bg-brand-primary/40 p-4 sm:p-6 rounded-xl border border-brand-border space-y-2.5 flex flex-col justify-center">
+              <div className="flex justify-between text-xs sm:text-sm text-brand-text-muted">
+                <span>Subtotal Layanan</span>
+                <span className="font-medium text-brand-text">{formatRupiah(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm text-red-500">
-                <span>Discount</span>
-                <span>-{formatRupiah(discountAmount)}</span>
+              <div className="flex justify-between text-xs sm:text-sm text-red-500">
+                <span>Diskon</span>
+                <span className="font-medium">-{formatRupiah(discountAmount)}</span>
               </div>
-              <div className="flex justify-between text-sm text-brand-text-muted">
-                <span>Tax ({form.tax_rate}%)</span>
-                <span>+{formatRupiah(taxAmount)}</span>
+              <div className="flex justify-between text-xs sm:text-sm text-brand-text-muted">
+                <span>Pajak ({form.tax_rate || 0}%)</span>
+                <span className="font-medium text-brand-text">+{formatRupiah(taxAmount)}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold text-brand-accent pt-3 border-t border-brand-border mt-2">
+              <div className="flex justify-between text-base sm:text-lg font-bold text-brand-accent pt-2.5 border-t border-brand-border mt-1">
                 <span>Grand Total</span>
                 <span>{formatRupiah(grandTotal)}</span>
               </div>
             </div>
           </div>
 
-          {/* ACTION BUTTONS */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-brand-border">
-            <Link
-              href="/cs/orders"
-              className="bg-brand-muted text-brand-text px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-border transition"
+          {/* Form Actions */}
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 sm:pt-6 border-t border-brand-border">
+            <Link 
+              href={`${basePath}/orders`} 
+              className="w-full sm:w-auto text-center bg-brand-muted text-brand-text px-6 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition"
             >
-              Cancel
+              Batal
             </Link>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="bg-brand-accent text-brand-primary px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition disabled:opacity-50 shadow-sm"
+            <button 
+              type="submit" 
+              disabled={submitting} 
+              className="w-full sm:w-auto justify-center bg-brand-accent text-brand-primary px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition disabled:opacity-50 shadow-sm"
             >
               {submitting ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-              {submitting ? 'Submitting...' : 'Save & Generate Invoice'}
+              {submitting ? 'Menyimpan...' : 'Simpan & Buat Invoice'}
             </button>
           </div>
         </form>

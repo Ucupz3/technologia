@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
   Users, FileText, DollarSign, AlertCircle,
   TrendingUp, Award, Package, Activity,
@@ -8,38 +8,58 @@ import {
 } from 'lucide-react';
 
 export default function CustomerServiceDashboard() {
+  const { auth } = usePage().props;
+  const currentUserId = auth?.user?.id;
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [chartMode, setChartMode] = useState('orders'); // 'orders' or 'revenue'
 
   const load = () => {
     setLoading(true);
     setError('');
 
     Promise.all([
-      fetch('/api/v1/dashboard/super-admin').then((r) => r.json()),
       fetch('/api/v1/orders').then((r) => r.json()),
       fetch('/api/v1/customers').then((r) => r.json()),
     ])
-      .then(([dashRes, ordersRes, custRes]) => {
+      .then(([ordersRes, custRes]) => {
         const rawOrders = ordersRes.success ? ordersRes.data || [] : [];
         const rawCustomers = custRes.success ? custRes.data || [] : [];
-        const dashData = dashRes.success ? dashRes.data : null;
 
-        // Hitung Top 5 Pelanggan berdasarkan total nilai order
+        // 1. Filter Pesanan KHUSUS yang ditangani/dibuat oleh CS ini
+        const myOrders = rawOrders.filter(
+          (o) =>
+            o.created_by === currentUserId ||
+            o.cs_id === currentUserId ||
+            o.user_id === currentUserId
+        );
+
+        // 2. Filter Pelanggan yang ditangani oleh CS ini
+        const myCustomerIds = new Set(myOrders.map((o) => o.customer_id));
+        const myCustomers = rawCustomers.filter(
+          (c) =>
+            myCustomerIds.has(c.id) ||
+            c.created_by === currentUserId ||
+            c.cs_id === currentUserId
+        );
+
+        // 3. Hitung Top 5 Pelanggan milik CS ini
         const custMap = {};
-        rawCustomers.forEach((c) => {
+        myCustomers.forEach((c) => {
           custMap[c.id] = {
             id: c.id,
             name: c.name,
-            order_count: c.order_count || 0,
+            order_count: 0,
             total_revenue: 0,
           };
         });
 
-        rawOrders.forEach((o) => {
+        myOrders.forEach((o) => {
           const cid = o.customer_id;
           if (custMap[cid]) {
+            custMap[cid].order_count += 1;
             custMap[cid].total_revenue += Number(o.grand_total || 0);
           } else if (cid) {
             custMap[cid] = {
@@ -55,43 +75,91 @@ export default function CustomerServiceDashboard() {
           .sort((a, b) => b.total_revenue - a.total_revenue)
           .slice(0, 5);
 
-        // Ambil 5 pesanan terbaru untuk tabel aktivitas
-        const recent_orders = rawOrders.slice(0, 5);
+        // 4. Hitung Top Services yang berhasil dijual oleh CS ini
+        const serviceMap = {};
+        myOrders.forEach((o) => {
+          const items = o.items || o.order_items || [];
+          items.forEach((item) => {
+            const sid = item.service_id || item.id || item.name;
+            const name = item.service_name || item.name || 'Service';
+            if (!serviceMap[sid]) {
+              serviceMap[sid] = { id: sid, name, order_count: 0, total_revenue: 0 };
+            }
+            serviceMap[sid].order_count += 1;
+            serviceMap[sid].total_revenue += Number(item.subtotal || item.price || 0);
+          });
+        });
 
-        // Agregasi 30 hari untuk Nilai Pesanan CS
+        const top_services = Object.values(serviceMap)
+          .sort((a, b) => b.total_revenue - a.total_revenue)
+          .slice(0, 5);
+
+        // 5. Agregasi Grafik Status Pesanan milik CS ini
+        const statusCounts = {};
+        myOrders.forEach((o) => {
+          const st = o.status || 'draft';
+          statusCounts[st] = (statusCounts[st] || 0) + 1;
+        });
+        const order_status_chart = Object.entries(statusCounts).map(([status, count]) => ({
+          status,
+          count,
+        }));
+
+        // 6. 5 Pesanan Terbaru milik CS ini
+        const recent_orders = myOrders.slice(0, 5);
+
+        // 7. Agregasi 30 Hari Tren Pesanan & Pelunasan milik CS ini
         const dailyOrdersMap = {};
+        const dailyPaidMap = {};
         for (let i = 29; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
           const key = d.toISOString().slice(0, 10);
           dailyOrdersMap[key] = 0;
+          dailyPaidMap[key] = 0;
         }
-        rawOrders.forEach((o) => {
+
+        myOrders.forEach((o) => {
           if (!o.created_at) return;
           const key = new Date(o.created_at).toISOString().slice(0, 10);
           if (dailyOrdersMap[key] !== undefined) {
             dailyOrdersMap[key] += Number(o.grand_total || 0);
           }
+          if (o.payment_status === 'paid' && dailyPaidMap[key] !== undefined) {
+            dailyPaidMap[key] += Number(o.grand_total || 0);
+          }
         });
+
         const orders_chart = Object.entries(dailyOrdersMap).map(([date, amount]) => ({
           date,
           amount,
         }));
+        const revenue_chart = Object.entries(dailyPaidMap).map(([date, amount]) => ({
+          date,
+          amount,
+        }));
+
+        // 8. Hitung Total Omzet & Piutang Pesanan CS ini
+        const total_revenue = myOrders.reduce((acc, o) => acc + Number(o.grand_total || 0), 0);
+        const total_outstanding = myOrders
+          .filter((o) => o.payment_status === 'unpaid' || o.payment_status === 'partial')
+          .reduce((acc, o) => acc + Number(o.grand_total || 0), 0);
 
         setData({
           stats: {
-            total_customers: rawCustomers.length,
-            total_orders: rawOrders.length,
-            total_revenue: dashData?.stats?.total_revenue || rawOrders.reduce((acc, o) => acc + Number(o.grand_total || 0), 0),
-            total_outstanding: dashData?.stats?.total_outstanding || 0,
+            total_customers: myCustomers.length,
+            total_orders: myOrders.length,
+            total_revenue,
+            total_outstanding,
           },
           orders_chart,
-          revenue_chart: dashData?.revenue_chart || [],
-          order_status_chart: dashData?.order_status_chart || [],
+          revenue_chart,
+          order_status_chart,
           top_customers,
-          top_services: dashData?.top_services || [],
+          top_services,
           recent_orders,
         });
+
         setLoading(false);
       })
       .catch((e) => {
@@ -100,11 +168,9 @@ export default function CustomerServiceDashboard() {
       });
   };
 
-  const [chartMode, setChartMode] = useState('orders'); // 'orders' or 'revenue'
-
   useEffect(() => {
     load();
-  }, []);
+  }, [currentUserId]);
 
   if (loading) {
     return (
@@ -137,9 +203,9 @@ export default function CustomerServiceDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text">Customer Service Dashboard</h1>
+          <h1 className="text-2xl font-bold text-brand-text">My CS Dashboard</h1>
           <p className="text-sm text-brand-text-muted mt-1">
-            Operational summary of customers, orders, and billing for Customer Service
+            Ringkasan operasional pelanggan dan pesanan yang Anda tangani secara langsung.
           </p>
         </div>
 
@@ -151,46 +217,46 @@ export default function CustomerServiceDashboard() {
         </button>
       </div>
 
-      {/* Stat Cards - Exact Super Admin Format */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           icon={Users}
-          label="Total Active Customers"
+          label="My Active Customers"
           value={data.stats.total_customers}
           color="text-blue-600 dark:text-blue-400"
           bg="bg-blue-500/10"
         />
         <StatCard
           icon={FileText}
-          label="Total Orders Received"
+          label="My Handled Orders"
           value={data.stats.total_orders}
           color="text-purple-600 dark:text-purple-400"
           bg="bg-purple-500/10"
         />
         <StatCard
           icon={DollarSign}
-          label="Revenue This Month"
+          label="My Total Sales Value"
           value={formatRupiah(data.stats.total_revenue)}
           color="text-emerald-600 dark:text-emerald-400"
           bg="bg-emerald-500/10"
         />
         <StatCard
           icon={AlertCircle}
-          label="Total Outstanding Invoices"
+          label="My Outstanding Invoices"
           value={formatRupiah(data.stats.total_outstanding)}
           color="text-amber-600 dark:text-amber-400"
           bg="bg-amber-500/10"
         />
       </div>
 
-      {/* Charts Row - Exact Super Admin Format */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 bg-brand-secondary rounded-lg border border-brand-border p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <TrendingUp size={16} className="text-brand-accent" />
               <h2 className="text-sm font-semibold text-brand-text">
-                {chartMode === 'orders' ? '30-Day Customer Service Trend (Order Value)' : '30-Day Revenue (Paid Invoices)'}
+                {chartMode === 'orders' ? '30-Day My Order Value Trend' : '30-Day My Paid Revenue'}
               </h2>
             </div>
             <div className="flex items-center bg-brand-primary border border-brand-border rounded-lg p-0.5">
@@ -224,26 +290,26 @@ export default function CustomerServiceDashboard() {
         <div className="bg-brand-secondary rounded-lg border border-brand-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 size={16} className="text-brand-accent" />
-            <h2 className="text-sm font-semibold text-brand-text">Orders by Status</h2>
+            <h2 className="text-sm font-semibold text-brand-text">My Orders by Status</h2>
           </div>
           <OrderStatusChart data={data.order_status_chart} />
         </div>
       </div>
 
-      {/* Top Rows - Exact Super Admin Format */}
+      {/* Top Rows */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="bg-brand-secondary rounded-lg border border-brand-border p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Award size={16} className="text-brand-accent" />
-              <h2 className="text-sm font-semibold text-brand-text">Top 5 Customers</h2>
+              <h2 className="text-sm font-semibold text-brand-text">My Top 5 Customers</h2>
             </div>
             <Link href="/cs/customers" className="text-xs text-brand-accent hover:underline flex items-center gap-1">
               All Customers <ArrowRight size={12} />
             </Link>
           </div>
           {data.top_customers.length === 0 ? (
-            <EmptyState label="No customer data available" />
+            <EmptyState label="Belum ada data pelanggan yang ditangani" />
           ) : (
             <div className="space-y-3">
               {data.top_customers.map((c, i) => (
@@ -262,10 +328,10 @@ export default function CustomerServiceDashboard() {
         <div className="bg-brand-secondary rounded-lg border border-brand-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Package size={16} className="text-brand-accent" />
-            <h2 className="text-sm font-semibold text-brand-text">Top 5 Best-Selling Services</h2>
+            <h2 className="text-sm font-semibold text-brand-text">My Top Sold Services</h2>
           </div>
           {data.top_services.length === 0 ? (
-            <EmptyState label="No service data available" />
+            <EmptyState label="Belum ada layanan yang terjual" />
           ) : (
             <div className="space-y-3">
               {data.top_services.map((s, i) => (
@@ -273,7 +339,7 @@ export default function CustomerServiceDashboard() {
                   key={s.id}
                   rank={i + 1}
                   name={s.name}
-                  meta={`${s.order_count} ${s.order_count === 1 ? 'order placed' : 'orders placed'}`}
+                  meta={`${s.order_count} ${s.order_count === 1 ? 'order' : 'orders'}`}
                   value={formatRupiah(s.total_revenue)}
                 />
               ))}
@@ -282,19 +348,19 @@ export default function CustomerServiceDashboard() {
         </div>
       </div>
 
-      {/* Recent Orders Table - Exact Super Admin Recent Logs Format */}
+      {/* Recent Orders Table */}
       <div className="bg-brand-secondary rounded-lg border border-brand-border p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Activity size={16} className="text-brand-accent" />
-            <h2 className="text-sm font-semibold text-brand-text">Recent Customer Orders</h2>
+            <h2 className="text-sm font-semibold text-brand-text">My Recent Orders</h2>
           </div>
           <Link href="/cs/orders" className="text-xs text-brand-accent hover:underline flex items-center gap-1">
-            View All Orders <ArrowRight size={12} />
+            View All My Orders <ArrowRight size={12} />
           </Link>
         </div>
         {data.recent_orders.length === 0 ? (
-          <EmptyState label="No recent orders found" />
+          <EmptyState label="Belum ada pesanan terbaru yang Anda tangani" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -351,7 +417,7 @@ export default function CustomerServiceDashboard() {
   );
 }
 
-// ============ SUB COMPONENTS PERSIS SUPER ADMIN ============
+// ============ SUB COMPONENTS ============
 function StatCard({ icon: Icon, label, value, color, bg }) {
   return (
     <div className="bg-brand-secondary rounded-lg border border-brand-border p-5">
@@ -379,10 +445,7 @@ function RevenueChart({ data }) {
           const isZero = val === 0;
           const height = max > 0 ? (val / max) * 100 : 0;
           return (
-            <div
-              key={i}
-              className="flex-1 h-full flex items-end group relative cursor-pointer"
-            >
+            <div key={i} className="flex-1 h-full flex items-end group relative cursor-pointer">
               <div
                 className={`w-full rounded-t transition-all duration-300 ${
                   isZero
@@ -391,7 +454,6 @@ function RevenueChart({ data }) {
                 }`}
                 style={!isZero ? { height: `${Math.max(height, 8)}%` } : undefined}
               />
-              {/* Tooltip */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-brand-tertiary border border-brand-border text-brand-text text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap z-30 shadow-xl pointer-events-none">
                 <div className="font-semibold text-brand-accent">{formatRupiah(val)}</div>
                 <div className="text-brand-text-muted text-[10px]">{d.date}</div>
@@ -409,7 +471,7 @@ function RevenueChart({ data }) {
 }
 
 function OrderStatusChart({ data }) {
-  if (data.length === 0) return <EmptyState label="No orders found" />;
+  if (!data || data.length === 0) return <EmptyState label="No orders found" />;
 
   const total = data.reduce((sum, d) => sum + d.count, 0);
 
@@ -490,28 +552,6 @@ function OrderStatusBadge({ status }) {
   );
 }
 
-function PaymentStatusBadge({ status }) {
-  const labels = {
-    unpaid:   'Unpaid',
-    partial:  'Partial (DP)',
-    paid:     'Paid',
-    refunded: 'Refunded',
-    failed:   'Failed',
-  };
-  const colors = {
-    unpaid:   'bg-red-500/15 text-red-400 border-red-500/40',
-    partial:  'bg-amber-500/15 text-amber-400 border-amber-500/40',
-    paid:     'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
-    refunded: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
-    failed:   'bg-gray-500/15 text-gray-400 border-gray-500/40',
-  };
-  return (
-    <span className={`inline-block text-xs px-2.5 py-0.5 rounded-full font-medium border ${colors[status] || colors.unpaid}`}>
-      {labels[status] || status}
-    </span>
-  );
-}
-
 function EmptyState({ label }) {
   return (
     <div className="py-8 text-center text-brand-text-muted text-sm">{label}</div>
@@ -522,18 +562,6 @@ function EmptyState({ label }) {
 function formatRupiah(n) {
   if (!n) return 'Rp 0';
   return 'Rp ' + Number(n).toLocaleString('id-ID');
-}
-
-function formatDateTime(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return d.toLocaleString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function formatStatus(s) {

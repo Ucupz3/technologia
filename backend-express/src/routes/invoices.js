@@ -13,7 +13,6 @@ export const paymentsRouter = invoicesRouter;
 const safeSerialize = (obj) => {
   return JSON.parse(JSON.stringify(obj, (key, value) => {
     if (typeof value === 'bigint') return value.toString();
-    // Prisma Decimal
     if (value && typeof value === 'object' && value.constructor?.name === 'Decimal') {
       return Number(value);
     }
@@ -52,11 +51,15 @@ invoicesRouter.get('/', async (req, res, next) => {
     const userId = req.header('X-User-Id');
     const where = { deleted_at: null };
 
-    // CS hanya melihat invoice dari customer yang ditangani sendiri
-    if (userRole === 'CS' && userId) {
-      where.customers = {
-        sales_id: BigInt(userId)
-      };
+    // CS hanya melihat invoice dari customer atau order yang ditangani sendiri
+    const isCS = userRole && ['CS', 'CUSTOMER SERVICE', 'CUSTOMER_SERVICE'].includes(userRole.toUpperCase());
+    
+    if (isCS && userId) {
+      const salesId = BigInt(userId);
+      where.OR = [
+        { customers: { sales_id: salesId } },
+        { orders: { sales_id: salesId } }
+      ];
     }
 
     const invoices = await prisma.invoices.findMany({
@@ -64,8 +67,8 @@ invoicesRouter.get('/', async (req, res, next) => {
       select: {
         id: true, invoice_number: true, total_paid: true, status: true,
         due_date: true, issued_at: true, paid_at: true, created_at: true,
-        orders: { select: { id: true, name: true, order_number: true, grand_total: true, payment_status: true} },
-        customers: { select: { id: true, name: true, email: true } },
+        orders: { select: { id: true, name: true, order_number: true, grand_total: true, payment_status: true, sales_id: true } },
+        customers: { select: { id: true, name: true, email: true, sales_id: true } },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -95,11 +98,14 @@ invoicesRouter.get('/:id', async (req, res, next) => {
     const userId = req.header('X-User-Id');
     const where = { id: BigInt(req.params.id), deleted_at: null };
 
-    // CS hanya melihat invoice dari customer yang ditangani sendiri
-    if (userRole === 'CS' && userId) {
-      where.customers = {
-        sales_id: BigInt(userId)
-      };
+    const isCS = userRole && ['CS', 'CUSTOMER SERVICE', 'CUSTOMER_SERVICE'].includes(userRole.toUpperCase());
+    
+    if (isCS && userId) {
+      const salesId = BigInt(userId);
+      where.OR = [
+        { customers: { sales_id: salesId } },
+        { orders: { sales_id: salesId } }
+      ];
     }
 
     const invoice = await prisma.invoices.findFirst({
@@ -198,7 +204,7 @@ Status Invoice: ${newInvoiceStatus}`;
   } catch (err) { next(err); }
 });
 
-// ============ SEND EMAIL (FINAL FIX) ============
+// ============ SEND EMAIL ============
 invoicesRouter.post('/:id/send-email', async (req, res) => {
   try {
     const id = BigInt(req.params.id);
@@ -237,7 +243,6 @@ invoicesRouter.post('/:id/send-email', async (req, res) => {
 
     await transporter.verify();
 
-    // Data untuk struk - SAMA PERSIS kayak di frontend InvoiceShow
     const customerName = invoice.orders?.customer_name_snapshot || invoice.customers?.name || '—';
     const picName = invoice.orders?.pic_name_snapshot || '—';
     const services = invoice.orders?.order_services || [];
@@ -264,7 +269,6 @@ invoicesRouter.post('/:id/send-email', async (req, res) => {
       </div>
     ` : '';
 
-    // INI HTML NYA SUDAH IDENTIK DENGAN PREVIEW DI InvoiceShow
     const htmlBody = `
       <div style="font-family: 'Courier New', Courier, monospace; max-width: 400px; margin: 0 auto; background: #ffffff; padding: 32px; border: 1px solid #d1d5db; border-radius: 12px; color: #000000;">
         
@@ -340,10 +344,7 @@ invoicesRouter.post('/:id/send-email', async (req, res) => {
       }
     }
 
-    // Audit log untuk send email (1 log untuk semua recipient)
-    const emailList = uniqueRecipients.join(', ');
-    const detailText = `Mengirim invoice ${invoice.invoice_number} ke email:
-${uniqueRecipients.map(e => `- ${e}`).join('\n')}`;
+    const detailText = `Mengirim invoice ${invoice.invoice_number} ke email:\n${uniqueRecipients.map(e => `- ${e}`).join('\n')}`;
     
     await createAuditLog({
       action: 'SEND_EMAIL',

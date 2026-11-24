@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import RoleLayout from '@/Layouts/RoleLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import {
-  ArrowLeft, RefreshCw, Save, ChevronDown, Check,
+  ArrowLeft, RefreshCw, Save, ChevronDown, Check, Search, X,
   User, UserCircle, Briefcase, Users, Package, Percent, Plus, Trash2, AlertCircle
 } from 'lucide-react';
 
@@ -14,7 +14,23 @@ function getBasePath() {
 
 function CustomSelect({ label, value, options, onChange, placeholder, disabled, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const selectedOption = options.find(o => String(o.value) === String(value));
+
+  const filteredOptions = options.filter(opt => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const labelMatch = String(opt.label || '').toLowerCase().includes(q);
+    const subtextMatch = String(opt.subtext || '').toLowerCase().includes(q);
+    const searchTextMatch = String(opt.searchText || '').toLowerCase().includes(q);
+    const badgeMatch = String(opt.badge || '').toLowerCase().includes(q);
+    return labelMatch || subtextMatch || searchTextMatch || badgeMatch;
+  });
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setSearchQuery('');
+  };
 
   return (
     <div className="relative">
@@ -22,7 +38,10 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isOpen) setSearchQuery('');
+          setIsOpen(!isOpen);
+        }}
         className="w-full flex items-center justify-between bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -36,48 +55,72 @@ function CustomSelect({ label, value, options, onChange, placeholder, disabled, 
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-20" onClick={() => setIsOpen(false)} />
-          <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => { onChange(''); setIsOpen(false); }}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between ${!value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
-            >
-              <span>{placeholder}</span>
-              {!value && <Check size={14} className="text-brand-accent" />}
-            </button>
-            {options.map((opt) => (
+          <div className="fixed inset-0 z-20" onClick={handleClose} />
+          <div className="absolute z-30 top-full left-0 right-0 mt-1.5 p-1.5 bg-brand-primary border border-brand-border rounded-xl shadow-xl max-h-64 flex flex-col">
+            {/* Input Pencarian */}
+            <div className="p-1 pb-1.5 border-b border-brand-border/60">
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-brand-secondary border border-brand-border rounded-lg text-xs text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-y-auto max-h-48 pt-1 space-y-0.5">
               <button
-                key={opt.value}
                 type="button"
-                disabled={opt.disabled}
-                onClick={() => {
-                  if (opt.disabled) return;
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-between transition ${
-                  opt.disabled
-                    ? 'opacity-40 cursor-not-allowed bg-transparent text-brand-text-muted'
-                    : String(value) === String(opt.value)
-                    ? 'bg-brand-accent/15 text-brand-accent font-medium'
-                    : 'text-brand-text hover:bg-brand-border/40'
-                }`}
+                onClick={() => { onChange(''); handleClose(); }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm flex items-center justify-between ${!value ? 'bg-brand-accent/15 text-brand-accent font-medium' : 'text-brand-text hover:bg-brand-border/40'}`}
               >
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="truncate">{opt.label}</span>
-                  {opt.subtext && <span className="text-[10px] text-brand-text-muted truncate">{opt.subtext}</span>}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                  {opt.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${opt.badgeClassName || 'bg-brand-accent/10 text-brand-accent'}`}>
-                      {opt.badge}
-                    </span>
-                  )}
-                  {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent shrink-0" />}
-                </div>
+                <span>{placeholder}</span>
+                {!value && <Check size={14} className="text-brand-accent" />}
               </button>
-            ))}
+
+              {filteredOptions.length === 0 ? (
+                <div className="p-3 text-center text-xs text-brand-text-muted italic">
+                  Tidak ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={opt.disabled}
+                    onClick={() => {
+                      if (opt.disabled) return;
+                      onChange(opt.value);
+                      handleClose();
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm flex items-center justify-between transition ${
+                      opt.disabled
+                        ? 'opacity-40 cursor-not-allowed bg-transparent text-brand-text-muted'
+                        : String(value) === String(opt.value)
+                        ? 'bg-brand-accent/15 text-brand-accent font-medium'
+                        : 'text-brand-text hover:bg-brand-border/40'
+                    }`}
+                  >
+                    <div className="flex flex-col min-w-0 pr-2">
+                      <span className="truncate">{opt.label}</span>
+                      {opt.subtext && <span className="text-[10px] text-brand-text-muted truncate">{opt.subtext}</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                      {opt.badge && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${opt.badgeClassName || 'bg-brand-accent/10 text-brand-accent'}`}>
+                          {opt.badge}
+                        </span>
+                      )}
+                      {String(value) === String(opt.value) && <Check size={14} className="text-brand-accent shrink-0" />}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </>
       )}
@@ -111,7 +154,7 @@ const getRequiredJobKeywords = (svcNames) => {
   return [...new Set(keywords)];
 };
 
-const computeDefaultAssignments = (team, keywords) => {
+const computeDefaultAssignments = (team, keywords, startDateProject = '', endDateProject = '') => {
   if (!team || !team.team_members) return {};
   const assignments = {};
 
@@ -148,8 +191,8 @@ const computeDefaultAssignments = (team, keywords) => {
       is_assigned: isAssigned,
       is_lead: false,
       phase_order: 1,
-      start_date: '',
-      end_date: ''
+      start_date: startDateProject || '',
+      end_date: endDateProject || ''
     };
   });
 
@@ -166,6 +209,7 @@ export default function OrderCreate() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [memberSearch, setMemberSearch] = useState('');
 
   const [form, setForm] = useState({
     name: '',              
@@ -191,7 +235,7 @@ export default function OrderCreate() {
     Promise.all([
       fetch('/api/v1/orders/options/customers').then((r) => r.json()),
       fetch('/api/v1/orders/options/services').then((r) => r.json()),
-      fetch('/api/v1/orders/options/customer-service').then((r) => r.json()),
+      fetch('/api/v1/orders/options/sales').then((r) => r.json()),
       fetch('/api/v1/orders/options/teams').then((r) => r.json()),
     ])
       .then(([c, s, sa, t]) => {
@@ -217,12 +261,54 @@ export default function OrderCreate() {
   const taxAmount = ((subtotal - discountAmount) * (Number(form.tax_rate) || 0)) / 100;
   const grandTotal = subtotal - discountAmount + taxAmount;
 
+  // Otomatis set CS ketika Customer dipilih
   const handleCustomerChange = (val) => {
-    setForm({ ...form, customer_id: val, pic_id: '' });
+    const selectedCust = options.customers.find(c => String(c.id) === String(val));
+    const assignedSalesId = selectedCust?.sales_id || selectedCust?.customer_service_id || '';
+
+    setForm(prev => ({
+      ...prev,
+      customer_id: val,
+      pic_id: '',
+      sales_id: assignedSalesId ? String(assignedSalesId) : ''
+    }));
+  };
+
+  // Otomatis update tanggal mulai & deadline anggota tim saat tanggal proyek diubah
+  const handleProjectDateChange = (field, value) => {
+    setForm(prev => {
+      const nextAssignments = { ...prev.assignments };
+
+      Object.keys(nextAssignments).forEach(tmId => {
+        const assign = { ...nextAssignments[tmId] };
+        if (field === 'start_date_project') {
+          if (!assign.start_date || assign.start_date === prev.start_date_project) {
+            assign.start_date = value;
+          }
+        } else if (field === 'end_date_project') {
+          if (!assign.end_date || assign.end_date === prev.end_date_project) {
+            assign.end_date = value;
+          }
+        }
+        nextAssignments[tmId] = assign;
+      });
+
+      return {
+        ...prev,
+        [field]: value,
+        assignments: nextAssignments
+      };
+    });
   };
 
   const currentCustomer = options.customers.find(c => String(c.id) === String(form.customer_id));
   const customerPics = currentCustomer?.customer_pics || [];
+
+  // Opsi Customer Service selalu menampilkan seluruh CS terdaftar
+  const salesOptions = options.sales.map(s => ({
+    value: s.id,
+    label: s.name
+  }));
 
   const getServiceNamesFromList = (serviceRows) => {
     return serviceRows
@@ -260,7 +346,7 @@ export default function OrderCreate() {
           nextTeamId = '';
           nextAssignments = {};
         } else if (currentTeam) {
-          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords);
+          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords, prev.start_date_project, prev.end_date_project);
         }
       }
 
@@ -299,7 +385,7 @@ export default function OrderCreate() {
           nextTeamId = '';
           nextAssignments = {};
         } else if (currentTeam) {
-          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords);
+          nextAssignments = computeDefaultAssignments(currentTeam, newKeywords, prev.start_date_project, prev.end_date_project);
         }
       }
 
@@ -315,8 +401,10 @@ export default function OrderCreate() {
   const currentSvcNames = getServiceNamesFromList(form.services);
   const requiredKeywords = getRequiredJobKeywords(currentSvcNames);
 
+  // Opsi tim dengan pencarian berbasis nama tim, nama anggota, dan keahlian
   const teamOptions = options.teams.map((t) => {
     const memberJobs = t.team_members?.flatMap((tm) => tm.users?.user_jobs?.map((uj) => uj.jobs?.name) || []) || [];
+    const memberNames = t.team_members?.map((tm) => tm.users?.name).filter(Boolean).join(', ') || '';
     const uniqueJobs = [...new Set(memberJobs)];
 
     let hasMatch = true;
@@ -337,7 +425,8 @@ export default function OrderCreate() {
     return {
       value: t.id,
       label: t.name,
-      subtext: uniqueJobs.length > 0 ? `Keahlian: ${uniqueJobs.join(', ')}` : 'Belum ada anggota',
+      subtext: memberNames ? `Anggota: ${memberNames}` : (uniqueJobs.length > 0 ? `Keahlian: ${uniqueJobs.join(', ')}` : 'Belum ada anggota'),
+      searchText: `${t.name} ${memberNames} ${uniqueJobs.join(' ')}`,
       disabled: requiredKeywords.length > 0 && !hasMatch,
       badge: badge,
       badgeClassName: badgeClassName,
@@ -353,22 +442,48 @@ export default function OrderCreate() {
       return {
         ...prev,
         team_id: val,
-        assignments: selectedTeam ? computeDefaultAssignments(selectedTeam, keywords) : {}
+        assignments: selectedTeam ? computeDefaultAssignments(selectedTeam, keywords, prev.start_date_project, prev.end_date_project) : {}
       };
     });
   };
 
+  // LOGIK HANYA 1 LEAD TIM
   const handleAssignmentChange = (teamMemberId, field, value) => {
-    setForm(prev => ({
-      ...prev,
-      assignments: {
-        ...prev.assignments,
-        [teamMemberId]: {
-          ...prev.assignments[teamMemberId],
-          [field]: value
+    setForm(prev => {
+      const nextAssignments = { ...prev.assignments };
+
+      if (field === 'is_lead' && value) {
+        Object.keys(nextAssignments).forEach(tmId => {
+          nextAssignments[tmId] = {
+            ...nextAssignments[tmId],
+            is_lead: false
+          };
+        });
+      }
+
+      const currentAssign = nextAssignments[teamMemberId] || {};
+      let updatedAssign = { ...currentAssign, [field]: value };
+
+      if (field === 'is_assigned') {
+        if (value) {
+          if (!updatedAssign.start_date && prev.start_date_project) {
+            updatedAssign.start_date = prev.start_date_project;
+          }
+          if (!updatedAssign.end_date && prev.end_date_project) {
+            updatedAssign.end_date = prev.end_date_project;
+          }
+        } else {
+          updatedAssign.is_lead = false;
         }
       }
-    }));
+
+      nextAssignments[teamMemberId] = updatedAssign;
+
+      return {
+        ...prev,
+        assignments: nextAssignments
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -408,7 +523,7 @@ export default function OrderCreate() {
       name: form.name.trim(),
       customer_id: form.customer_id,
       pic_id: form.pic_id || null,
-      customer_service_id: form.sales_id || null,
+      sales_id: form.sales_id || null, // FIX: Disesuaikan ke sales_id agar dibaca oleh skema DB/Express
       team_id: form.team_id || null,
       services: form.services.map(s => ({
         service_id: Number(s.service_id),
@@ -457,13 +572,22 @@ export default function OrderCreate() {
     );
   }
 
+  const currentSelectedTeam = options.teams.find(t => String(t.id) === String(form.team_id));
+  const filteredTeamMembers = currentSelectedTeam?.team_members?.filter(tm => {
+    if (!memberSearch) return true;
+    const q = memberSearch.toLowerCase();
+    const nameMatch = tm.users?.name?.toLowerCase().includes(q);
+    const jobsMatch = tm.users?.user_jobs?.some(uj => uj.jobs?.name?.toLowerCase().includes(q));
+    return nameMatch || jobsMatch;
+  }) || [];
+
   return (
     <RoleLayout>
       <Head title="Buat Order Baru" />
 
       {/* Header */}
       <div className="mb-4 sm:mb-6">
-        <Link href={`${basePath}/orders`} className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-3">
+        <Link href={`${basePath}/orders`} className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-brand-text-muted hover:text-brand-accent transition mb-6">
           <ArrowLeft size={16} /> Kembali ke Orders
         </Link>
         <h1 className="text-xl sm:text-2xl font-bold text-brand-text">Buat Order Baru</h1>
@@ -483,7 +607,7 @@ export default function OrderCreate() {
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Contoh: Pembuatan Website Company Profile PT ABC"
+              placeholder="Website Company Profile PT ABC"
               className={`w-full bg-brand-primary border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 transition-all ${
                 errors.name ? 'border-red-500' : 'border-brand-border focus:border-brand-accent'
               }`}
@@ -495,7 +619,7 @@ export default function OrderCreate() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <CustomSelect
               label="Customer *"
-              placeholder="— Pilih Customer —"
+              placeholder="Pilih Customer"
               value={form.customer_id}
               options={options.customers.map(c => ({ value: c.id, label: c.name }))}
               onChange={handleCustomerChange}
@@ -503,7 +627,7 @@ export default function OrderCreate() {
             />
             <CustomSelect
               label="PIC Customer"
-              placeholder="— Pilih PIC —"
+              placeholder="Pilih PIC"
               value={form.pic_id}
               options={customerPics.map(p => ({ value: p.id, label: p.name }))}
               onChange={(val) => setForm({ ...form, pic_id: val })}
@@ -516,15 +640,15 @@ export default function OrderCreate() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <CustomSelect
               label="Customer Service"
-              placeholder="— Pilih Customer Service —"
+              placeholder="Pilih Customer Service"
               value={form.sales_id}
-              options={options.sales.map(s => ({ value: s.id, label: s.name }))}
+              options={salesOptions}
               onChange={(val) => setForm({ ...form, sales_id: val })}
               icon={Briefcase}
             />
             <CustomSelect
               label="Tim Pengerjaan"
-              placeholder="— Pilih Tim —"
+              placeholder="Pilih Tim"
               value={form.team_id}
               options={teamOptions}
               onChange={handleTeamChange}
@@ -551,7 +675,7 @@ export default function OrderCreate() {
                   <div className="flex-1 w-full">
                     <CustomSelect
                       label="Layanan / Service *"
-                      placeholder="— Pilih Layanan —"
+                      placeholder="Pilih Layanan"
                       value={svc.service_id}
                       options={options.services.map(s => ({ value: s.id, label: s.name }))}
                       onChange={(val) => handleServiceChange(index, 'service_id', val)}
@@ -591,7 +715,7 @@ export default function OrderCreate() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 bg-brand-primary/20 p-4 sm:p-5 rounded-xl border border-brand-border mt-4 sm:mt-6">
             <CustomSelect
               label="Tipe Diskon"
-              placeholder="— Pilih Tipe —"
+              placeholder="Pilih Tipe"
               value={form.discount_type}
               options={[
                 { value: 'fixed', label: 'Nominal (Rp)' },
@@ -631,7 +755,7 @@ export default function OrderCreate() {
               <input 
                 type="date" 
                 value={form.start_date_project} 
-                onChange={(e) => setForm({ ...form, start_date_project: e.target.value })} 
+                onChange={(e) => handleProjectDateChange('start_date_project', e.target.value)} 
                 className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
@@ -640,7 +764,8 @@ export default function OrderCreate() {
               <input 
                 type="date" 
                 value={form.end_date_project} 
-                onChange={(e) => setForm({ ...form, end_date_project: e.target.value })} 
+                min={form.start_date_project || undefined}
+                onChange={(e) => handleProjectDateChange('end_date_project', e.target.value)} 
                 className="w-full bg-brand-primary border border-brand-border rounded-xl px-3.5 py-2.5 sm:py-3 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all" 
               />
             </div>
@@ -649,7 +774,7 @@ export default function OrderCreate() {
           {/* Tim Assignments */}
           {form.team_id && Object.keys(form.assignments).length > 0 && (
             <div className="pt-4 border-t border-brand-border">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest">
                     Atur Posisi & Fase Anggota Tim
@@ -658,134 +783,168 @@ export default function OrderCreate() {
                     Pilih anggota tim yang ditugaskan untuk pengerjaan proyek ini.
                   </p>
                 </div>
-                <div className="text-xs text-brand-text-muted">
-                  Ditugaskan: <span className="font-semibold text-brand-accent">
-                    {Object.values(form.assignments).filter(a => a.is_assigned).length}
-                  </span> dari {Object.keys(form.assignments).length} anggota
+                
+                <div className="flex items-center gap-3">
+                  {/* Search Bar Anggota Tim */}
+                  <div className="relative w-full sm:w-56">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+                    <input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Cari anggota tim..."
+                      className="w-full pl-8 pr-7 py-1.5 bg-brand-primary border border-brand-border rounded-xl text-xs text-brand-text placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+                    />
+                    {memberSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setMemberSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text p-0.5"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-brand-text-muted shrink-0">
+                    Ditugaskan: <span className="font-semibold text-brand-accent">
+                      {Object.values(form.assignments).filter(a => a.is_assigned).length}
+                    </span> dari {Object.keys(form.assignments).length} anggota
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-3 sm:space-y-4">
-                {options.teams.find(t => String(t.id) === String(form.team_id))?.team_members?.map((tm) => {
-                  const assign = form.assignments[tm.id] || {};
-                  const userJobs = tm.users?.user_jobs || [];
-                  const isAssigned = Boolean(assign.is_assigned);
+                {filteredTeamMembers.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-brand-text-muted bg-brand-primary/20 rounded-xl border border-brand-border/40 italic">
+                    Anggota tim tidak ditemukan.
+                  </div>
+                ) : (
+                  filteredTeamMembers.map((tm) => {
+                    const assign = form.assignments[tm.id] || {};
+                    const userJobs = tm.users?.user_jobs || [];
+                    const isAssigned = Boolean(assign.is_assigned);
 
-                  return (
-                    <div
-                      key={tm.id}
-                      className={`border p-3.5 sm:p-4 rounded-xl space-y-3 transition-all ${
-                        isAssigned
-                          ? 'bg-brand-primary/40 border-brand-border'
-                          : 'bg-brand-primary/10 border-dashed border-brand-border/40 opacity-60'
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/40 pb-2">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              checked={isAssigned}
-                              onChange={(e) => handleAssignmentChange(tm.id, 'is_assigned', e.target.checked)}
-                              className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer shrink-0"
-                            />
-                            <span className={`text-xs sm:text-sm font-semibold flex items-center gap-1.5 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
-                              <User size={15} className={isAssigned ? 'text-brand-accent shrink-0' : 'text-brand-text-muted shrink-0'} />
-                              <span>{tm.users?.name}</span>
-                              {userJobs.length === 0 && (
-                                <span className="text-[11px] text-red-500 font-normal flex items-center gap-1">
-                                  <AlertCircle size={12} className="shrink-0" /> Belum punya Job
-                                </span>
-                              )}
+                    return (
+                      <div
+                        key={tm.id}
+                        className={`border p-3.5 sm:p-4 rounded-xl space-y-3 transition-all ${
+                          isAssigned
+                            ? 'bg-brand-primary/40 border-brand-border'
+                            : 'bg-brand-primary/10 border-dashed border-brand-border/40 opacity-60'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/40 pb-2">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={isAssigned}
+                                onChange={(e) => handleAssignmentChange(tm.id, 'is_assigned', e.target.checked)}
+                                className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent cursor-pointer shrink-0"
+                              />
+                              <span className={`text-xs sm:text-sm font-semibold flex items-center gap-1.5 ${isAssigned ? 'text-brand-text' : 'text-brand-text-muted'}`}>
+                                <User size={15} className={isAssigned ? 'text-brand-accent shrink-0' : 'text-brand-text-muted shrink-0'} />
+                                <span>{tm.users?.name}</span>
+                                {userJobs.length === 0 && (
+                                  <span className="text-[11px] text-red-500 font-normal flex items-center gap-1">
+                                    <AlertCircle size={12} className="shrink-0" /> Belum punya Job
+                                  </span>
+                                )}
+                              </span>
+                            </label>
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                isAssigned
+                                  ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                                  : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
+                              }`}
+                            >
+                              {isAssigned ? 'Ditugaskan' : 'Tidak Ditugaskan'}
                             </span>
-                          </label>
-                          <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                              isAssigned
-                                ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
-                                : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
-                            }`}
-                          >
-                            {isAssigned ? 'Ditugaskan' : 'Tidak Ditugaskan'}
-                          </span>
+                          </div>
+
+                          {isAssigned && (
+                            <label className="flex items-center gap-2 cursor-pointer select-none self-start sm:self-auto">
+                              <input
+                                type="checkbox"
+                                checked={assign.is_lead || false}
+                                onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
+                                className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer shrink-0"
+                              />
+                              <span className="text-xs font-semibold text-brand-text-muted">Lead Tim</span>
+                            </label>
+                          )}
                         </div>
 
-                        {isAssigned && (
-                          <label className="flex items-center gap-2 cursor-pointer select-none self-start sm:self-auto">
-                            <input
-                              type="checkbox"
-                              checked={assign.is_lead || false}
-                              onChange={(e) => handleAssignmentChange(tm.id, 'is_lead', e.target.checked)}
-                              className="w-4 h-4 rounded border-brand-border text-amber-500 focus:ring-amber-500 cursor-pointer shrink-0"
-                            />
-                            <span className="text-xs font-semibold text-brand-text-muted">Lead Tim</span>
-                          </label>
+                        {isAssigned ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                            <div>
+                              <CustomSelect
+                                label="Posisi / Job *"
+                                placeholder="— Pilih Job —"
+                                value={assign.job_id || ''}
+                                options={userJobs.map(uj => ({ value: uj.job_id, label: uj.jobs?.name }))}
+                                onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
+                                disabled={userJobs.length === 0}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
+                                Urutan Pengerjaan
+                              </label>
+                              <select
+                                value={assign.phase_order || 1}
+                                onChange={(e) => handleAssignmentChange(tm.id, 'phase_order', Number(e.target.value))}
+                                className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                              >
+                                <option value={1}>Fase 1 (Mulai Pertama)</option>
+                                <option value={2}>Fase 2 (Setelah Fase 1 Selesai)</option>
+                                <option value={3}>Fase 3 (Setelah Fase 2 Selesai)</option>
+                                <option value={4}>Fase 4 (Setelah Fase 3 Selesai)</option>
+                                <option value={5}>Fase 5 (Setelah Fase 4 Selesai)</option>
+                              </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
+                                  Tgl Mulai
+                                </label>
+                                <input
+                                  type="date"
+                                  value={assign.start_date || ''}
+                                  min={form.start_date_project || undefined}
+                                  max={assign.end_date || form.end_date_project || undefined}
+                                  onChange={(e) => handleAssignmentChange(tm.id, 'start_date', e.target.value)}
+                                  className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
+                                  Deadline
+                                </label>
+                                <input
+                                  type="date"
+                                  value={assign.end_date || ''}
+                                  min={assign.start_date || form.start_date_project || undefined}
+                                  max={form.end_date_project || undefined}
+                                  onChange={(e) => handleAssignmentChange(tm.id, 'end_date', e.target.value)}
+                                  className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-brand-text-muted italic py-1">
+                            Anggota ini tidak diikutsertakan dalam pengerjaan order ini. Centang "Tugaskan" di atas jika ingin menyertakannya.
+                          </p>
                         )}
                       </div>
-
-                      {isAssigned ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                          <div>
-                            <CustomSelect
-                              label="Posisi / Job *"
-                              placeholder="— Pilih Job —"
-                              value={assign.job_id || ''}
-                              options={userJobs.map(uj => ({ value: uj.job_id, label: uj.jobs?.name }))}
-                              onChange={(val) => handleAssignmentChange(tm.id, 'job_id', val)}
-                              disabled={userJobs.length === 0}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">
-                              Urutan Pengerjaan
-                            </label>
-                            <select
-                              value={assign.phase_order || 1}
-                              onChange={(e) => handleAssignmentChange(tm.id, 'phase_order', Number(e.target.value))}
-                              className="w-full bg-brand-primary border border-brand-border rounded-xl px-3 py-2.5 text-base sm:text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                            >
-                              <option value={1}>Fase 1 (Mulai Pertama)</option>
-                              <option value={2}>Fase 2 (Setelah Fase 1 Selesai)</option>
-                              <option value={3}>Fase 3 (Setelah Fase 2 Selesai)</option>
-                              <option value={4}>Fase 4 (Setelah Fase 3 Selesai)</option>
-                              <option value={5}>Fase 5 (Setelah Fase 4 Selesai)</option>
-                            </select>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
-                                Tgl Mulai
-                              </label>
-                              <input
-                                type="date"
-                                value={assign.start_date || ''}
-                                onChange={(e) => handleAssignmentChange(tm.id, 'start_date', e.target.value)}
-                                className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-brand-text-muted uppercase tracking-wider mb-1.5">
-                                Deadline
-                              </label>
-                              <input
-                                type="date"
-                                value={assign.end_date || ''}
-                                onChange={(e) => handleAssignmentChange(tm.id, 'end_date', e.target.value)}
-                                className="w-full bg-brand-primary border border-brand-border rounded-xl px-2.5 py-2 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-brand-text-muted italic py-1">
-                          Anggota ini tidak diikutsertakan dalam pengerjaan order ini. Centang "Tugaskan" di atas jika ingin menyertakannya.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
@@ -793,7 +952,6 @@ export default function OrderCreate() {
           {/* Catatan Tambahan & Summary Order */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-4 sm:pt-6 border-t border-brand-border">
             <div>
-              <label className="block text-xs font-semibold text-brand-text-muted uppercase tracking-widest mb-1.5">Catatan Tambahan</label>
               <textarea 
                 rows={4} 
                 value={form.notes} 

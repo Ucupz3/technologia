@@ -7,7 +7,7 @@ const GROUPS = [
         links: [
             ['Home', '/'],
             ['About Us', '/#about'],
-            ['Projects', '/projects'],
+            ['Portofolio', '/portofolio'],
             ['Products', '/products'],
             ['Blog', '/blog'],
             ['Career', '/career'],
@@ -45,8 +45,7 @@ export default function TeknaFooter() {
                 <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.2fr]">
                     <div>
                         <Link href="/" className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-accent text-lg font-bold text-brand-white">T</span>
-                            <span className="text-xl font-bold tracking-tight text-brand-text">Tekna.</span>
+                        
                         </Link>
                         <p className="mt-4 max-w-xs text-sm leading-relaxed text-brand-text-muted">
                             We are a trusted technology partner that helps businesses grow through innovative and high-quality digital solutions.

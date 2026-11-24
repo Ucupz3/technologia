@@ -100,9 +100,9 @@ customersRouter.get('/:id', async (req, res, next) => {
         address: true, notes: true, sales_id: true, created_at: true,
         sales_user: { select: { id: true, name: true, email: true } },
 
-        // ✅ TAMBAHAN: ambil PIC dari tabel customer_pics
+        // ✅ PERBAIKAN: Ambil semua PIC non-deleted (termasuk yang is_active = false)
         customer_pics: {
-          where: { deleted_at: null, is_active: true },
+          where: { deleted_at: null },
           select: {
             id: true, name: true, position: true,
             email: true, phone: true,
@@ -140,10 +140,7 @@ customersRouter.get('/:id', async (req, res, next) => {
         customer_service_name: customer.sales_user?.name || null,
         customer_service_email: customer.sales_user?.email || null,
         created_at: customer.created_at,
-
-        // ✅ TAMBAHAN: kirim ke frontend sebagai `pics`
         pics: customer.customer_pics || [],
-
         orders: customer.orders,
       },
     });
@@ -235,6 +232,7 @@ const updateSchema = z.object({
   notes: z.string().optional().nullable(),
   customer_service_id: z.coerce.number().int().positive().optional().nullable(),
   sales_id: z.coerce.number().int().positive().optional().nullable(),
+  primary_pic_id: z.coerce.number().int().positive().optional().nullable(),
 });
 
 customersRouter.put('/:id', async (req, res, next) => {
@@ -267,12 +265,29 @@ customersRouter.put('/:id', async (req, res, next) => {
     }
 
     const data = { ...parsed.data };
+    const primaryPicId = data.primary_pic_id;
+    delete data.primary_pic_id;
+
     if (data.customer_service_id !== undefined && data.sales_id === undefined) {
       data.sales_id = data.customer_service_id;
     }
     delete data.customer_service_id;
     if (data.sales_id !== undefined) {
       data.sales_id = data.sales_id ? BigInt(data.sales_id) : null;
+    }
+
+    // ✅ Update Primary PIC jika dikirimkan dari modal Edit Customer
+    if (primaryPicId !== undefined) {
+      await prisma.customer_pics.updateMany({
+        where: { customer_id: id, deleted_at: null },
+        data: { is_primary: false },
+      });
+      if (primaryPicId) {
+        await prisma.customer_pics.updateMany({
+          where: { id: BigInt(primaryPicId), customer_id: id, deleted_at: null },
+          data: { is_primary: true },
+        });
+      }
     }
 
     const customer = await prisma.customers.update({
@@ -288,11 +303,6 @@ customersRouter.put('/:id', async (req, res, next) => {
     if (parsed.data.email && parsed.data.email !== existing.email) changes.push(`Email: "${existing.email}" → "${parsed.data.email}"`);
     if (parsed.data.phone !== undefined && parsed.data.phone !== existing.phone) changes.push(`Telepon: "${existing.phone || '-'}" → "${parsed.data.phone || '-'}"`);
     if (parsed.data.address !== undefined && parsed.data.address !== existing.address) changes.push(`Alamat: "${existing.address || '-'}" → "${parsed.data.address || '-'}"`);
-    if (parsed.data.sales_id !== undefined) {
-      const oldSalesId = existing.sales_id ? existing.sales_id.toString() : '-';
-      const newSalesId = parsed.data.sales_id ? parsed.data.sales_id.toString() : '-';
-      if (oldSalesId !== newSalesId) changes.push(`Customer Service ID: "${oldSalesId}" → "${newSalesId}"`);
-    }
 
     const detailText = changes.length > 0 
       ? `Mengedit customer ${existing.name}.\n${changes.join('\n')}`
@@ -334,7 +344,7 @@ customersRouter.delete('/:id', async (req, res, next) => {
     const userId = req.headers['x-user-id'];
     const detailText = `Menghapus customer ${customer.name}.
 Email: ${customer.email}
-Telepon: ${customer.phone || '-'}${customer.address ? '\nAlamat: ' + customer.address : ''}`;
+Telepon: ${customer.phone || '-'}${customer.address ? '\nAlamat: ' + address : ''}`;
     
     await createAuditLog({
       userId,
@@ -352,16 +362,19 @@ Telepon: ${customer.phone || '-'}${customer.address ? '\nAlamat: ' + customer.ad
 });
 
 // ============================================================
-// ✅ TAMBAHAN BARU: POST /api/v1/customers/:id/pics
+// ✅ CUSTOMER PIC ENDPOINTS
 // ============================================================
+
 const picSchema = z.object({
   name: z.string().min(2).max(255),
   position: z.string().max(100).optional().nullable(),
   email: z.string().email().max(255).optional().nullable(),
   phone: z.string().max(30).optional().nullable(),
   is_primary: z.boolean().optional().default(false),
+  is_active: z.boolean().optional().default(true),
 });
 
+// POST /api/v1/customers/:id/pics
 customersRouter.post('/:id/pics', async (req, res, next) => {
   try {
     const customerId = BigInt(req.params.id);
@@ -382,9 +395,8 @@ customersRouter.post('/:id/pics', async (req, res, next) => {
       });
     }
 
-    const { name, position, email, phone, is_primary } = parsed.data;
+    const { name, position, email, phone, is_primary, is_active } = parsed.data;
 
-    // Kalau PIC baru primary, turunkan PIC primary lama
     if (is_primary) {
       await prisma.customer_pics.updateMany({
         where: { customer_id: customerId, is_primary: true, deleted_at: null },
@@ -400,7 +412,7 @@ customersRouter.post('/:id/pics', async (req, res, next) => {
         email: email || null,
         phone: phone || null,
         is_primary: is_primary || false,
-        is_active: true,
+        is_active: is_active ?? true,
       },
       select: {
         id: true, name: true, position: true,
@@ -425,5 +437,93 @@ Telepon: ${phone || '-'}`;
     });
 
     res.status(201).json({ success: true, data: pic, message: 'PIC berhasil ditambahkan' });
+  } catch (err) { next(err); }
+});
+
+// ✅ TAMBAHAN BARU: PUT /api/v1/customers/:id/pics/:picId (Update / Toggle Status PIC)
+const updatePicSchema = z.object({
+  name: z.string().min(2).max(255).optional(),
+  position: z.string().max(100).optional().nullable(),
+  email: z.string().email().max(255).optional().nullable(),
+  phone: z.string().max(30).optional().nullable(),
+  is_primary: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+});
+
+customersRouter.put('/:id/pics/:picId', async (req, res, next) => {
+  try {
+    const customerId = BigInt(req.params.id);
+    const picId = BigInt(req.params.picId);
+
+    const existingPic = await prisma.customer_pics.findFirst({
+      where: { id: picId, customer_id: customerId, deleted_at: null },
+    });
+
+    if (!existingPic) {
+      return res.status(404).json({ success: false, message: 'PIC tidak ditemukan' });
+    }
+
+    const parsed = updatePicSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(422).json({
+        success: false,
+        message: 'Validasi gagal',
+        errors: parsed.error.flatten().fieldErrors,
+      });
+    }
+
+    if (parsed.data.is_primary) {
+      await prisma.customer_pics.updateMany({
+        where: { customer_id: customerId, is_primary: true, deleted_at: null },
+        data: { is_primary: false },
+      });
+    }
+
+    const updatedPic = await prisma.customer_pics.update({
+      where: { id: picId },
+      data: parsed.data,
+      select: {
+        id: true, name: true, position: true,
+        email: true, phone: true, is_primary: true, is_active: true,
+      },
+    });
+
+    // Audit Log
+    const auditUserId = req.headers['x-user-id'];
+    await createAuditLog({
+      userId: auditUserId,
+      action: 'UPDATE',
+      entityType: 'CustomerPIC',
+      entityId: picId,
+      module: 'Customers',
+      details: `Mengedit PIC ${updatedPic.name} pada customer ID ${customerId}`,
+      data: parsed.data,
+      req,
+    });
+
+    res.json({ success: true, data: updatedPic, message: 'PIC berhasil diupdate' });
+  } catch (err) { next(err); }
+});
+
+// ✅ TAMBAHAN BARU: DELETE /api/v1/customers/:id/pics/:picId (Hapus PIC)
+customersRouter.delete('/:id/pics/:picId', async (req, res, next) => {
+  try {
+    const customerId = BigInt(req.params.id);
+    const picId = BigInt(req.params.picId);
+
+    const pic = await prisma.customer_pics.findFirst({
+      where: { id: picId, customer_id: customerId, deleted_at: null },
+    });
+
+    if (!pic) {
+      return res.status(404).json({ success: false, message: 'PIC tidak ditemukan' });
+    }
+
+    await prisma.customer_pics.update({
+      where: { id: picId },
+      data: { deleted_at: new Date() },
+    });
+
+    res.json({ success: true, message: 'PIC berhasil dihapus' });
   } catch (err) { next(err); }
 });

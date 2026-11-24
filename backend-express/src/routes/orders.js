@@ -5,7 +5,6 @@ import { prisma } from '../lib/prisma.js';
 import { generateOrderNumber, generateInvoiceNumber } from '../lib/orderHelpers.js';
 import { createAuditLog } from '../lib/auditHelper.js';
 
-
 export const ordersRouter = Router();
 
 // ============ OPTIONS ============
@@ -14,7 +13,11 @@ ordersRouter.get('/options/customers', async (_req, res, next) => {
     const data = await prisma.customers.findMany({
       where: { deleted_at: null },
       select: {
-        id: true, name: true, address: true,
+        id: true, 
+        name: true, 
+        address: true,
+        sales_id: true,
+        sales_user: { select: { id: true, name: true, email: true } },
         customer_pics: {
           where: { deleted_at: null, is_active: true },
           select: { id: true, name: true, email: true }
@@ -40,7 +43,7 @@ ordersRouter.get('/options/services', async (_req, res, next) => {
 ordersRouter.get('/options/sales', async (_req, res, next) => {
   try {
     const data = await prisma.users.findMany({
-      where: { deleted_at: null, status: 'active', roles: { name: { in: ['CS'] } } },
+      where: { deleted_at: null, status: 'active', roles: { name: { in: ['CS', 'Customer Service', 'cs'] } } },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
@@ -118,13 +121,12 @@ ordersRouter.get('/:id', async (req, res, next) => {
 
 // ============ CREATE ORDER + AUTO INVOICE ============
 const createSchema = z.object({
-  name: z.string().min(1, 'Nama order wajib diisi'), // 👈 TAMBAHAN KOLOM NAME
+  name: z.string().min(1, 'Nama order wajib diisi'),
   customer_id: z.coerce.number().int().positive(),
   pic_id: z.coerce.number().int().positive().optional().nullable(),
   sales_id: z.coerce.number().int().positive().optional().nullable(),
   team_id: z.coerce.number().int().positive().optional().nullable(),
 
-  // ✅ VALIDASI MULTIPLE SERVICES
   services: z.array(z.object({
     service_id: z.coerce.number().int().positive(),
     price_deal: z.coerce.number().min(0),
@@ -166,7 +168,7 @@ ordersRouter.post('/', async (req, res, next) => {
     if (!parsed.success) return res.status(422).json({ success: false, message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors });
 
     const {
-      name, customer_id, pic_id, sales_id, team_id, services, // 👈 DESTRUCTURE NAME
+      name, customer_id, pic_id, sales_id, team_id, services,
       discount_type, discount, tax_rate,
       start_date_project, end_date_project, notes, assignments
     } = parsed.data;
@@ -180,7 +182,6 @@ ordersRouter.post('/', async (req, res, next) => {
 
     const pic = pic_id ? await prisma.customer_pics.findFirst({ where: { id: BigInt(pic_id) } }) : null;
 
-    // ✅ HITUNG TOTAL DARI BANYAK LAYANAN
     let subtotal = 0;
     const servicesData = [];
 
@@ -212,11 +213,10 @@ ordersRouter.post('/', async (req, res, next) => {
     const order = await prisma.$transaction(async (tx) => {
       const orderNum = await generateOrderNumber(tx);
 
-      // 1. Buat Order Utama
       const newOrder = await tx.orders.create({
         data: {
           order_number: orderNum,
-          name, // 👈 INSERT KOLOM NAME KE DATABASE
+          name,
           customer_id: BigInt(customer_id),
           pic_id: pic ? pic.id : null,
           sales_id: sales_id ? BigInt(sales_id) : null,
@@ -239,7 +239,6 @@ ordersRouter.post('/', async (req, res, next) => {
         },
       });
 
-      // 2. ✅ INSERT BANYAK LAYANAN KE ORDER_SERVICES
       for (const sd of servicesData) {
         await tx.order_services.create({
           data: {
@@ -252,7 +251,6 @@ ordersRouter.post('/', async (req, res, next) => {
         });
       }
 
-      // 3. Simpan Order Assignments (Tim)
       if (assignments && assignments.length > 0) {
         for (const a of assignments) {
           const newAssignment = await tx.order_assignments.create({
@@ -279,7 +277,6 @@ ordersRouter.post('/', async (req, res, next) => {
         }
       }
 
-      // 4. OTOMATIS BUAT INVOICE
       const invoiceNum = await generateInvoiceNumber(tx);
 
       await tx.invoices.create({
@@ -293,7 +290,6 @@ ordersRouter.post('/', async (req, res, next) => {
         }
       });
 
-      // 5. Catat History
       await tx.order_status_history.create({
         data: {
           order_id: newOrder.id,
@@ -307,7 +303,6 @@ ordersRouter.post('/', async (req, res, next) => {
       return newOrder;
     });
 
-    // Audit log dengan detail lengkap
     const userId = req.headers['x-user-id'];
     const detailText = `Menambahkan order baru.
 Order Number: ${order.order_number}

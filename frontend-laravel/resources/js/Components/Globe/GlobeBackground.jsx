@@ -26,7 +26,7 @@ export default function GlobeBackground({ theme: themeProp, className = '' }) {
         <div className={`absolute inset-0 ${className}`}>
 <div
     className="absolute left-1/2 top-1/2 aspect-square w-[150vw] -translate-x-1/2 -translate-y-1/2
-               sm:w-[120vw] md:w-[100vw] lg:w-[78vw] xl:w-[70vw] 2xl:max-w-[1400px]"
+               sm:w-[120vw] md:w-[100vw] lg:w-[78vw] xl:w-[70vw] 2xl:max-w-[820px]"
 >
                 {mounted && (
                     <Suspense fallback={null}>
